@@ -1,43 +1,23 @@
-# Getting Started with Create React App
+# turbinasmcbo-app
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Este proyecto es una migración de la funcionalidad principal del dashboard y cards del sistema original, ahora usando React JavaScript y Material UI. Aquí se gestionan vehículos y usuarios, con una interfaz moderna y sin dependencias innecesarias.
 
-## Available Scripts
+## Scripts principales
+- `npm start`: Inicia el servidor de desarrollo.
+- `npm run build`: Compila la app para producción.
+- `npm test`: Ejecuta los tests.
 
-In the project directory, you can run:
+## Estructura inicial
+- `src/App.js`: Componente principal.
+- `src/components/VehicleCard.js`: Card de vehículo con Material UI.
 
-### `npm start`
+## Migración
+- Se eliminaron dependencias de Next.js, Tailwind y Shadcn UI.
+- Se migraron los estilos a Material UI.
+- Se mantiene la lógica de vehículos y usuarios.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Personalización
+Puedes modificar los componentes en `src/components` para adaptar la funcionalidad a tus necesidades.
 
 ## Learn More
 
