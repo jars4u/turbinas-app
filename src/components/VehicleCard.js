@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Divider from '@mui/material/Divider';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
-import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
-import BuildIcon from '@mui/icons-material/Build';
-import CommentIcon from '@mui/icons-material/Comment';
-import PersonIcon from '@mui/icons-material/Person';
-import PhoneIcon from '@mui/icons-material/Phone';
+
 import {
   Card,
   CardContent,
@@ -24,12 +19,12 @@ const statusMap = {
 
 const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
   const {
-    id,
+  // id,
     arrivalTime = Date.now(),
     vehiculo: nombreVehiculo = "",
     placa = "",
-    observaciones = "",
-    customer,
+  // observaciones = "",
+  // customer,
     servicio,
     precio,
   } = vehiculo;
@@ -38,8 +33,13 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
   const arrivalTimeNum = typeof arrivalTime === "string" ? Number(arrivalTime) : arrivalTime;
   const [anchorEl, setAnchorEl] = useState(null);
   const [currentStatus, setCurrentStatus] = useState(
-    vehiculo.estado || "servicio"
+    vehiculo.status || "servicio"
   );
+
+  // Sincronizar el estado local con el prop vehiculo.status al recibir nuevos datos
+  useEffect(() => {
+    setCurrentStatus(vehiculo.status || "servicio");
+  }, [vehiculo.status]);
   const [elapsed, setElapsed] = useState(Date.now() - arrivalTime);
   const [stoppedElapsed, setStoppedElapsed] = useState(null);
 
@@ -57,7 +57,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [currentStatus, arrivalTime]);
+  }, [currentStatus, arrivalTime, elapsed]);
 
   // Formatear tiempo en hh:mm:ss
   const formatElapsed = (ms) => {
@@ -72,14 +72,14 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
   // ...existing code...
 
   // Mostrar hora de registro estática
-  const formatHoraRegistro = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
+  // const formatHoraRegistro = (timestamp) => {
+  //   const date = new Date(timestamp);
+  //   return date.toLocaleTimeString([], {
+  //     hour: "2-digit",
+  //     minute: "2-digit",
+  //     second: "2-digit",
+  //   });
+  // };
 
   const handleChipClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -178,16 +178,13 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
         <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
           Datos del vehículo
         </Typography>
-        <Typography variant="caption" display="block" sx={{ mb: 0.2 }}>
-          <DirectionsCarIcon fontSize="inherit" sx={{ mr: 1, verticalAlign: 'middle' }} />
-          {nombreVehiculo}
+        <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
+          {nombreVehiculo && nombreVehiculo.toUpperCase()}
         </Typography>
-        <Typography variant="caption" display="block" sx={{ mb: 0.2 }}>
-          <CreditCardIcon fontSize="inherit" sx={{ mr: 1, verticalAlign: 'middle' }} />
-          {placa}
+        <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
+          {placa && placa.toUpperCase()}
         </Typography>
-        <Typography variant="caption" display="block" sx={{ mb: 0.2 }}>
-          <BuildIcon fontSize="inherit" sx={{ mr: 1, verticalAlign: 'middle' }} />
+        <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
           {servicio}
         </Typography>
         <Divider sx={{ my: 1 }} />

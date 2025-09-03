@@ -11,7 +11,19 @@ import {
   TextField,
   DialogActions,
   Divider,
+  Avatar,
+  AppBar,
+  Toolbar,
+  Box,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
+import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
+import SettingsIcon from '@mui/icons-material/Settings';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import { useNavigate } from 'react-router-dom';
+import PersonIcon from '@mui/icons-material/Person';
 import VehicleCard from "../components/VehicleCard";
 
 const initialVehicles = [
@@ -38,8 +50,9 @@ const initialVehicles = [
   },
 ];
 
-export default function Dashboard() {
+export default function Dashboard({ usuario, onLogout }) {
   // Cambiar status y guardar en la base de datos
+  const navigate = useNavigate();
   const handleStatusChange = (id, newStatus) => {
     const vehiculo = vehiculos.find((v) => v.id === id);
     if (!vehiculo) return;
@@ -49,8 +62,11 @@ export default function Dashboard() {
       body: JSON.stringify({ ...vehiculo, status: newStatus }),
     })
       .then((res) => res.json())
-      .then((actualizado) => {
-        setVehiculos(vehiculos.map((v) => (v.id === id ? actualizado : v)));
+      .then(() => {
+        // Refrescar los datos desde la API para asegurar que el resumen esté actualizado
+        fetch("http://localhost:4000/vehiculos")
+          .then((res) => res.json())
+          .then(setVehiculos);
       });
   };
   const [vehiculos, setVehiculos] = useState([]);
@@ -61,6 +77,8 @@ export default function Dashboard() {
       .then(setVehiculos);
   }, []);
   const [open, setOpen] = useState(false);
+  // Estado para el modal de confirmación de eliminación
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [form, setForm] = useState({
     vehiculo: "",
     placa: "",
@@ -70,7 +88,11 @@ export default function Dashboard() {
     customerPhone: "",
     observaciones: "",
   });
+  const [editSection, setEditSection] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
+  // Estado para controlar edición de todas las secciones al registrar
+  const isRegistering = editId === null;
 
   const handleOpen = (vehiculo) => {
     if (vehiculo) {
@@ -84,6 +106,8 @@ export default function Dashboard() {
         observaciones: vehiculo.observaciones || "",
       });
       setEditId(vehiculo.id);
+      setEditSection(null);
+      setIsEditing(false);
     } else {
       setForm({
         vehiculo: "",
@@ -95,6 +119,8 @@ export default function Dashboard() {
         observaciones: "",
       });
       setEditId(null);
+      setEditSection('vehiculo'); // Abrir directamente en modo edición
+      setIsEditing(true);
     }
     setOpen(true);
   };
@@ -115,6 +141,7 @@ export default function Dashboard() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setIsEditing(true);
   };
 
   const handleSave = () => {
@@ -144,7 +171,6 @@ export default function Dashboard() {
           setVehiculos(
             vehiculos.map((v) => (v.id === editId ? actualizado : v))
           );
-          handleClose();
         });
     } else {
       fetch("http://localhost:4000/vehiculos", {
@@ -155,7 +181,6 @@ export default function Dashboard() {
         .then((res) => res.json())
         .then((nuevo) => {
           setVehiculos([...vehiculos, nuevo]);
-          handleClose();
         });
     }
   };
@@ -167,27 +192,83 @@ export default function Dashboard() {
       }).then(() => {
         setVehiculos(vehiculos.filter((v) => v.id !== editId));
         handleClose();
+        setConfirmDeleteOpen(false);
       });
     }
   };
 
+  // Abrir modal de confirmación
+  const handleDeleteClick = () => {
+    setConfirmDeleteOpen(true);
+  };
+
+  // Cancelar eliminación
+  const handleCancelDelete = () => {
+    setConfirmDeleteOpen(false);
+  };
+
   return (
-    <Container
-      maxWidth="xl"
-      sx={{ py: 4, maxWidth: "100%", width: "100%", px: 4 }}
-    >
-      <Typography variant="h4" gutterBottom>
-        <span style={{ fontWeight: 600 }}>Vehículos en servicio</span>
-      </Typography>
-      <Button
-        variant="outlined"
-        color="primary"
-        size="small"
-        sx={{ mb: 2 }}
-        onClick={() => handleOpen()}
-      >
-        Registrar Vehículo
-      </Button>
+    <Container maxWidth="xl" sx={{ py: 4, maxWidth: "100%", width: "100%", px: 4 }}>
+      <AppBar position="static" color="transparent" elevation={0} sx={{ background: 'none', boxShadow: 'none', m: 0, p: 0 }}>
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', minHeight: 48, p: 0, m: 0, background: 'none' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <img src="/logo.png" alt="Logo" style={{ height: 32, marginRight: 8 }} />
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Tooltip title="Cierre del día" arrow>
+                <IconButton color="default" size="small" sx={{ color: '#757575' }} onClick={() => navigate('/cierredia')}>
+                  <PointOfSaleIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Configuración" arrow>
+                <IconButton color="default" size="small" sx={{ color: '#757575' }} onClick={() => navigate('/configuracion')}>
+                  <SettingsIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Divider orientation="vertical" flexItem sx={{ mx: 2, height: 28 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Avatar sx={{ bgcolor: '#e0e0e0', width: 22, height: 22 }}>
+                <PersonIcon fontSize="small" style={{ color: '#757575' }} />
+              </Avatar>
+              <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ fontSize: 13 }}>
+                {usuario}
+              </Typography>
+              <Button variant="outlined" color="error" size="small" sx={{ minWidth: 0, px: 1, fontSize: 12 }} onClick={onLogout}>
+                Cerrar sesión
+              </Button>
+            </Box>
+          </Box>
+        </Toolbar>
+      </AppBar>
+      <Divider sx={{ mb: 2 }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h4" gutterBottom sx={{ m: 0 }}>
+          <span style={{ fontWeight: 600 }}>Vehículos en servicio</span>
+        </Typography>
+        <Button
+          variant="outlined"
+          color="primary"
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpen()}
+        >
+          Registrar Vehículo
+        </Button>
+      </Box>
+      {/* Resumen de vehículos por estado */}
+      <Box sx={{ display: 'flex', gap: 4, mb: 2 }}>
+        <Typography variant="body1" color="primary" fontWeight={600}>
+          En servicio: {vehiculos.filter(v => (v.status || v.estado) === 'servicio').length}
+        </Typography>
+        <Typography variant="body1" color="success.main" fontWeight={600}>
+          Entregados: {vehiculos.filter(v => (v.status || v.estado) === 'entregado').length}
+        </Typography>
+        <Typography variant="body1" color="warning.main" fontWeight={600}>
+          En espera: {vehiculos.filter(v => (v.status || v.estado) === 'espera').length}
+        </Typography>
+      </Box>
       <Grid container spacing={2}>
         {[...vehiculos]
           .sort((a, b) => a.arrivalTime - b.arrivalTime)
@@ -222,11 +303,11 @@ export default function Dashboard() {
           }}
         >
           <Typography variant="h6">
-            {editId ? "Editar Vehículo" : "Registrar Vehículo"}
+            {editId ? "Información del Vehículo" : "Registrar Vehículo"}
           </Typography>
           {editId && (
             <Button
-              onClick={handleDelete}
+              onClick={handleDeleteClick}
               variant="outlined"
               size="small"
               color="error"
@@ -234,90 +315,296 @@ export default function Dashboard() {
               Eliminar
             </Button>
           )}
-        </div>
+      {/* Modal de confirmación para eliminar */}
+      <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
+        <DialogTitle>Confirmar eliminación</DialogTitle>
         <DialogContent>
-          <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom sx={{ mt: 1 }}>
-            Datos del vehículo
-          </Typography>
-          <Divider sx={{ mb: 1 }} />
-          <TextField
-            margin="dense"
-            label="Vehículo"
-            name="vehiculo"
-            fullWidth
-            value={form.vehiculo}
-            onChange={handleChange}
-          />
-          <TextField
-            margin="dense"
-            label="Placa"
-            name="placa"
-            fullWidth
-            value={form.placa}
-            onChange={handleChange}
-          />
-          <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom sx={{ mt: 2 }}>
-            Datos del servicio
-          </Typography>
-          <Divider sx={{ mb: 1 }} />
-          <TextField
-            margin="dense"
-            label="Servicio"
-            name="servicio"
-            fullWidth
-            value={form.servicio}
-            onChange={handleChange}
-          />
-          <TextField
-            margin="dense"
-            label="Observaciones"
-            name="observaciones"
-            fullWidth
-            value={form.observaciones}
-            onChange={handleChange}
-          />
-          <TextField
-            margin="dense"
-            label="Precio"
-            name="precio"
-            type="number"
-            fullWidth
-            value={form.precio}
-            onChange={handleChange}
-          />
-          <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom sx={{ mt: 2 }}>
-            Datos del cliente
-          </Typography>
-          <Divider sx={{ mb: 1 }} />
-          <TextField
-            margin="dense"
-            label="Cliente (Nombre)"
-            name="customerName"
-            fullWidth
-            value={form.customerName}
-            onChange={handleChange}
-          />
-          <TextField
-            margin="dense"
-            label="Cliente (Teléfono)"
-            name="customerPhone"
-            fullWidth
-            value={form.customerPhone}
-            onChange={handleChange}
-          />
+          <Typography>¿Estás seguro que deseas eliminar este vehículo? Esta acción no se puede deshacer.</Typography>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={handleClose}
-            variant="outlined"
-            size="small"
-            color="error"
-          >
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} variant="outlined" size="small">
-            Guardar
-          </Button>
+          <Button onClick={handleCancelDelete} color="primary">Cancelar</Button>
+          <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+        </div>
+        <DialogContent sx={{ minWidth: 400, maxWidth: 500 }}>
+          {/* Sección: Datos del vehículo */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom sx={{ mt: 1 }}>
+              Datos del vehículo
+            </Typography>
+            {editSection !== 'vehiculo' && (
+              <IconButton size="small" onClick={() => setEditSection('vehiculo')}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+          <Divider sx={{ mb: 1 }} />
+          <Box sx={{ minHeight: 80, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {(editSection === 'vehiculo' || isRegistering) ? (
+              <>
+                <TextField
+                  margin="none"
+                  label="Vehículo"
+                  name="vehiculo"
+                  fullWidth
+                  size="small"
+                  value={form.vehiculo}
+                  onChange={handleChange}
+                  sx={{ mb: 1.5 }}
+                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                />
+                <TextField
+                  margin="none"
+                  label="Placa"
+                  name="placa"
+                  fullWidth
+                  size="small"
+                  value={form.placa}
+                  onChange={handleChange}
+                  sx={{ mb: 1.5 }}
+                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                />
+              </>
+            ) : (
+              <>
+                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary' }}>Vehículo</Typography>
+                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.vehiculo && form.vehiculo.toUpperCase()}</Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary', mt: 1 }}>Placa</Typography>
+                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.placa && form.placa.toUpperCase()}</Typography>
+              </>
+            )}
+          </Box>
+
+          {/* Sección: Datos del servicio */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
+            <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
+              Datos del servicio
+            </Typography>
+            {editSection !== 'servicio' && (
+              <IconButton size="small" onClick={() => setEditSection('servicio')}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+          <Divider sx={{ mb: 1 }} />
+          <Box sx={{ minHeight: 110, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {(editSection === 'servicio' || isRegistering) ? (
+              <>
+                <TextField
+                  margin="none"
+                  label="Servicio"
+                  name="servicio"
+                  fullWidth
+                  size="small"
+                  value={form.servicio}
+                  onChange={handleChange}
+                  sx={{ mb: 1.5 }}
+                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                />
+                <TextField
+                  margin="none"
+                  label="Observaciones"
+                  name="observaciones"
+                  fullWidth
+                  size="small"
+                  value={form.observaciones}
+                  onChange={handleChange}
+                  sx={{ mb: 1.5 }}
+                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                />
+                <TextField
+                  margin="none"
+                  label="Precio"
+                  name="precio"
+                  type="number"
+                  fullWidth
+                  size="small"
+                  value={form.precio}
+                  onChange={handleChange}
+                  sx={{ mb: 1.5 }}
+                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                />
+              </>
+            ) : (
+              <>
+                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary' }}>Servicio</Typography>
+                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.servicio}</Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary', mt: 1 }}>Observaciones</Typography>
+                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.observaciones}</Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary', mt: 1 }}>Precio</Typography>
+                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.precio}</Typography>
+              </>
+            )}
+          </Box>
+
+          {/* Sección: Datos del cliente */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
+            <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
+              Datos del cliente
+            </Typography>
+            {editSection !== 'cliente' && (
+              <IconButton size="small" onClick={() => setEditSection('cliente')}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+          <Divider sx={{ mb: 1 }} />
+          <Box sx={{ minHeight: 80, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {(editSection === 'cliente' || isRegistering) ? (
+              <>
+                <TextField
+                  margin="none"
+                  label="Cliente (Nombre)"
+                  name="customerName"
+                  fullWidth
+                  size="small"
+                  value={form.customerName}
+                  onChange={handleChange}
+                  sx={{ mb: 1.5 }}
+                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                />
+                <TextField
+                  margin="none"
+                  label="Cliente (Teléfono)"
+                  name="customerPhone"
+                  fullWidth
+                  size="small"
+                  value={form.customerPhone.startsWith('+58') ? form.customerPhone : '+58' + form.customerPhone.replace(/^0+/, '')}
+                  onChange={e => {
+                    let value = e.target.value;
+                    // Forzar el prefijo +58
+                    if (!value.startsWith('+58')) {
+                      value = '+58' + value.replace(/^0+/, '');
+                    }
+                    // Solo permitir números después de +58
+                    value = value.replace(/^\+58/, '+58');
+                    const soloNumeros = value.slice(3).replace(/[^\d]/g, '');
+                    value = '+58' + soloNumeros;
+                    setForm({ ...form, customerPhone: value });
+                  }}
+                  sx={{ mb: 1.5 }}
+                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                  placeholder="+58-424-xxxxxxx"
+                  helperText={
+                    /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ''))
+                      ? "Formato: +58-424-xxxxxxx"
+                      : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)"
+                  }
+                  error={!/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ''))}
+                />
+              </>
+            ) : (
+              <>
+                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary' }}>Cliente</Typography>
+                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.customerName}</Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary', mt: 1 }}>Teléfono</Typography>
+                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.customerPhone}</Typography>
+              </>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', px: 3 }}>
+          {isRegistering ? (
+            <>
+              <Button
+                onClick={handleClose}
+                variant="outlined"
+                size="small"
+                color="error"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  handleSave();
+                  setOpen(false);
+                  setEditSection(null);
+                  setIsEditing(false);
+                }}
+                variant="contained"
+                size="small"
+                color="primary"
+                disabled={
+                  !form.vehiculo ||
+                  !form.placa ||
+                  !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ''))
+                }
+              >
+                Guardar
+              </Button>
+            </>
+          ) : (
+            <>
+              {editSection ? (
+                <>
+                  <Button
+                    onClick={() => {
+                      setEditSection(null);
+                      setIsEditing(false);
+                    }}
+                    variant="outlined"
+                    size="small"
+                    color="error"
+                  >
+                    Cancelar
+                  </Button>
+                  {isEditing && (
+                    <Button
+                      onClick={() => {
+                        handleSave();
+                        setEditSection(null);
+                        setIsEditing(false);
+                      }}
+                      variant="contained"
+                      size="small"
+                      color="primary"
+                    >
+                      Guardar
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="success"
+                      onClick={() => {
+                        if (form.customerPhone) {
+                          // Formato esperado: +58-424-6065449
+                          let phone = form.customerPhone.trim();
+                          // Eliminar espacios y guiones
+                          phone = phone.replace(/[-\s]/g, "");
+                          // Eliminar el símbolo + si existe
+                          phone = phone.replace(/^\+/, "");
+                          // Si comienza con 58, dejarlo así; si comienza con 0, convertir a 58
+                          if (phone.startsWith("58")) {
+                            // ya está en formato internacional
+                          } else if (phone.startsWith("0")) {
+                            phone = "58" + phone.slice(1);
+                          }
+                          window.open(`https://wa.me/${phone}`, "_blank");
+                        }
+                      }}
+                      disabled={!form.customerPhone}
+                    >
+                      Enviar WhatsApp
+                    </Button>
+                  </Box>
+                  <Button
+                    onClick={handleClose}
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                  >
+                    Volver
+                  </Button>
+                </>
+              )}
+            </>
+          )}
         </DialogActions>
       </Dialog>
     </Container>
