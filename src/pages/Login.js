@@ -1,18 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { TextField, Button, Paper, Typography, Box } from "@mui/material";
+import { loginUsuario, logoutUsuario, observarUsuario } from "../lib/usuariosFirebase";
 
 
-const Login = ({ onLogin, error }) => {
+const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [usuarioActual, setUsuarioActual] = useState(null);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const unsubscribe = observarUsuario(setUsuarioActual);
+    return () => unsubscribe();
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username || !password) {
-      alert("Usuario y clave requeridos");
+      setError("Usuario y clave requeridos");
       return;
     }
-    onLogin(username, password);
+    try {
+      await loginUsuario(username, password);
+      setError("");
+      navigate("/dashboard");
+    } catch (err) {
+      setError("Credenciales incorrectas o usuario no existe");
+    }
   };
 
 
@@ -49,6 +65,23 @@ const Login = ({ onLogin, error }) => {
             Acceder
           </Button>
         </form>
+        {usuarioActual && (
+          <Button
+            variant="outlined"
+            color="secondary"
+            fullWidth
+            sx={{ mt: 2 }}
+            onClick={async () => {
+              await logoutUsuario();
+              setUsername("");
+              setPassword("");
+              setError("");
+              navigate("/login");
+            }}
+          >
+            Cerrar sesión
+          </Button>
+        )}
       </Paper>
     </Box>
   );

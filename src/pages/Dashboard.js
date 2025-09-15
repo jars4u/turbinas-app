@@ -18,6 +18,7 @@ import {
   Tooltip,
   IconButton,
 } from "@mui/material";
+import CircularProgress from '@mui/material/CircularProgress';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -25,56 +26,37 @@ import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import { useNavigate } from 'react-router-dom';
 import PersonIcon from '@mui/icons-material/Person';
 import VehicleCard from "../components/VehicleCard";
+import { obtenerVehiculos, crearVehiculo, actualizarVehiculo, eliminarVehiculo } from "../lib/vehiculosFirebase";
 
-const initialVehicles = [
-  {
-    id: 1,
-    nombre: "Camión 1",
-    estado: "Activo",
-    servicio: "En ruta",
-    tiempo: 120,
-  },
-  {
-    id: 2,
-    nombre: "Camión 2",
-    estado: "Mantenimiento",
-    servicio: "Taller",
-    tiempo: 0,
-  },
-  {
-    id: 3,
-    nombre: "Camión 3",
-    estado: "Activo",
-    servicio: "Disponible",
-    tiempo: 45,
-  },
-];
 
 export default function Dashboard({ usuario, onLogout }) {
   // Cambiar status y guardar en la base de datos
   const navigate = useNavigate();
-  const handleStatusChange = (id, newStatus) => {
+  // El usuario autenticado debe mantenerse fijo
+  // Si el nombre cambia tras crear usuario, probablemente se está actualizando el prop "usuario" desde el padre
+  // Solución: guardar el usuario autenticado en un estado local solo al montar
+  const [usuarioActivo, setUsuarioActivo] = useState(usuario);
+  useEffect(() => {
+    // Solo inicializar una vez al montar
+    setUsuarioActivo(usuario);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const handleStatusChange = async (id, newStatus) => {
     const vehiculo = vehiculos.find((v) => v.id === id);
     if (!vehiculo) return;
-    fetch(`http://localhost:4000/vehiculos/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...vehiculo, status: newStatus }),
-    })
-      .then((res) => res.json())
-      .then(() => {
-        // Refrescar los datos desde la API para asegurar que el resumen esté actualizado
-        fetch("http://localhost:4000/vehiculos")
-          .then((res) => res.json())
-          .then(setVehiculos);
-      });
+    await actualizarVehiculo(id, { ...vehiculo, status: newStatus });
+    const actualizados = await obtenerVehiculos();
+    setVehiculos(actualizados);
   };
   const [vehiculos, setVehiculos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   // Cargar vehículos desde la API al montar
   useEffect(() => {
-    fetch("http://localhost:4000/vehiculos")
-      .then((res) => res.json())
-      .then(setVehiculos);
+    obtenerVehiculos().then((data) => {
+      setVehiculos(data);
+      setLoading(false);
+    });
   }, []);
   const [open, setOpen] = useState(false);
   // Estado para el modal de confirmación de eliminación
@@ -144,7 +126,7 @@ export default function Dashboard({ usuario, onLogout }) {
     setIsEditing(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const vehiculoData = {
       vehiculo: form.vehiculo,
       placa: form.placa,
@@ -160,40 +142,28 @@ export default function Dashboard({ usuario, onLogout }) {
         : "servicio",
       precio: form.precio === "" ? null : Number(form.precio),
     };
+    setActionLoading(true);
     if (editId) {
-      fetch(`http://localhost:4000/vehiculos/${editId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(vehiculoData),
-      })
-        .then((res) => res.json())
-        .then((actualizado) => {
-          setVehiculos(
-            vehiculos.map((v) => (v.id === editId ? actualizado : v))
-          );
-        });
+      await actualizarVehiculo(editId, vehiculoData);
+      const actualizados = await obtenerVehiculos();
+      setVehiculos(actualizados);
     } else {
-      fetch("http://localhost:4000/vehiculos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(vehiculoData),
-      })
-        .then((res) => res.json())
-        .then((nuevo) => {
-          setVehiculos([...vehiculos, nuevo]);
-        });
+      await crearVehiculo(vehiculoData);
+      const actualizados = await obtenerVehiculos();
+      setVehiculos(actualizados);
     }
+    setActionLoading(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (editId) {
-      fetch(`http://localhost:4000/vehiculos/${editId}`, {
-        method: "DELETE",
-      }).then(() => {
-        setVehiculos(vehiculos.filter((v) => v.id !== editId));
-        handleClose();
-        setConfirmDeleteOpen(false);
-      });
+      setActionLoading(true);
+      await eliminarVehiculo(editId);
+      const actualizados = await obtenerVehiculos();
+      setVehiculos(actualizados);
+      setActionLoading(false);
+      handleClose();
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -212,30 +182,34 @@ export default function Dashboard({ usuario, onLogout }) {
       <AppBar position="static" color="transparent" elevation={0} sx={{ background: 'none', boxShadow: 'none', m: 0, p: 0 }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', minHeight: 48, p: 0, m: 0, background: 'none' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <img src="/logo.png" alt="Logo" style={{ height: 32, marginRight: 8 }} />
+            <img src="/logo.png" alt="Logo" style={{ height: 32, marginRight: 8 }} aria-label="Logo" />
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Tooltip title="Cierre del día" arrow>
-                <IconButton color="default" size="small" sx={{ color: '#757575' }} onClick={() => navigate('/cierredia')}>
-                  <PointOfSaleIcon fontSize="small" />
-                </IconButton>
+                <span>
+                  <IconButton color="default" size="small" sx={{ color: '#757575' }} onClick={() => navigate('/cierredia')} aria-label="Ir a cierre del día">
+                    <PointOfSaleIcon fontSize="small" />
+                  </IconButton>
+                </span>
               </Tooltip>
               <Tooltip title="Configuración" arrow>
-                <IconButton color="default" size="small" sx={{ color: '#757575' }} onClick={() => navigate('/configuracion')}>
-                  <SettingsIcon />
-                </IconButton>
+                <span>
+                  <IconButton color="default" size="small" sx={{ color: '#757575' }} onClick={() => navigate('/configuracion')} aria-label="Ir a configuración">
+                    <SettingsIcon />
+                  </IconButton>
+                </span>
               </Tooltip>
             </Box>
             <Divider orientation="vertical" flexItem sx={{ mx: 2, height: 28 }} />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Avatar sx={{ bgcolor: '#e0e0e0', width: 22, height: 22 }}>
+              <Avatar sx={{ bgcolor: '#e0e0e0', width: 22, height: 22 }} aria-label="Usuario">
                 <PersonIcon fontSize="small" style={{ color: '#757575' }} />
               </Avatar>
               <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ fontSize: 13 }}>
-                {usuario}
+                {usuarioActivo}
               </Typography>
-              <Button variant="outlined" color="error" size="small" sx={{ minWidth: 0, px: 1, fontSize: 12 }} onClick={onLogout}>
+              <Button variant="outlined" color="error" size="small" sx={{ minWidth: 0, px: 1, fontSize: 12 }} onClick={onLogout} aria-label="Cerrar sesión">
                 Cerrar sesión
               </Button>
             </Box>
@@ -269,64 +243,64 @@ export default function Dashboard({ usuario, onLogout }) {
           En espera: {vehiculos.filter(v => (v.status || v.estado) === 'espera').length}
         </Typography>
       </Box>
-      <Grid container spacing={2}>
-        {[...vehiculos]
-          .sort((a, b) => a.arrivalTime - b.arrivalTime)
-          .map((v) => (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={2.4}
-              lg={2.4}
-              xl={2.4}
-              key={v.id}
-              sx={{ mb: 3 }}
-            >
-              <VehicleCard
-                vehiculo={v}
-                onEdit={() => handleOpen(v)}
-                onStatusChange={(newStatus) =>
-                  handleStatusChange(v.id, newStatus)
-                }
-              />
-            </Grid>
-          ))}
-      </Grid>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+          <CircularProgress color="primary" size={48} />
+        </Box>
+      ) : (
+        <Grid container spacing={2} columns={12}>
+          {[...vehiculos]
+            .sort((a, b) => a.arrivalTime - b.arrivalTime)
+            .map((v) => (
+              <Grid
+                key={v.id}
+                sx={{ mb: 3, gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 3', lg: 'span 2', xl: 'span 2' } }}
+              >
+                <VehicleCard
+                  vehiculo={v}
+                  onEdit={() => handleOpen(v)}
+                  onStatusChange={(newStatus) =>
+                    handleStatusChange(v.id, newStatus)
+                  }
+                />
+              </Grid>
+            ))}
+        </Grid>
+      )}
       <Dialog open={open} onClose={handleClose}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "16px 24px 0 24px",
-          }}
-        >
-          <Typography variant="h6">
-            {editId ? "Información del Vehículo" : "Registrar Vehículo"}
-          </Typography>
-          {editId && (
-            <Button
-              onClick={handleDeleteClick}
-              variant="outlined"
-              size="small"
-              color="error"
-            >
-              Eliminar
-            </Button>
+        <DialogContent sx={{ minWidth: 400, maxWidth: 500, pt: 3, position: 'relative' }}>
+          {actionLoading && (
+            <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CircularProgress color="primary" size={40} />
+            </Box>
           )}
-      {/* Modal de confirmación para eliminar */}
-      <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
-        <DialogTitle>Confirmar eliminación</DialogTitle>
-        <DialogContent>
-          <Typography>¿Estás seguro que deseas eliminar este vehículo? Esta acción no se puede deshacer.</Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Typography variant="h6">
+              {editId ? "Información del Vehículo" : "Registrar Vehículo"}
+            </Typography>
+            {editId && (
+              <Button
+                onClick={handleDeleteClick}
+                variant="outlined"
+                size="small"
+                color="error"
+              >
+                Eliminar
+              </Button>
+            )}
+          </Box>
+          {/* Modal de confirmación para eliminar */}
+          <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogContent>
+              <Typography>¿Estás seguro que deseas eliminar este vehículo? Esta acción no se puede deshacer.</Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCancelDelete} color="primary">Cancelar</Button>
+              <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
+            </DialogActions>
+          </Dialog>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelDelete} color="primary">Cancelar</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
-        </DialogActions>
-      </Dialog>
-        </div>
         <DialogContent sx={{ minWidth: 400, maxWidth: 500 }}>
           {/* Sección: Datos del vehículo */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>

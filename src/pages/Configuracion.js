@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
 import React, { useEffect, useState } from "react";
+import { registrarUsuario, obtenerUsuarios, actualizarUsuario, eliminarUsuario } from "../lib/usuariosFirebase";
 import {
   Container,
   Typography,
@@ -39,9 +40,7 @@ export default function Configuracion({ usuario, isAdmin }) {
 
   // Cargar usuarios al montar
   useEffect(() => {
-    fetch("http://localhost:4000/usuarios")
-      .then((res) => res.json())
-      .then(setUsuarios);
+    obtenerUsuarios().then(setUsuarios);
   }, []);
 
   // Abrir modal para crear usuario
@@ -53,22 +52,25 @@ export default function Configuracion({ usuario, isAdmin }) {
   const [form, setForm] = useState({ usuario: "", clave: "", admin: false });
   const [repeatClave, setRepeatClave] = useState("");
   const [claveError, setClaveError] = useState("");
+  const [loading, setLoading] = useState(false);
   const handleSave = async () => {
     if (form.clave !== repeatClave) {
       setClaveError("Las contraseñas no coinciden");
       return;
     }
     setClaveError("");
-    await fetch("http://localhost:4000/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    fetch("http://localhost:4000/usuarios")
-      .then((res) => res.json())
-      .then(setUsuarios);
-    setOpen(false);
-    setRepeatClave("");
+    setLoading(true);
+    try {
+      await registrarUsuario(form.usuario, form.clave, { admin: form.admin });
+      const nuevosUsuarios = await obtenerUsuarios();
+      setUsuarios(nuevosUsuarios);
+      setOpen(false);
+      setRepeatClave("");
+    } catch (err) {
+      setClaveError("Error al crear usuario: " + (err.message || ""));
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Confirmar cambio de admin
@@ -79,14 +81,9 @@ export default function Configuracion({ usuario, isAdmin }) {
 
   const handleConfirmAdmin = async () => {
     if (selectedUser) {
-      await fetch(`http://localhost:4000/usuarios/${selectedUser.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuario: selectedUser.usuario, admin: !selectedUser.admin }),
-      });
-      fetch("http://localhost:4000/usuarios")
-        .then((res) => res.json())
-        .then(setUsuarios);
+      await actualizarUsuario(selectedUser.id, { admin: !selectedUser.admin });
+      const nuevosUsuarios = await obtenerUsuarios();
+      setUsuarios(nuevosUsuarios);
     }
     setConfirmOpen(false);
     setSelectedUser(null);
@@ -94,7 +91,7 @@ export default function Configuracion({ usuario, isAdmin }) {
 
   // Eliminar usuario
   const handleDelete = async (id) => {
-    await fetch(`http://localhost:4000/usuarios/${id}`, { method: "DELETE" });
+    await eliminarUsuario(id);
     setUsuarios(usuarios.filter((u) => u.id !== id));
   };
 
@@ -128,7 +125,7 @@ export default function Configuracion({ usuario, isAdmin }) {
               Crear usuario
             </Button>
           </Box>
-          <Accordion elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
+            <Accordion defaultExpanded elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0, py: 0, minHeight: 36 }}>
               <Typography variant="subtitle2">Mostrar usuarios registrados</Typography>
             </AccordionSummary>
@@ -142,33 +139,30 @@ export default function Configuracion({ usuario, isAdmin }) {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {usuarios.map((u, idx) => (
-                    <React.Fragment key={u.id}>
-                      <TableRow sx={{ border: 'none', background: 'transparent', height: 28 }}>
-                        <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{u.usuario}</TableCell>
-                        <TableCell sx={{ py: 0.5, px: 1 }}>
-                          <Checkbox
-                            checked={u.admin}
-                            onChange={() => handleAdminChange(u)}
-                            color="primary"
+                  {usuarios.map((u) => (
+                    <TableRow key={u.id} sx={{ border: 'none', background: 'transparent', height: 28 }}>
+                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{u.email || u.usuario}</TableCell>
+                      <TableCell sx={{ py: 0.5, px: 1 }}>
+                        <Checkbox
+                          checked={u.admin}
+                          onChange={() => handleAdminChange(u)}
+                          color="primary"
+                          sx={{ p: 0.5 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ py: 0.5, px: 1 }}>
+                        <Tooltip title="Eliminar">
+                          <IconButton
+                            color="error"
+                            onClick={() => handleDelete(u.id)}
+                            size="small"
                             sx={{ p: 0.5 }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ py: 0.5, px: 1 }}>
-                          <Tooltip title="Eliminar">
-                            <IconButton
-                              color="error"
-                              onClick={() => handleDelete(u.id)}
-                              size="small"
-                              sx={{ p: 0.5 }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                      {idx < usuarios.length - 1 && <Divider />}
-                    </React.Fragment>
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
                   ))}
                 </TableBody>
               </Table>
@@ -214,15 +208,15 @@ export default function Configuracion({ usuario, isAdmin }) {
               </Box>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setOpen(false)} color="error">
+              <Button onClick={() => setOpen(false)} color="error" disabled={loading}>
                 Cancelar
               </Button>
               <Button
                 onClick={handleSave}
                 variant="contained"
-                disabled={form.clave === "" || repeatClave === "" || form.clave !== repeatClave}
+                disabled={form.clave === "" || repeatClave === "" || form.clave !== repeatClave || loading}
               >
-                Guardar
+                {loading ? "Guardando..." : "Guardar"}
               </Button>
             </DialogActions>
           </Dialog>

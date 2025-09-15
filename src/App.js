@@ -1,60 +1,72 @@
+import Login from "./pages/Login";
 
 import React, { useState } from "react";
+import { obtenerUsuarios, observarUsuario, logoutUsuario } from "./lib/usuariosFirebase";
 import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
 import Configuracion from "./pages/Configuracion";
 import CierreDia from "./pages/CierreDia";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import AccesoDenegado from "./pages/AccesoDenegado";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 function App() {
   const [usuario, setUsuario] = useState(() => localStorage.getItem("usuario") || null);
-  const [error, setError] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const handleLogin = async (username, password) => {
-    setError("");
-    try {
-      const res = await fetch("http://localhost:4000/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuario: username, clave: password }),
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setUsuario(data.usuario);
-        localStorage.setItem("usuario", data.usuario);
-        // Consultar si el usuario es admin
-        fetch(`http://localhost:4000/usuarios`)
-          .then(res => res.json())
-          .then(users => {
-            const user = users.find(u => u.usuario === data.usuario);
-            setIsAdmin(user?.admin || false);
-          });
+  // Escuchar cambios de usuario autenticado
+  React.useEffect(() => {
+    const unsubscribe = observarUsuario(async (user) => {
+      if (user) {
+        setUsuario(user.email);
+        localStorage.setItem("usuario", user.email);
+        // Consultar si el usuario es admin en Firestore
+        const usuarios = await obtenerUsuarios();
+        const usuarioFirestore = usuarios.find(u => u.email === user.email);
+        setIsAdmin(usuarioFirestore?.admin === true);
       } else {
-        setError(data.error || "Credenciales inválidas");
+        setUsuario(null);
+        setIsAdmin(false);
+        localStorage.removeItem("usuario");
       }
-    } catch (err) {
-      setError("Error de conexión");
-    }
-  };
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const handleLogout = () => {
+  // Eliminado: handleLogin y error, ya no se usan
+
+  const handleLogout = async () => {
+    await logoutUsuario(); // Cierra sesión en Firebase
     setUsuario(null);
     setIsAdmin(false);
     localStorage.removeItem("usuario");
   };
 
+  // Componente para proteger rutas
+  function ProtectedRoute({ children }) {
+    if (!usuario) {
+      return <AccesoDenegado />;
+    }
+    return children;
+  }
+
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={
-          !usuario ? <Login onLogin={handleLogin} error={error} />
-          : <Dashboard usuario={usuario} onLogout={handleLogout} />
+        <Route path="/" element={<Login />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard usuario={usuario} onLogout={handleLogout} />
+          </ProtectedRoute>
         } />
         <Route path="/configuracion" element={
-          <Configuracion usuario={usuario} isAdmin={isAdmin} />
+          <ProtectedRoute>
+            <Configuracion usuario={usuario} isAdmin={isAdmin} />
+          </ProtectedRoute>
         } />
-        <Route path="/cierredia" element={<CierreDia />} />
+        <Route path="/cierredia" element={
+          <ProtectedRoute>
+            <CierreDia />
+          </ProtectedRoute>
+        } />
       </Routes>
     </BrowserRouter>
   );

@@ -18,6 +18,8 @@ import {
 } from "@mui/material";
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 
+import { obtenerVehiculos } from '../lib/vehiculosFirebase';
+
 export default function CierreDia() {
   const navigate = useNavigate();
   const [vehiculos, setVehiculos] = useState([]);
@@ -28,9 +30,7 @@ export default function CierreDia() {
   const [tasaManual, setTasaManual] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:4000/vehiculos")
-      .then(res => res.json())
-      .then(setVehiculos);
+    obtenerVehiculos().then(setVehiculos);
     fetchTasaBCV();
   }, []);
 
