@@ -207,13 +207,14 @@ export default function Dashboard({ usuario, onLogout }) {
             background: "none",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
             <img
               src="/logo.png"
               alt="Logo"
-              style={{ height: 32, marginRight: 8 }}
+              style={{ height: 40, marginRight: 8 }}
               aria-label="Logo"
             />
+            <Chip label="v.1.3" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
