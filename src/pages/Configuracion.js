@@ -102,7 +102,7 @@ export default function Configuracion({ usuario, isAdmin }) {
         startIcon={<ArrowBackIcon />}
         size="small"
         sx={{ mb: 2 }}
-        onClick={() => navigate('/')}
+        onClick={() => navigate("/dashboard")}
       >
         Atrás
       </Button>

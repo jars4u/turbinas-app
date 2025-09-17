@@ -209,7 +209,17 @@ export default function Dashboard({ usuario, onLogout }) {
               <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ fontSize: 13 }}>
                 {usuarioActivo}
               </Typography>
-              <Button variant="outlined" color="error" size="small" sx={{ minWidth: 0, px: 1, fontSize: 12 }} onClick={onLogout} aria-label="Cerrar sesión">
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                sx={{ minWidth: 0, px: 1, fontSize: 12 }}
+                onClick={() => {
+                  onLogout();
+                  navigate('/');
+                }}
+                aria-label="Cerrar sesión"
+              >
                 Cerrar sesión
               </Button>
             </Box>

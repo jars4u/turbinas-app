@@ -1,5 +1,5 @@
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate } from 'react-router-dom';
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import {
   Container,
@@ -16,9 +16,9 @@ import {
   CircularProgress,
   TextField,
 } from "@mui/material";
-import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 
-import { obtenerVehiculos } from '../lib/vehiculosFirebase';
+import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 
 export default function CierreDia() {
   const navigate = useNavigate();
@@ -90,13 +90,13 @@ export default function CierreDia() {
   };
 
   const totalEntregados = vehiculos
-    .filter(v => v.status === 'entregado')
+    .filter((v) => v.status === "entregado")
     .reduce((acc, v) => acc + (v.precio || 0), 0);
   const totalPendiente = vehiculos
-    .filter(v => v.status === 'espera')
+    .filter((v) => v.status === "espera")
     .reduce((acc, v) => acc + (v.precio || 0), 0);
   const totalServicio = vehiculos
-    .filter(v => v.status === 'servicio')
+    .filter((v) => v.status === "servicio")
     .reduce((acc, v) => acc + (v.precio || 0), 0);
 
   return (
@@ -106,13 +106,15 @@ export default function CierreDia() {
         startIcon={<ArrowBackIcon />}
         size="small"
         sx={{ mb: 2 }}
-        onClick={() => navigate('/')}
+        onClick={() => navigate("/dashboard")}
       >
         Atrás
       </Button>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
         <PointOfSaleIcon fontSize="small" />
-        <Typography variant="h5" fontWeight={600}>Cierre del día</Typography>
+        <Typography variant="h5" fontWeight={600}>
+          Cierre del día
+        </Typography>
       </Box>
       <Divider sx={{ mb: 2 }} />
 
@@ -135,7 +137,8 @@ export default function CierreDia() {
         ) : mostrarInputTasa ? (
           <Box>
             <Typography variant="body2" color="error" sx={{ mb: 1 }}>
-              No se pudo obtener la tasa automáticamente. Ingresa el valor manualmente:
+              No se pudo obtener la tasa automáticamente. Ingresa el valor
+              manualmente:
             </Typography>
             <TextField
               label="Tasa BCV manual"
@@ -172,7 +175,8 @@ export default function CierreDia() {
         ) : (
           <>
             <Typography variant="h5" color="primary.main">
-              Bs. {tasaBCV
+              Bs.{" "}
+              {tasaBCV
                 ? tasaBCV.toLocaleString("de-DE", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -187,7 +191,8 @@ export default function CierreDia() {
                   color="warning.main"
                   sx={{ display: "block", mt: 1 }}
                 >
-                  Usando tasa BCV manual ingresada por el usuario durante esta sesión.
+                  Usando tasa BCV manual ingresada por el usuario durante esta
+                  sesión.
                 </Typography>
               )}
           </>
@@ -208,29 +213,60 @@ export default function CierreDia() {
         <TableBody>
           <TableRow>
             <TableCell>Entregados</TableCell>
-            <TableCell align="right">{totalEntregados.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
             <TableCell align="right">
-              {tasaBCV ? (totalEntregados * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+              {totalEntregados.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </TableCell>
+            <TableCell align="right">
+              {tasaBCV
+                ? (totalEntregados * tasaBCV).toLocaleString("de-DE", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
+                : "-"}
             </TableCell>
           </TableRow>
           <TableRow>
             <TableCell>Pendiente (espera)</TableCell>
-            <TableCell align="right">{totalPendiente.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
             <TableCell align="right">
-              {tasaBCV ? (totalPendiente * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+              {totalPendiente.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </TableCell>
+            <TableCell align="right">
+              {tasaBCV
+                ? (totalPendiente * tasaBCV).toLocaleString("de-DE", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
+                : "-"}
             </TableCell>
           </TableRow>
           <TableRow>
             <TableCell>En servicio</TableCell>
-            <TableCell align="right">{totalServicio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
             <TableCell align="right">
-              {tasaBCV ? (totalServicio * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+              {totalServicio.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </TableCell>
+            <TableCell align="right">
+              {tasaBCV
+                ? (totalServicio * tasaBCV).toLocaleString("de-DE", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
+                : "-"}
             </TableCell>
           </TableRow>
         </TableBody>
       </Table>
       <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-        El total de entregados corresponde al monto cobrado hoy. El total pendiente y en servicio muestra los montos aún no cobrados.
+        El total de entregados corresponde al monto cobrado hoy. El total
+        pendiente y en servicio muestra los montos aún no cobrados.
       </Typography>
     </Container>
   );
