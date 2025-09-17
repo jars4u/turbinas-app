@@ -29,7 +29,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from "@mui/icons-material/Delete";
-// import EditIcon from "@mui/icons-material/Edit";
+import EstadosServicios from "./EstadosServicios";
 
 export default function Configuracion({ usuario, isAdmin }) {
   const navigate = useNavigate();
@@ -111,6 +111,7 @@ export default function Configuracion({ usuario, isAdmin }) {
       </Typography>
       {isAdmin && (
         <Box>
+          {/* Gestión de usuarios */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <GroupIcon fontSize="small" sx={{ mb: '2px' }} />
@@ -125,24 +126,24 @@ export default function Configuracion({ usuario, isAdmin }) {
               Crear usuario
             </Button>
           </Box>
-            <Accordion defaultExpanded elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
+          <Accordion defaultExpanded elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0, py: 0, minHeight: 36 }}>
               <Typography variant="subtitle2">Mostrar usuarios registrados</Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ px: 0, py: 0 }}>
               <Table sx={{ border: 'none', minWidth: 0 }} size="small">
                 <TableHead>
-                  <TableRow sx={{ height: 28 }}>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Usuario</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Admin</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Acciones</TableCell>
+                  <TableRow sx={{ height: 28, display: 'flex', justifyContent: 'space-between' }}>
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>Usuario</TableCell>
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1, textAlign: 'center' }}>Admin</TableCell>
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1, textAlign: 'right' }}>Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {usuarios.map((u) => (
-                    <TableRow key={u.id} sx={{ border: 'none', background: 'transparent', height: 28 }}>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{u.email || u.usuario}</TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1 }}>
+                    <TableRow key={u.id} sx={{ border: 'none', background: 'transparent', height: 28, display: 'flex', justifyContent: 'space-between' }}>
+                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>{u.email || u.usuario}</TableCell>
+                      <TableCell sx={{ py: 0.5, px: 1, flex: 1, textAlign: 'center' }}>
                         <Checkbox
                           checked={u.admin}
                           onChange={() => handleAdminChange(u)}
@@ -150,7 +151,7 @@ export default function Configuracion({ usuario, isAdmin }) {
                           sx={{ p: 0.5 }}
                         />
                       </TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1 }}>
+                      <TableCell sx={{ py: 0.5, px: 1, flex: 1, textAlign: 'right' }}>
                         <Tooltip title="Eliminar">
                           <IconButton
                             color="error"
@@ -232,6 +233,9 @@ export default function Configuracion({ usuario, isAdmin }) {
               <Button onClick={handleConfirmAdmin} variant="contained">Confirmar</Button>
             </DialogActions>
           </Dialog>
+          {/* Módulo de estados de servicios */}
+          <Divider sx={{ my: 4 }} />
+          <EstadosServicios />
         </Box>
       )}
       {!isAdmin && (

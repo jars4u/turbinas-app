@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Typography,
@@ -17,19 +16,26 @@ import {
   Box,
   Tooltip,
   IconButton,
+  Chip,
 } from "@mui/material";
-import CircularProgress from '@mui/material/CircularProgress';
-import EditIcon from '@mui/icons-material/Edit';
-import AddIcon from '@mui/icons-material/Add';
-import SettingsIcon from '@mui/icons-material/Settings';
-import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
-import { useNavigate } from 'react-router-dom';
-import PersonIcon from '@mui/icons-material/Person';
+import CircularProgress from "@mui/material/CircularProgress";
+import EditIcon from "@mui/icons-material/Edit";
+import AddIcon from "@mui/icons-material/Add";
+import SettingsIcon from "@mui/icons-material/Settings";
+import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
+import { useNavigate } from "react-router-dom";
+import PersonIcon from "@mui/icons-material/Person";
 import VehicleCard from "../components/VehicleCard";
-import { obtenerVehiculos, crearVehiculo, actualizarVehiculo, eliminarVehiculo } from "../lib/vehiculosFirebase";
-
+import {
+  obtenerVehiculos,
+  crearVehiculo,
+  actualizarVehiculo,
+  eliminarVehiculo,
+} from "../lib/vehiculosFirebase";
+import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 
 export default function Dashboard({ usuario, onLogout }) {
+  const [estadosServicio, setEstadosServicio] = useState([]);
   // Cambiar status y guardar en la base de datos
   const navigate = useNavigate();
   // El usuario autenticado debe mantenerse fijo
@@ -51,11 +57,14 @@ export default function Dashboard({ usuario, onLogout }) {
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  // Cargar vehículos desde la API al montar
+  // Cargar vehículos y estados desde la API al montar
   useEffect(() => {
     obtenerVehiculos().then((data) => {
       setVehiculos(data);
       setLoading(false);
+    });
+    obtenerEstadosServicio().then((data) => {
+      setEstadosServicio(data);
     });
   }, []);
   const [open, setOpen] = useState(false);
@@ -101,7 +110,7 @@ export default function Dashboard({ usuario, onLogout }) {
         observaciones: "",
       });
       setEditId(null);
-      setEditSection('vehiculo'); // Abrir directamente en modo edición
+      setEditSection("vehiculo"); // Abrir directamente en modo edición
       setIsEditing(true);
     }
     setOpen(true);
@@ -178,35 +187,81 @@ export default function Dashboard({ usuario, onLogout }) {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4, maxWidth: "100%", width: "100%", px: 4 }}>
-      <AppBar position="static" color="transparent" elevation={0} sx={{ background: 'none', boxShadow: 'none', m: 0, p: 0 }}>
-        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', minHeight: 48, p: 0, m: 0, background: 'none' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <img src="/logo.png" alt="Logo" style={{ height: 32, marginRight: 8 }} aria-label="Logo" />
+    <Container
+      maxWidth="xl"
+      sx={{ py: 4, maxWidth: "100%", width: "100%", px: 4 }}
+    >
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={0}
+        sx={{ background: "none", boxShadow: "none", m: 0, p: 0 }}
+      >
+        <Toolbar
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            minHeight: 48,
+            p: 0,
+            m: 0,
+            background: "none",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <img
+              src="/logo.png"
+              alt="Logo"
+              style={{ height: 32, marginRight: 8 }}
+              aria-label="Logo"
+            />
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Tooltip title="Cierre del día" arrow>
                 <span>
-                  <IconButton color="default" size="small" sx={{ color: '#757575' }} onClick={() => navigate('/cierredia')} aria-label="Ir a cierre del día">
+                  <IconButton
+                    color="default"
+                    size="small"
+                    sx={{ color: "#757575" }}
+                    onClick={() => navigate("/cierredia")}
+                    aria-label="Ir a cierre del día"
+                  >
                     <PointOfSaleIcon fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
               <Tooltip title="Configuración" arrow>
                 <span>
-                  <IconButton color="default" size="small" sx={{ color: '#757575' }} onClick={() => navigate('/configuracion')} aria-label="Ir a configuración">
+                  <IconButton
+                    color="default"
+                    size="small"
+                    sx={{ color: "#757575" }}
+                    onClick={() => navigate("/configuracion")}
+                    aria-label="Ir a configuración"
+                  >
                     <SettingsIcon />
                   </IconButton>
                 </span>
               </Tooltip>
             </Box>
-            <Divider orientation="vertical" flexItem sx={{ mx: 2, height: 28 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Avatar sx={{ bgcolor: '#e0e0e0', width: 22, height: 22 }} aria-label="Usuario">
-                <PersonIcon fontSize="small" style={{ color: '#757575' }} />
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 2, height: 28 }}
+            />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Avatar
+                sx={{ bgcolor: "#e0e0e0", width: 22, height: 22 }}
+                aria-label="Usuario"
+              >
+                <PersonIcon fontSize="small" style={{ color: "#757575" }} />
               </Avatar>
-              <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ fontSize: 13 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                fontWeight={500}
+                sx={{ fontSize: 13 }}
+              >
                 {usuarioActivo}
               </Typography>
               <Button
@@ -216,7 +271,7 @@ export default function Dashboard({ usuario, onLogout }) {
                 sx={{ minWidth: 0, px: 1, fontSize: 12 }}
                 onClick={() => {
                   onLogout();
-                  navigate('/');
+                  navigate("/");
                 }}
                 aria-label="Cerrar sesión"
               >
@@ -227,7 +282,14 @@ export default function Dashboard({ usuario, onLogout }) {
         </Toolbar>
       </AppBar>
       <Divider sx={{ mb: 2 }} />
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 2,
+        }}
+      >
         <Typography variant="h4" gutterBottom sx={{ m: 0 }}>
           <span style={{ fontWeight: 600 }}>Vehículos en servicio</span>
         </Typography>
@@ -241,20 +303,32 @@ export default function Dashboard({ usuario, onLogout }) {
           Registrar Vehículo
         </Button>
       </Box>
-      {/* Resumen de vehículos por estado */}
-      <Box sx={{ display: 'flex', gap: 4, mb: 2 }}>
-        <Typography variant="body1" color="primary" fontWeight={600}>
-          En servicio: {vehiculos.filter(v => (v.status || v.estado) === 'servicio').length}
-        </Typography>
-        <Typography variant="body1" color="success.main" fontWeight={600}>
-          Entregados: {vehiculos.filter(v => (v.status || v.estado) === 'entregado').length}
-        </Typography>
-        <Typography variant="body1" color="warning.main" fontWeight={600}>
-          En espera: {vehiculos.filter(v => (v.status || v.estado) === 'espera').length}
-        </Typography>
+      {/* Resumen de vehículos por estado sincronizado */}
+      <Box sx={{ display: "flex", gap: 4, mb: 2 }}>
+        {estadosServicio.map((estado) => (
+          <Typography
+            key={estado.nombre}
+            variant="body1"
+            color={estado.color ? `${estado.color}.main` : "text.primary"}
+            fontWeight={600}
+          >
+            {estado.label}:{" "}
+            {
+              vehiculos.filter((v) => (v.status || v.estado) === estado.nombre)
+                .length
+            }
+          </Typography>
+        ))}
       </Box>
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: 200,
+          }}
+        >
           <CircularProgress color="primary" size={48} />
         </Box>
       ) : (
@@ -264,7 +338,16 @@ export default function Dashboard({ usuario, onLogout }) {
             .map((v) => (
               <Grid
                 key={v.id}
-                sx={{ mb: 3, gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 3', lg: 'span 2', xl: 'span 2' } }}
+                sx={{
+                  mb: 3,
+                  gridColumn: {
+                    xs: "span 12",
+                    sm: "span 6",
+                    md: "span 3",
+                    lg: "span 2",
+                    xl: "span 2",
+                  },
+                }}
               >
                 <VehicleCard
                   vehiculo={v}
@@ -278,54 +361,121 @@ export default function Dashboard({ usuario, onLogout }) {
         </Grid>
       )}
       <Dialog open={open} onClose={handleClose}>
-        <DialogContent sx={{ minWidth: 400, maxWidth: 500, pt: 3, position: 'relative' }}>
+        <DialogContent
+          sx={{ minWidth: 400, maxWidth: 500, pt: 3, position: "relative" }}
+        >
           {actionLoading && (
-            <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                bgcolor: "rgba(255,255,255,0.7)",
+                zIndex: 10,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <CircularProgress color="primary" size={40} />
             </Box>
           )}
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
             <Typography variant="h6">
               {editId ? "Información del Vehículo" : "Registrar Vehículo"}
             </Typography>
             {editId && (
               <Button
-                onClick={handleDeleteClick}
-                variant="outlined"
-                size="small"
-                color="error"
+              onClick={handleDeleteClick}
+              variant="outlined"
+              size="small"
+              color="error"
               >
                 Eliminar
               </Button>
             )}
           </Box>
+            {editId && (
+              (() => {
+                const vehiculoActual = vehiculos.find(v => v.id === editId);
+                const estadoActual = estadosServicio.find(e => e.nombre === (vehiculoActual?.status || vehiculoActual?.estado));
+                return (
+                  <Box sx={{ width: '100%', display: 'block' }}>
+                    <Chip
+                      label={estadoActual?.label || (vehiculoActual?.status || vehiculoActual?.estado) || "Sin estado"}
+                      color={estadoActual?.color || "default"}
+                      size="small"
+                      sx={{ fontSize: '0.85rem', height: 26, mx: 0 }}
+                    />
+                  </Box>
+                );
+              })()
+            )}
           {/* Modal de confirmación para eliminar */}
           <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
             <DialogTitle>Confirmar eliminación</DialogTitle>
             <DialogContent>
-              <Typography>¿Estás seguro que deseas eliminar este vehículo? Esta acción no se puede deshacer.</Typography>
+              <Typography>
+                ¿Estás seguro que deseas eliminar este vehículo? Esta acción no
+                se puede deshacer.
+              </Typography>
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleCancelDelete} color="primary">Cancelar</Button>
-              <Button onClick={handleDelete} color="error" variant="contained">Eliminar</Button>
+              <Button onClick={handleCancelDelete} color="primary">
+                Cancelar
+              </Button>
+              <Button onClick={handleDelete} color="error" variant="contained">
+                Eliminar
+              </Button>
             </DialogActions>
           </Dialog>
         </DialogContent>
         <DialogContent sx={{ minWidth: 400, maxWidth: 500 }}>
           {/* Sección: Datos del vehículo */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom sx={{ mt: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 1,
+            }}
+          >
+            <Typography
+              variant="subtitle2"
+              fontWeight={600}
+              color="primary"
+              gutterBottom
+            >
               Datos del vehículo
             </Typography>
-            {editSection !== 'vehiculo' && (
-              <IconButton size="small" onClick={() => setEditSection('vehiculo')}>
+            {editSection !== "vehiculo" && !isRegistering && (
+              <IconButton
+                size="small"
+                onClick={() => setEditSection("vehiculo")}
+              >
                 <EditIcon fontSize="small" />
               </IconButton>
             )}
           </Box>
           <Divider sx={{ mb: 1 }} />
-          <Box sx={{ minHeight: 80, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {(editSection === 'vehiculo' || isRegistering) ? (
+          <Box
+            sx={{
+              minHeight: 80,
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+            }}
+          >
+            {editSection === "vehiculo" || isRegistering ? (
               <>
                 <TextField
                   margin="none"
@@ -336,44 +486,66 @@ export default function Dashboard({ usuario, onLogout }) {
                   value={form.vehiculo}
                   onChange={handleChange}
                   sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
-                />
-                <TextField
-                  margin="none"
-                  label="Placa"
-                  name="placa"
-                  fullWidth
-                  size="small"
-                  value={form.placa}
-                  onChange={handleChange}
-                  sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                 />
               </>
             ) : (
               <>
-                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary' }}>Vehículo</Typography>
-                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.vehiculo && form.vehiculo.toUpperCase()}</Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary', mt: 1 }}>Placa</Typography>
-                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.placa && form.placa.toUpperCase()}</Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "0.80rem",
+                    display: "block",
+                    color: "text.secondary",
+                  }}
+                >
+                  Modelo
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
+                >
+                  {form.vehiculo && form.vehiculo.toUpperCase()}
+                </Typography>
               </>
             )}
           </Box>
 
           {/* Sección: Datos del servicio */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
-            <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography
+              variant="subtitle2"
+              fontWeight={600}
+              color="primary"
+              gutterBottom
+            >
               Datos del servicio
             </Typography>
-            {editSection !== 'servicio' && (
-              <IconButton size="small" onClick={() => setEditSection('servicio')}>
+            {editSection !== "servicio" && !isRegistering && (
+              <IconButton
+                size="small"
+                onClick={() => setEditSection("servicio")}
+              >
                 <EditIcon fontSize="small" />
               </IconButton>
             )}
           </Box>
           <Divider sx={{ mb: 1 }} />
-          <Box sx={{ minHeight: 110, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {(editSection === 'servicio' || isRegistering) ? (
+          <Box
+            sx={{
+              minHeight: 110,
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+            }}
+          >
+            {editSection === "servicio" || isRegistering ? (
               <>
                 <TextField
                   margin="none"
@@ -384,7 +556,7 @@ export default function Dashboard({ usuario, onLogout }) {
                   value={form.servicio}
                   onChange={handleChange}
                   sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                 />
                 <TextField
                   margin="none"
@@ -395,7 +567,7 @@ export default function Dashboard({ usuario, onLogout }) {
                   value={form.observaciones}
                   onChange={handleChange}
                   sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                 />
                 <TextField
                   margin="none"
@@ -407,35 +579,101 @@ export default function Dashboard({ usuario, onLogout }) {
                   value={form.precio}
                   onChange={handleChange}
                   sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                 />
               </>
             ) : (
               <>
-                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary' }}>Servicio</Typography>
-                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.servicio}</Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary', mt: 1 }}>Observaciones</Typography>
-                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.observaciones}</Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary', mt: 1 }}>Precio</Typography>
-                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.precio}</Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "0.80rem",
+                    display: "block",
+                    color: "text.secondary",
+                  }}
+                >
+                  Servicio
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
+                >
+                  {form.servicio}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "0.80rem",
+                    display: "block",
+                    color: "text.secondary",
+                    mt: 1,
+                  }}
+                >
+                  Observaciones
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
+                >
+                  {form.observaciones}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "0.80rem",
+                    display: "block",
+                    color: "text.secondary",
+                    mt: 1,
+                  }}
+                >
+                  Precio
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
+                >
+                  {form.precio}
+                </Typography>
               </>
             )}
           </Box>
 
           {/* Sección: Datos del cliente */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
-            <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mt: 2,
+            }}
+          >
+            <Typography
+              variant="subtitle2"
+              fontWeight={600}
+              color="primary"
+              gutterBottom
+            >
               Datos del cliente
             </Typography>
-            {editSection !== 'cliente' && (
-              <IconButton size="small" onClick={() => setEditSection('cliente')}>
+            {editSection !== "cliente" && !isRegistering && (
+              <IconButton
+                size="small"
+                onClick={() => setEditSection("cliente")}
+              >
                 <EditIcon fontSize="small" />
               </IconButton>
             )}
           </Box>
           <Divider sx={{ mb: 1 }} />
-          <Box sx={{ minHeight: 80, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {(editSection === 'cliente' || isRegistering) ? (
+          <Box
+            sx={{
+              minHeight: 80,
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+            }}
+          >
+            {editSection === "cliente" || isRegistering ? (
               <>
                 <TextField
                   margin="none"
@@ -446,7 +684,7 @@ export default function Dashboard({ usuario, onLogout }) {
                   value={form.customerName}
                   onChange={handleChange}
                   sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                 />
                 <TextField
                   margin="none"
@@ -454,41 +692,82 @@ export default function Dashboard({ usuario, onLogout }) {
                   name="customerPhone"
                   fullWidth
                   size="small"
-                  value={form.customerPhone.startsWith('+58') ? form.customerPhone : '+58' + form.customerPhone.replace(/^0+/, '')}
-                  onChange={e => {
+                  value={
+                    form.customerPhone.startsWith("+58")
+                      ? form.customerPhone
+                      : "+58" + form.customerPhone.replace(/^0+/, "")
+                  }
+                  onChange={(e) => {
                     let value = e.target.value;
                     // Forzar el prefijo +58
-                    if (!value.startsWith('+58')) {
-                      value = '+58' + value.replace(/^0+/, '');
+                    if (!value.startsWith("+58")) {
+                      value = "+58" + value.replace(/^0+/, "");
                     }
                     // Solo permitir números después de +58
-                    value = value.replace(/^\+58/, '+58');
-                    const soloNumeros = value.slice(3).replace(/[^\d]/g, '');
-                    value = '+58' + soloNumeros;
+                    value = value.replace(/^\+58/, "+58");
+                    const soloNumeros = value.slice(3).replace(/[^\d]/g, "");
+                    value = "+58" + soloNumeros;
                     setForm({ ...form, customerPhone: value });
                   }}
                   sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                   placeholder="+58-424-xxxxxxx"
                   helperText={
-                    /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ''))
+                    /^\+58\d{10}$/.test(
+                      form.customerPhone.replace(/[-\s]/g, "")
+                    )
                       ? "Formato: +58-424-xxxxxxx"
                       : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)"
                   }
-                  error={!/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ''))}
+                  error={
+                    !/^\+58\d{10}$/.test(
+                      form.customerPhone.replace(/[-\s]/g, "")
+                    )
+                  }
                 />
               </>
             ) : (
               <>
-                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary' }}>Cliente</Typography>
-                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.customerName}</Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.80rem', display: 'block', color: 'text.secondary', mt: 1 }}>Teléfono</Typography>
-                <Typography variant="caption" sx={{ fontSize: '1rem', display: 'block', mt: 0.2 }}>{form.customerPhone}</Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "0.80rem",
+                    display: "block",
+                    color: "text.secondary",
+                  }}
+                >
+                  Cliente
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
+                >
+                  {form.customerName}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "0.80rem",
+                    display: "block",
+                    color: "text.secondary",
+                    mt: 1,
+                  }}
+                >
+                  Teléfono
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
+                >
+                  {form.customerPhone}
+                </Typography>
               </>
             )}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', px: 3 }}>
+        <DialogActions
+          sx={{ display: "flex", justifyContent: "space-between", px: 3 }}
+        >
           {isRegistering ? (
             <>
               <Button
@@ -512,7 +791,7 @@ export default function Dashboard({ usuario, onLogout }) {
                 disabled={
                   !form.vehiculo ||
                   !form.placa ||
-                  !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ''))
+                  !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
                 }
               >
                 Guardar
@@ -550,7 +829,7 @@ export default function Dashboard({ usuario, onLogout }) {
                 </>
               ) : (
                 <>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Button
                       variant="outlined"
                       size="small"

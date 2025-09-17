@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
+import { actualizarVehiculo } from "../lib/vehiculosFirebase";
 import Divider from '@mui/material/Divider';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
@@ -11,18 +13,13 @@ import {
   MenuItem,
 } from "@mui/material";
 
-const statusMap = {
-  espera: { label: "En espera", color: "warning" },
-  servicio: { label: "En servicio", color: "info" },
-  entregado: { label: "Entregado", color: "success" },
-};
+
 
 const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
   const {
   // id,
     arrivalTime = Date.now(),
-    vehiculo: nombreVehiculo = "",
-    placa = "",
+  vehiculo: nombreVehiculo = "",
   // observaciones = "",
   // customer,
     servicio,
@@ -32,9 +29,17 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
   // arrivalTime puede venir como string desde la API, convertir a número
   const arrivalTimeNum = typeof arrivalTime === "string" ? Number(arrivalTime) : arrivalTime;
   const [anchorEl, setAnchorEl] = useState(null);
-  const [currentStatus, setCurrentStatus] = useState(
-    vehiculo.status || "servicio"
-  );
+  const [currentStatus, setCurrentStatus] = useState(vehiculo.status || "servicio");
+  const [estadosServicio, setEstadosServicio] = useState([]);
+
+  // Cargar estados dinámicos desde Firestore
+  useEffect(() => {
+    async function cargarEstados() {
+      const estados = await obtenerEstadosServicio();
+      setEstadosServicio(estados);
+    }
+    cargarEstados();
+  }, []);
 
   // Sincronizar el estado local con el prop vehiculo.status al recibir nuevos datos
   useEffect(() => {
@@ -87,9 +92,13 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
   const handleClose = () => {
     setAnchorEl(null);
   };
-  const handleStatusChange = (newStatus) => {
+  const handleStatusChange = async (newStatus) => {
     setCurrentStatus(newStatus);
     setAnchorEl(null);
+    // Actualizar en Firestore
+    if (vehiculo.id) {
+      await actualizarVehiculo(vehiculo.id, { ...vehiculo, status: newStatus });
+    }
     if (typeof onStatusChange === "function") {
       onStatusChange(newStatus);
     }
@@ -143,8 +152,12 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
             {new Date(arrivalTimeNum).toLocaleTimeString()}
           </Typography>
           <Chip
-            label={statusMap[currentStatus]?.label || "Sin estado"}
-            color={statusMap[currentStatus]?.color || "default"}
+            label={
+              estadosServicio.find(e => e.nombre === currentStatus)?.label || "Sin estado"
+            }
+            color={
+              estadosServicio.find(e => e.nombre === currentStatus)?.color || "default"
+            }
             size="small"
             onClick={(e) => {
               e.stopPropagation();
@@ -157,23 +170,23 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
             open={Boolean(anchorEl)}
             onClose={handleClose}
           >
-            {Object.keys(statusMap).map((key) => (
+            {estadosServicio.map((estado) => (
               <MenuItem
-                key={key}
-                selected={key === currentStatus}
+                key={estado.nombre}
+                selected={estado.nombre === currentStatus}
                 onClick={(event) => {
                   event.stopPropagation();
-                  handleStatusChange(key);
+                  handleStatusChange(estado.nombre);
                 }}
               >
-                {statusMap[key].label}
+                {estado.label}
               </MenuItem>
             ))}
           </Menu>
         </div>
-        <Typography variant="caption" color="secondary" my={1}>
+        {/* <Typography variant="caption" color="secondary" my={1}>
           {`Tiempo: ${formatElapsed(currentStatus === "servicio" ? elapsed : stoppedElapsed ?? elapsed)}`}
-        </Typography>
+        </Typography> */}
         <Divider sx={{ my: 1 }} />
         <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
           Datos del vehículo
@@ -181,12 +194,15 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
         <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
           {nombreVehiculo && nombreVehiculo.toUpperCase()}
         </Typography>
-        <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
-          {placa && placa.toUpperCase()}
-        </Typography>
+        {/* Placa eliminada por requerimiento */}
         <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
           {servicio}
         </Typography>
+        {vehiculo.observaciones && (
+          <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '0.85rem', color: 'text.secondary' }}>
+            <b>Obs:</b> {vehiculo.observaciones}
+          </Typography>
+        )}
         <Divider sx={{ my: 1 }} />
       </CardContent>
       <div style={{ position: "absolute", bottom: 12, right: 16 }}>
