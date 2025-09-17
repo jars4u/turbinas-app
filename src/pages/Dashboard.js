@@ -214,7 +214,7 @@ export default function Dashboard({ usuario, onLogout }) {
               style={{ height: 40, marginRight: 8 }}
               aria-label="Logo"
             />
-            <Chip label="v.1.3" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
+            <Chip label="al regustrar.1.3" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -791,7 +791,6 @@ export default function Dashboard({ usuario, onLogout }) {
                 color="primary"
                 disabled={
                   !form.vehiculo ||
-                  !form.placa ||
                   !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
                 }
               >
