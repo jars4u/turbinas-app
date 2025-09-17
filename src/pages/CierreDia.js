@@ -1,6 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
+
 import {
   Container,
   Typography,
@@ -15,14 +16,18 @@ import {
   Button,
   CircularProgress,
   TextField,
+  Chip,
 } from "@mui/material";
+
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
+import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 
 export default function CierreDia() {
   const navigate = useNavigate();
   const [vehiculos, setVehiculos] = useState([]);
+  const [estadosServicio, setEstadosServicio] = useState([]);
   // --- Estado para la tasa BCV ---
   const [tasaBCV, setTasaBCV] = useState(null);
   const [loadingTasa, setLoadingTasa] = useState(false);
@@ -31,6 +36,7 @@ export default function CierreDia() {
 
   useEffect(() => {
     obtenerVehiculos().then(setVehiculos);
+    obtenerEstadosServicio().then(setEstadosServicio);
     fetchTasaBCV();
   }, []);
 
@@ -89,15 +95,13 @@ export default function CierreDia() {
     setLoadingTasa(false);
   };
 
-  const totalEntregados = vehiculos
-    .filter((v) => v.status === "entregado")
-    .reduce((acc, v) => acc + (v.precio || 0), 0);
-  const totalPendiente = vehiculos
-    .filter((v) => v.status === "espera")
-    .reduce((acc, v) => acc + (v.precio || 0), 0);
-  const totalServicio = vehiculos
-    .filter((v) => v.status === "servicio")
-    .reduce((acc, v) => acc + (v.precio || 0), 0);
+  // Calcular totales por estado sincronizado
+  const totalesPorEstado = estadosServicio.map((estado) => {
+    const total = vehiculos
+      .filter((v) => v.status === estado.nombre)
+      .reduce((acc, v) => acc + (v.precio || 0), 0);
+    return { ...estado, total };
+  });
 
   return (
     <Container maxWidth="sm" sx={{ mt: 6 }}>
@@ -211,57 +215,32 @@ export default function CierreDia() {
           </TableRow>
         </TableHead>
         <TableBody>
-          <TableRow>
-            <TableCell>Entregados</TableCell>
-            <TableCell align="right">
-              {totalEntregados.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </TableCell>
-            <TableCell align="right">
-              {tasaBCV
-                ? (totalEntregados * tasaBCV).toLocaleString("de-DE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })
-                : "-"}
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>Pendiente (espera)</TableCell>
-            <TableCell align="right">
-              {totalPendiente.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </TableCell>
-            <TableCell align="right">
-              {tasaBCV
-                ? (totalPendiente * tasaBCV).toLocaleString("de-DE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })
-                : "-"}
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>En servicio</TableCell>
-            <TableCell align="right">
-              {totalServicio.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </TableCell>
-            <TableCell align="right">
-              {tasaBCV
-                ? (totalServicio * tasaBCV).toLocaleString("de-DE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })
-                : "-"}
-            </TableCell>
-          </TableRow>
+          {totalesPorEstado.map((estado) => (
+            <TableRow key={estado.nombre}>
+              <TableCell>
+                <Chip
+                  label={estado.label}
+                  color={estado.color || "default"}
+                  size="small"
+                  sx={{ fontWeight: 500, fontSize: '0.95rem', height: 24 }}
+                />
+              </TableCell>
+              <TableCell align="right">
+                {estado.total.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </TableCell>
+              <TableCell align="right">
+                {tasaBCV
+                  ? (estado.total * tasaBCV).toLocaleString("de-DE", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : "-"}
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
       <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>

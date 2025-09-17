@@ -17,6 +17,8 @@ import {
   Tooltip,
   IconButton,
   Chip,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import CircularProgress from "@mui/material/CircularProgress";
 import EditIcon from "@mui/icons-material/Edit";
@@ -33,9 +35,12 @@ import {
   eliminarVehiculo,
 } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
+import SortIcon from '@mui/icons-material/Sort';
 
 export default function Dashboard({ usuario, onLogout }) {
   const [estadosServicio, setEstadosServicio] = useState([]);
+  const [ordenEstado, setOrdenEstado] = useState("");
+  const [ordenAsc, setOrdenAsc] = useState(true);
   // Cambiar status y guardar en la base de datos
   const navigate = useNavigate();
   // El usuario autenticado debe mantenerse fijo
@@ -135,6 +140,11 @@ export default function Dashboard({ usuario, onLogout }) {
     setIsEditing(true);
   };
 
+  const getDefaultStatus = () => {
+    const def = estadosServicio.find((e) => e.defaultEstado);
+    return def ? def.nombre : "servicio";
+  };
+
   const handleSave = async () => {
     const vehiculoData = {
       vehiculo: form.vehiculo,
@@ -147,8 +157,8 @@ export default function Dashboard({ usuario, onLogout }) {
       customerPhone: form.customerPhone,
       observaciones: form.observaciones,
       status: editId
-        ? vehiculos.find((v) => v.id === editId)?.status || "servicio"
-        : "servicio",
+        ? vehiculos.find((v) => v.id === editId)?.status || getDefaultStatus()
+        : getDefaultStatus(),
       precio: form.precio === "" ? null : Number(form.precio),
     };
     setActionLoading(true);
@@ -162,6 +172,9 @@ export default function Dashboard({ usuario, onLogout }) {
       setVehiculos(actualizados);
     }
     setActionLoading(false);
+    setOpen(false);
+    setEditSection(null);
+    setIsEditing(false);
   };
 
   const handleDelete = async () => {
@@ -214,7 +227,7 @@ export default function Dashboard({ usuario, onLogout }) {
               style={{ height: 40, marginRight: 8 }}
               aria-label="Logo"
             />
-            <Chip label="al regustrar.1.3" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
+            <Chip label="v.1.3" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -292,7 +305,14 @@ export default function Dashboard({ usuario, onLogout }) {
         }}
       >
         <Typography variant="h4" gutterBottom sx={{ m: 0 }}>
-          <span style={{ fontWeight: 600 }}>Vehículos en servicio</span>
+          <span style={{ fontWeight: 600 }}>
+            Turbinas en servicio
+            {vehiculos && (
+              <span style={{ fontWeight: 400, marginLeft: 8, fontSize: '1rem' }}>
+                ({vehiculos.length})
+              </span>
+            )}
+          </span>
         </Typography>
         <Button
           variant="outlined"
@@ -305,21 +325,42 @@ export default function Dashboard({ usuario, onLogout }) {
         </Button>
       </Box>
       {/* Resumen de vehículos por estado sincronizado */}
-      <Box sx={{ display: "flex", gap: 4, mb: 2 }}>
-        {estadosServicio.map((estado) => (
-          <Typography
-            key={estado.nombre}
-            variant="body1"
-            color={estado.color ? `${estado.color}.main` : "text.primary"}
-            fontWeight={600}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+        <Box sx={{ display: "flex", gap: 4 }}>
+          {estadosServicio.map((estado) => (
+            <Typography
+              key={estado.nombre}
+              variant="body1"
+              color={estado.color ? `${estado.color}.main` : "text.primary"}
+              fontWeight={600}
+            >
+              {estado.label}: {vehiculos.filter((v) => (v.status || v.estado) === estado.nombre).length}
+            </Typography>
+          ))}
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <SortIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+          <Select
+            size="small"
+            value={ordenEstado}
+            onChange={e => setOrdenEstado(e.target.value)}
+            displayEmpty
+            sx={{ minWidth: 120, color: 'text.secondary' }}
           >
-            {estado.label}:{" "}
-            {
-              vehiculos.filter((v) => (v.status || v.estado) === estado.nombre)
-                .length
-            }
-          </Typography>
-        ))}
+            <MenuItem value="">Todos</MenuItem>
+            {estadosServicio.map((estado) => (
+              <MenuItem key={estado.nombre} value={estado.nombre}>{estado.label}</MenuItem>
+            ))}
+          </Select>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setOrdenAsc((prev) => !prev)}
+            sx={{ minWidth: 36, px: 1, color: 'text.secondary', borderColor: '#b4b4b4ff', boxShadow: 'none', '&:hover': { bgcolor: '#e0e0e0' } }}
+          >
+            {ordenAsc ? "Asc" : "Desc"}
+          </Button>
+        </Box>
       </Box>
       {loading ? (
         <Box
@@ -335,7 +376,13 @@ export default function Dashboard({ usuario, onLogout }) {
       ) : (
         <Grid container spacing={2} columns={12}>
           {[...vehiculos]
-            .sort((a, b) => a.arrivalTime - b.arrivalTime)
+            .filter(v => !ordenEstado || (v.status || v.estado) === ordenEstado)
+            .sort((a, b) => {
+              if (!ordenEstado) return ordenAsc ? a.arrivalTime - b.arrivalTime : b.arrivalTime - a.arrivalTime;
+              // Ordenar por estado y luego arrivalTime
+              if (ordenAsc) return (a.status || a.estado).localeCompare(b.status || b.estado) || a.arrivalTime - b.arrivalTime;
+              return (b.status || b.estado).localeCompare(a.status || a.estado) || b.arrivalTime - a.arrivalTime;
+            })
             .map((v) => (
               <Grid
                 key={v.id}
@@ -387,8 +434,7 @@ export default function Dashboard({ usuario, onLogout }) {
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
-              mb: 2,
+              alignItems: "center"
             }}
           >
             <Typography variant="h6">
@@ -814,16 +860,14 @@ export default function Dashboard({ usuario, onLogout }) {
                   </Button>
                   {isEditing && (
                     <Button
-                      onClick={() => {
-                        handleSave();
-                        setEditSection(null);
-                        setIsEditing(false);
-                      }}
+                      onClick={handleSave}
                       variant="contained"
                       size="small"
                       color="primary"
+                      disabled={actionLoading}
+                      startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
                     >
-                      Guardar
+                      {actionLoading ? "Guardando..." : "Guardar"}
                     </Button>
                   )}
                 </>

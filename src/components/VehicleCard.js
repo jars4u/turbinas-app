@@ -48,10 +48,13 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
   const [elapsed, setElapsed] = useState(Date.now() - arrivalTime);
   const [stoppedElapsed, setStoppedElapsed] = useState(null);
 
-  // Contador en vivo solo si está en servicio
+  // Contador en vivo según accionTimer del estado actual
   useEffect(() => {
     let timer;
-    if (currentStatus === "servicio") {
+    // Buscar el estado actual en la lista de estadosServicio
+    const estadoActual = estadosServicio.find(e => e.nombre === currentStatus);
+    const accionTimer = estadoActual?.accionTimer || "continuar";
+    if (accionTimer === "continuar") {
       timer = setInterval(() => {
         setElapsed(Date.now() - arrivalTime);
       }, 1000);
@@ -62,7 +65,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [currentStatus, arrivalTime, elapsed]);
+  }, [currentStatus, arrivalTime, elapsed, estadosServicio]);
 
   // Formatear tiempo en hh:mm:ss
   const formatElapsed = (ms) => {
@@ -184,9 +187,9 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
             ))}
           </Menu>
         </div>
-        {/* <Typography variant="caption" color="secondary" my={1}>
+        <Typography variant="caption" color="secondary" my={1}>
           {`Tiempo: ${formatElapsed(currentStatus === "servicio" ? elapsed : stoppedElapsed ?? elapsed)}`}
-        </Typography> */}
+        </Typography>
         <Divider sx={{ my: 1 }} />
         <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
           Datos del vehículo
