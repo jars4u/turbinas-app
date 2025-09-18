@@ -192,7 +192,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
         </Typography>
         <Divider sx={{ my: 1 }} />
         <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
-          Datos del vehículo
+          Datos de la turbina
         </Typography>
         <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
           {nombreVehiculo && nombreVehiculo.toUpperCase()}

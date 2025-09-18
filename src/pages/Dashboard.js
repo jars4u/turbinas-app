@@ -321,10 +321,10 @@ export default function Dashboard({ usuario, onLogout }) {
           startIcon={<AddIcon />}
           onClick={() => handleOpen()}
         >
-          Registrar Vehículo
+          Registrar servicio
         </Button>
       </Box>
-      {/* Resumen de vehículos por estado sincronizado */}
+      {/* Resumen de trabajos por estado sincronizado */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Box sx={{ display: "flex", gap: 4 }}>
           {estadosServicio.map((estado) => (
@@ -438,7 +438,7 @@ export default function Dashboard({ usuario, onLogout }) {
             }}
           >
             <Typography variant="h6">
-              {editId ? "Información del Vehículo" : "Registrar Vehículo"}
+              {editId ? "Información del servicio" : "Registrar servicio"}
             </Typography>
             {editId && (
               <Button
@@ -472,7 +472,7 @@ export default function Dashboard({ usuario, onLogout }) {
             <DialogTitle>Confirmar eliminación</DialogTitle>
             <DialogContent>
               <Typography>
-                ¿Estás seguro que deseas eliminar este vehículo? Esta acción no
+                ¿Estás seguro que deseas eliminar este servicio? Esta acción no
                 se puede deshacer.
               </Typography>
             </DialogContent>
@@ -487,7 +487,7 @@ export default function Dashboard({ usuario, onLogout }) {
           </Dialog>
         </DialogContent>
         <DialogContent sx={{ minWidth: 400, maxWidth: 500 }}>
-          {/* Sección: Datos del vehículo */}
+          {/* Sección: Datos de turbina */}
           <Box
             sx={{
               display: "flex",
@@ -502,7 +502,7 @@ export default function Dashboard({ usuario, onLogout }) {
               color="primary"
               gutterBottom
             >
-              Datos del vehículo
+              Datos de la turbina
             </Typography>
             {editSection !== "vehiculo" && !isRegistering && (
               <IconButton
@@ -526,7 +526,7 @@ export default function Dashboard({ usuario, onLogout }) {
               <>
                 <TextField
                   margin="none"
-                  label="Vehículo"
+                  label="Modelo"
                   name="vehiculo"
                   fullWidth
                   size="small"

@@ -1,6 +1,6 @@
 # turbinasmcbo-app
 
-Este proyecto es una migración de la funcionalidad principal del dashboard y cards del sistema original, ahora usando React JavaScript y Material UI. Aquí se gestionan vehículos y usuarios, con una interfaz moderna y sin dependencias innecesarias.
+Este proyecto es una migración de la funcionalidad principal del dashboard y cards del sistema original, ahora usando React JavaScript y Material UI. Aquí se gestionan turbinas y usuarios, con una interfaz moderna y sin dependencias innecesarias.
 
 ## Scripts principales
 - `npm start`: Inicia el servidor de desarrollo.
@@ -9,12 +9,12 @@ Este proyecto es una migración de la funcionalidad principal del dashboard y ca
 
 ## Estructura inicial
 - `src/App.js`: Componente principal.
-- `src/components/VehicleCard.js`: Card de vehículo con Material UI.
+- `src/components/VehicleCard.js`: Card de turbina con Material UI.
 
 ## Migración
 - Se eliminaron dependencias de Next.js, Tailwind y Shadcn UI.
 - Se migraron los estilos a Material UI.
-- Se mantiene la lógica de vehículos y usuarios.
+- Se mantiene la lógica de turbinas y usuarios.
 
 ## Personalización
 Puedes modificar los componentes en `src/components` para adaptar la funcionalidad a tus necesidades.

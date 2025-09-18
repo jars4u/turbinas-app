@@ -17,6 +17,8 @@ import {
   CircularProgress,
   TextField,
   Chip,
+  Tabs,
+  Tab,
 } from "@mui/material";
 
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
@@ -28,6 +30,8 @@ export default function CierreDia() {
   const navigate = useNavigate();
   const [vehiculos, setVehiculos] = useState([]);
   const [estadosServicio, setEstadosServicio] = useState([]);
+  // Estado para pestañas
+  const [tabIndex, setTabIndex] = useState(0);
   // --- Estado para la tasa BCV ---
   const [tasaBCV, setTasaBCV] = useState(null);
   const [loadingTasa, setLoadingTasa] = useState(false);
@@ -104,7 +108,7 @@ export default function CierreDia() {
   });
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 6 }}>
+  <Container maxWidth="xl" sx={{ mt: 4, px: 6 }}>
       <Button
         variant="text"
         startIcon={<ArrowBackIcon />}
@@ -122,131 +126,192 @@ export default function CierreDia() {
       </Box>
       <Divider sx={{ mb: 2 }} />
 
-      {/* --- Tasa BCV --- */}
-      <Box
-        my={2}
-        p={2}
-        sx={{
-          border: "1px solid #ddd",
-          borderRadius: 2,
-          backgroundColor: "#f9f9f9",
-          textAlign: "center",
-        }}
-      >
-        <Typography variant="h6" fontWeight="bold">
-          Tasa de Cambio BCV
-        </Typography>
-        {loadingTasa ? (
-          <CircularProgress size={24} />
-        ) : mostrarInputTasa ? (
-          <Box>
-            <Typography variant="body2" color="error" sx={{ mb: 1 }}>
-              No se pudo obtener la tasa automáticamente. Ingresa el valor
-              manualmente:
+      <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', width: '100%' }}>
+        {/* 1/3: Tasa BCV */}
+        <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 33%' }, minWidth: 0, maxWidth: { md: '33%' }, width: { md: '33%' } }}>
+          <Box
+            my={2}
+            p={2}
+            sx={{
+              border: "1px solid #ddd",
+              borderRadius: 2,
+              backgroundColor: "#f9f9f9",
+              textAlign: "center",
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold">
+              Tasa de Cambio BCV
             </Typography>
-            <TextField
-              label="Tasa BCV manual"
-              type="number"
-              value={tasaManual}
-              onChange={(e) =>
-                setTasaManual(e.target.value.replace(/[^0-9.]/g, ""))
-              }
-              size="small"
-              sx={{ maxWidth: 180, mx: "auto" }}
-              inputProps={{
-                inputMode: "decimal",
-                pattern: "[0-9.]*",
-                step: "0.01",
-                min: 0,
-                style: { MozAppearance: "textfield" },
-              }}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              sx={{ mt: 1, ml: 1 }}
-              disabled={!tasaManual}
-              onClick={() => {
-                setTasaBCV(parseFloat(tasaManual));
-                sessionStorage.setItem("tasaBCVManual", tasaManual);
-                setMostrarInputTasa(false);
-              }}
-            >
-              Usar tasa
-            </Button>
-          </Box>
-        ) : (
-          <>
-            <Typography variant="h5" color="primary.main">
-              Bs.{" "}
-              {tasaBCV
-                ? tasaBCV.toLocaleString("de-DE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })
-                : "No disponible"}
-            </Typography>
-            {sessionStorage.getItem("tasaBCVManual") &&
-              tasaBCV ===
-                parseFloat(sessionStorage.getItem("tasaBCVManual")) && (
-                <Typography
-                  variant="caption"
-                  color="warning.main"
-                  sx={{ display: "block", mt: 1 }}
-                >
-                  Usando tasa BCV manual ingresada por el usuario durante esta
-                  sesión.
+            {loadingTasa ? (
+              <CircularProgress size={24} />
+            ) : mostrarInputTasa ? (
+              <Box>
+                <Typography variant="body2" color="error" sx={{ mb: 1 }}>
+                  No se pudo obtener la tasa automáticamente. Ingresa el valor
+                  manualmente:
                 </Typography>
-              )}
-          </>
-        )}
-        <Typography variant="caption" color="text.secondary">
-          Fuente: Banco Central de Venezuela (BCV)
-        </Typography>
-      </Box>
-
-      <Table component={Paper} size="small" sx={{ mb: 2 }}>
-        <TableHead>
-          <TableRow>
-            <TableCell>Estado</TableCell>
-            <TableCell align="right">Total $</TableCell>
-            <TableCell align="right">Total Bs</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {totalesPorEstado.map((estado) => (
-            <TableRow key={estado.nombre}>
-              <TableCell>
-                <Chip
-                  label={estado.label}
-                  color={estado.color || "default"}
+                <TextField
+                  label="Tasa BCV manual"
+                  type="number"
+                  value={tasaManual}
+                  onChange={(e) =>
+                    setTasaManual(e.target.value.replace(/[^0-9.]/g, ""))
+                  }
                   size="small"
-                  sx={{ fontWeight: 500, fontSize: '0.95rem', height: 24 }}
+                  sx={{ maxWidth: 180, mx: "auto" }}
+                  inputProps={{
+                    inputMode: "decimal",
+                    pattern: "[0-9.]*",
+                    step: "0.01",
+                    min: 0,
+                    style: { MozAppearance: "textfield" },
+                  }}
                 />
-              </TableCell>
-              <TableCell align="right">
-                {estado.total.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </TableCell>
-              <TableCell align="right">
-                {tasaBCV
-                  ? (estado.total * tasaBCV).toLocaleString("de-DE", {
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  sx={{ mt: 1, ml: 1 }}
+                  disabled={!tasaManual}
+                  onClick={() => {
+                    setTasaBCV(parseFloat(tasaManual));
+                    sessionStorage.setItem("tasaBCVManual", tasaManual);
+                    setMostrarInputTasa(false);
+                  }}
+                >
+                  Usar tasa
+                </Button>
+              </Box>
+            ) : (
+              <>
+                <Typography variant="h5" color="primary.main">
+                  Bs.{" "}
+                  {tasaBCV
+                    ? tasaBCV.toLocaleString("de-DE", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })
+                    : "No disponible"}
+                </Typography>
+                {sessionStorage.getItem("tasaBCVManual") &&
+                  tasaBCV ===
+                    parseFloat(sessionStorage.getItem("tasaBCVManual")) && (
+                    <Typography
+                      variant="caption"
+                      color="warning.main"
+                      sx={{ display: "block", mt: 1 }}
+                    >
+                      Usando tasa BCV manual ingresada por el usuario durante esta
+                      sesión.
+                    </Typography>
+                  )}
+              </>
+            )}
+            <Typography variant="caption" color="text.secondary">
+              Fuente: Banco Central de Venezuela (BCV)
+            </Typography>
+          </Box>
+          <Table component={Paper} size="small" sx={{ mb: 2 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Estado</TableCell>
+                <TableCell align="right">Total $</TableCell>
+                <TableCell align="right">Total Bs</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {totalesPorEstado.map((estado) => (
+                <TableRow key={estado.nombre}>
+                  <TableCell>
+                    <Chip
+                      label={estado.label}
+                      color={estado.color || "default"}
+                      size="small"
+                      sx={{ fontWeight: 500, fontSize: '0.95rem', height: 24 }}
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    {estado.total.toLocaleString("en-US", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    })
-                  : "-"}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-        El total de entregados corresponde al monto cobrado hoy. El total
-        pendiente y en servicio muestra los montos aún no cobrados.
-      </Typography>
+                    })}
+                  </TableCell>
+                  <TableCell align="right">
+                    {tasaBCV
+                      ? (estado.total * tasaBCV).toLocaleString("de-DE", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      : "-"}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {/* Fila de total */}
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  {totalesPorEstado.reduce((acc, estado) => acc + estado.total, 0).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  {tasaBCV
+                    ? totalesPorEstado.reduce((acc, estado) => acc + estado.total * tasaBCV, 0).toLocaleString("de-DE", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })
+                    : "-"}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            El total de entregados corresponde al monto cobrado hoy. El total
+            pendiente y en servicio muestra los montos aún no cobrados.
+          </Typography>
+        </Box>
+
+        {/* 2/3: Tabla y resumen */}
+        <Box sx={{ flex: { xs: '1 1 100%', md: '2 1 67%' }, minWidth: 0, maxWidth: { md: '67%' }, width: { md: '67%' } }}>
+          {/* Pestañas: Resumen, Ingresos, Egresos, Caja Chica */}
+          <Box sx={{ width: '100%' }}>
+            <Tabs
+              value={tabIndex}
+              onChange={(e, newValue) => setTabIndex(newValue)}
+              indicatorColor="primary"
+              textColor="primary"
+              variant="fullWidth"
+              sx={{ mb: 2 }}
+            >
+              <Tab label="Resumen" />
+              <Tab label="Ingresos" />
+              <Tab label="Egresos" />
+              <Tab label="Caja Chica" />
+            </Tabs>
+            {tabIndex === 0 && (
+              <Box sx={{ p: 2 }}>
+                {/* Contenido vacío para Resumen */}
+              </Box>
+            )}
+            {tabIndex === 1 && (
+              <Box sx={{ p: 2 }}>
+                {/* Contenido vacío para Ingresos */}
+              </Box>
+            )}
+            {tabIndex === 2 && (
+              <Box sx={{ p: 2 }}>
+                {/* Contenido vacío para Egresos */}
+              </Box>
+            )}
+            {tabIndex === 3 && (
+              <Box sx={{ p: 2 }}>
+                {/* Contenido vacío para Caja Chica */}
+              </Box>
+            )}
+          </Box>
+        </Box>
+      </Box>
     </Container>
   );
 }
