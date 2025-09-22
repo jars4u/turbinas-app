@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import React, { useState } from "react";
 import { obtenerUsuarios, observarUsuario, logoutUsuario } from "./lib/usuariosFirebase";
 import Dashboard from "./pages/Dashboard";
+import Historial from "./pages/historial";
 import Configuracion from "./pages/Configuracion";
 import CierreDia from "./pages/CierreDia";
 import AccesoDenegado from "./pages/AccesoDenegado";
@@ -65,6 +66,11 @@ function App() {
         <Route path="/cierredia" element={
           <ProtectedRoute>
             <CierreDia />
+          </ProtectedRoute>
+        } />
+        <Route path="/historial" element={
+          <ProtectedRoute>
+            <Historial />
           </ProtectedRoute>
         } />
       </Routes>

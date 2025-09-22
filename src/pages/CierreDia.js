@@ -20,8 +20,11 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
+import { guardarTasaBCV, obtenerTasaBCV } from "../lib/tasaBCVFirebase";
 
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
+import CajaChica from "../components/CajaChica";
+import Ingresos from "../components/Ingresos";
 
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
@@ -56,6 +59,7 @@ export default function CierreDia() {
       const data = await response.json();
       if (data && data.price) {
         setTasaBCV(data.price);
+        guardarTasaBCV(data.price); // Guardar en Firestore
         if (!sessionStorage.getItem("tasaBCVManual")) {
           sessionStorage.removeItem("tasaBCVManual");
         }
@@ -72,27 +76,42 @@ export default function CierreDia() {
           : null;
         if (oficialObj && oficialObj.promedio) {
           setTasaBCV(oficialObj.promedio);
+          guardarTasaBCV(oficialObj.promedio); // Guardar en Firestore
           if (!sessionStorage.getItem("tasaBCVManual")) {
             sessionStorage.removeItem("tasaBCVManual");
           }
         } else {
+          // Si no hay tasa, buscar en Firestore
           const stored = sessionStorage.getItem("tasaBCVManual");
           if (stored) {
             setTasaBCV(parseFloat(stored));
             setMostrarInputTasa(false);
           } else {
-            setTasaBCV(null);
-            setMostrarInputTasa(true);
+            const tasaBD = await obtenerTasaBCV();
+            if (tasaBD) {
+              setTasaBCV(tasaBD);
+              setMostrarInputTasa(false);
+            } else {
+              setTasaBCV(null);
+              setMostrarInputTasa(true);
+            }
           }
         }
       } catch (error2) {
+        // Si falla todo, buscar en Firestore
         const stored = sessionStorage.getItem("tasaBCVManual");
         if (stored) {
           setTasaBCV(parseFloat(stored));
           setMostrarInputTasa(false);
         } else {
-          setTasaBCV(null);
-          setMostrarInputTasa(true);
+          const tasaBD = await obtenerTasaBCV();
+          if (tasaBD) {
+            setTasaBCV(tasaBD);
+            setMostrarInputTasa(false);
+          } else {
+            setTasaBCV(null);
+            setMostrarInputTasa(true);
+          }
         }
       }
     }
@@ -173,10 +192,11 @@ export default function CierreDia() {
                   size="small"
                   sx={{ mt: 1, ml: 1 }}
                   disabled={!tasaManual}
-                  onClick={() => {
+                  onClick={async () => {
                     setTasaBCV(parseFloat(tasaManual));
                     sessionStorage.setItem("tasaBCVManual", tasaManual);
                     setMostrarInputTasa(false);
+                    await guardarTasaBCV(parseFloat(tasaManual)); // Guardar manual en Firestore
                   }}
                 >
                   Usar tasa
@@ -296,7 +316,7 @@ export default function CierreDia() {
             )}
             {tabIndex === 1 && (
               <Box sx={{ p: 2 }}>
-                {/* Contenido vacío para Ingresos */}
+                <Ingresos tasaBCV={tasaBCV} />
               </Box>
             )}
             {tabIndex === 2 && (
@@ -306,7 +326,7 @@ export default function CierreDia() {
             )}
             {tabIndex === 3 && (
               <Box sx={{ p: 2 }}>
-                {/* Contenido vacío para Caja Chica */}
+                <CajaChica tasaBCV={tasaBCV} />
               </Box>
             )}
           </Box>

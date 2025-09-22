@@ -10,11 +10,7 @@ import {
   TextField,
   DialogActions,
   Divider,
-  Avatar,
-  AppBar,
-  Toolbar,
   Box,
-  Tooltip,
   IconButton,
   Chip,
   Select,
@@ -23,11 +19,11 @@ import {
 import CircularProgress from "@mui/material/CircularProgress";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
-import SettingsIcon from "@mui/icons-material/Settings";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { useNavigate } from "react-router-dom";
-import PersonIcon from "@mui/icons-material/Person";
 import VehicleCard from "../components/VehicleCard";
+import AppHeader from "../components/AppHeader";
 import {
   obtenerVehiculos,
   crearVehiculo,
@@ -38,6 +34,13 @@ import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from '@mui/icons-material/Sort';
 
 export default function Dashboard({ usuario, onLogout }) {
+  const [facturaOpen, setFacturaOpen] = useState(false);
+  const [facturaForm, setFacturaForm] = useState({
+    numeroFactura: '',
+    formaPago: '',
+    referencia: ''
+  });
+  const [facturaIntento, setFacturaIntento] = useState(false);
   const [estadosServicio, setEstadosServicio] = useState([]);
   const [ordenEstado, setOrdenEstado] = useState("");
   const [ordenAsc, setOrdenAsc] = useState(true);
@@ -48,10 +51,8 @@ export default function Dashboard({ usuario, onLogout }) {
   // Solución: guardar el usuario autenticado en un estado local solo al montar
   const [usuarioActivo, setUsuarioActivo] = useState(usuario);
   useEffect(() => {
-    // Solo inicializar una vez al montar
     setUsuarioActivo(usuario);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [usuario]);
   const handleStatusChange = async (id, newStatus) => {
     const vehiculo = vehiculos.find((v) => v.id === id);
     if (!vehiculo) return;
@@ -160,6 +161,7 @@ export default function Dashboard({ usuario, onLogout }) {
         ? vehiculos.find((v) => v.id === editId)?.status || getDefaultStatus()
         : getDefaultStatus(),
       precio: form.precio === "" ? null : Number(form.precio),
+      usuario: usuarioActivo,
     };
     setActionLoading(true);
     if (editId) {
@@ -204,97 +206,7 @@ export default function Dashboard({ usuario, onLogout }) {
       maxWidth="xl"
       sx={{ py: 4, maxWidth: "100%", width: "100%", px: 4 }}
     >
-      <AppBar
-        position="static"
-        color="transparent"
-        elevation={0}
-        sx={{ background: "none", boxShadow: "none", m: 0, p: 0 }}
-      >
-        <Toolbar
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            minHeight: 48,
-            p: 0,
-            m: 0,
-            background: "none",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
-            <img
-              src="/logo.png"
-              alt="Logo"
-              style={{ height: 40, marginRight: 8 }}
-              aria-label="Logo"
-            />
-            <Chip label="v.1.3" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Tooltip title="Cierre del día" arrow>
-                <span>
-                  <IconButton
-                    color="default"
-                    size="small"
-                    sx={{ color: "#757575" }}
-                    onClick={() => navigate("/cierredia")}
-                    aria-label="Ir a cierre del día"
-                  >
-                    <PointOfSaleIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Configuración" arrow>
-                <span>
-                  <IconButton
-                    color="default"
-                    size="small"
-                    sx={{ color: "#757575" }}
-                    onClick={() => navigate("/configuracion")}
-                    aria-label="Ir a configuración"
-                  >
-                    <SettingsIcon />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Box>
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ mx: 2, height: 28 }}
-            />
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Avatar
-                sx={{ bgcolor: "#e0e0e0", width: 22, height: 22 }}
-                aria-label="Usuario"
-              >
-                <PersonIcon fontSize="small" style={{ color: "#757575" }} />
-              </Avatar>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                fontWeight={500}
-                sx={{ fontSize: 13 }}
-              >
-                {usuarioActivo}
-              </Typography>
-              <Button
-                variant="outlined"
-                color="error"
-                size="small"
-                sx={{ minWidth: 0, px: 1, fontSize: 12 }}
-                onClick={() => {
-                  onLogout();
-                  navigate("/");
-                }}
-                aria-label="Cerrar sesión"
-              >
-                Cerrar sesión
-              </Button>
-            </Box>
-          </Box>
-        </Toolbar>
-      </AppBar>
+      <AppHeader usuarioActivo={usuarioActivo} onLogout={() => { onLogout(); navigate("/"); }} navigate={navigate} />
       <Divider sx={{ mb: 2 }} />
       <Box
         sx={{
@@ -679,7 +591,7 @@ export default function Dashboard({ usuario, onLogout }) {
                   variant="caption"
                   sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
                 >
-                  {form.precio}
+                  ${form.precio}
                 </Typography>
               </>
             )}
@@ -878,6 +790,7 @@ export default function Dashboard({ usuario, onLogout }) {
                       variant="outlined"
                       size="small"
                       color="success"
+                      startIcon={<WhatsAppIcon />}
                       onClick={() => {
                         if (form.customerPhone) {
                           // Formato esperado: +58-424-6065449
@@ -900,19 +813,126 @@ export default function Dashboard({ usuario, onLogout }) {
                       Enviar WhatsApp
                     </Button>
                   </Box>
-                  <Button
-                    onClick={handleClose}
-                    variant="outlined"
-                    size="small"
-                    color="primary"
-                  >
-                    Volver
-                  </Button>
                 </>
               )}
             </>
           )}
+          {/* Botones Facturar y Volver juntos en la esquina inferior derecha */}
+          {editId && !editSection && !isRegistering && (
+            <DialogActions sx={{ pb: 2, justifyContent: 'flex-end' }}>
+              <Button
+                onClick={handleClose}
+                variant="outlined"
+                size="small"
+                color="primary"
+              >
+                Volver
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                startIcon={<PointOfSaleIcon />}
+                onClick={() => setFacturaOpen(true)}
+              >
+                Facturar
+              </Button>
+            </DialogActions>
+          )}
         </DialogActions>
+      {/* Modal de Facturación */}
+      <Dialog open={facturaOpen} onClose={() => setFacturaOpen(false)}>
+        <DialogTitle>Facturación</DialogTitle>
+        <DialogContent sx={{ minWidth: 350, maxWidth: 400 }}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" color="primary" fontWeight={600}>Modelo</Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>{form.vehiculo}</Typography>
+            <Typography variant="subtitle2" color="primary" fontWeight={600}>Servicio</Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>{form.servicio}</Typography>
+            <Typography variant="subtitle2" color="primary" fontWeight={600}>Precio</Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>${form.precio}</Typography>
+          </Box>
+          <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
+            <TextField
+              label="No. de factura"
+              name="numeroFactura"
+              size="small"
+              value={facturaForm.numeroFactura}
+              onChange={e => setFacturaForm({ ...facturaForm, numeroFactura: e.target.value })}
+              sx={{ flex: 1 }}
+              required
+              error={facturaIntento && !facturaForm.numeroFactura}
+              helperText={facturaIntento && !facturaForm.numeroFactura ? 'Campo obligatorio' : ''}
+            />
+            <Select
+              name="formaPago"
+              size="small"
+              value={facturaForm.formaPago}
+              onChange={e => setFacturaForm({ ...facturaForm, formaPago: e.target.value })}
+              displayEmpty
+              sx={{ flex: 1 }}
+              required
+              error={facturaIntento && !facturaForm.formaPago}
+            >
+              <MenuItem value="">Forma de pago...</MenuItem>
+              <MenuItem value="efectivo">Efectivo</MenuItem>
+              <MenuItem value="pago movil">Pago móvil</MenuItem>
+              <MenuItem value="zelle">Zelle</MenuItem>
+              <MenuItem value="transferencia">Transferencia</MenuItem>
+              <MenuItem value="credito">Crédito</MenuItem>
+            </Select>
+          </Box>
+          <TextField
+            label="Referencia / Observaciones"
+            name="referencia"
+            fullWidth
+            size="small"
+            value={facturaForm.referencia}
+            onChange={e => setFacturaForm({ ...facturaForm, referencia: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'flex-end', gap: 2 }}>
+          <Button onClick={() => setFacturaOpen(false)} variant="outlined" color="primary" size="small">Cerrar</Button>
+          <Button
+            variant="contained"
+            color="success"
+            size="small"
+            onClick={async () => {
+              setFacturaIntento(true);
+              if (!facturaForm.numeroFactura || !facturaForm.formaPago) return;
+              // Registrar ingreso en Firestore
+              const nuevoIngreso = {
+                descripcion: `${form.vehiculo} - ${form.servicio}`,
+                monto: Number(form.precio) || 0,
+                montoBs: null, // Se puede calcular si tienes tasaBCV
+                factura: facturaForm.numeroFactura,
+                formaPago: facturaForm.formaPago,
+                referencia: facturaForm.referencia,
+                fecha: new Date().toLocaleDateString('es-VE'),
+              };
+              try {
+                const { guardarIngreso } = await import('../lib/ingresosFirebase');
+                await guardarIngreso(nuevoIngreso);
+              } catch (e) {
+                alert('Error al registrar el ingreso');
+              }
+              // Eliminar el VehicleCard del dashboard
+              if (editId) {
+                await eliminarVehiculo(editId);
+                const actualizados = await obtenerVehiculos();
+                setVehiculos(actualizados);
+              }
+              setFacturaOpen(false);
+              setFacturaIntento(false);
+              alert('Pago registrado y servicio eliminado');
+              setOpen(false);
+            }}
+          >
+            Registrar pago
+          </Button>
+        </DialogActions>
+      </Dialog>
       </Dialog>
     </Container>
   );

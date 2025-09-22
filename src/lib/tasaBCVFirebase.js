@@ -1,0 +1,17 @@
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+
+const db = getFirestore();
+const TASA_DOC_ID = "tasaBCV";
+const TASA_COLLECTION = "configuracion";
+
+export async function guardarTasaBCV(valor) {
+  await setDoc(doc(db, TASA_COLLECTION, TASA_DOC_ID), { valor, fecha: new Date().toISOString() });
+}
+
+export async function obtenerTasaBCV() {
+  const docSnap = await getDoc(doc(db, TASA_COLLECTION, TASA_DOC_ID));
+  if (docSnap.exists()) {
+    return docSnap.data().valor;
+  }
+  return null;
+}
