@@ -126,7 +126,7 @@ export default function Configuracion({ usuario, isAdmin }) {
               Crear usuario
             </Button>
           </Box>
-          <Accordion defaultExpanded elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
+          <Accordion elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0, py: 0, minHeight: 36 }}>
               <Typography variant="subtitle2">Mostrar usuarios registrados</Typography>
             </AccordionSummary>
