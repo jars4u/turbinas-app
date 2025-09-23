@@ -4,18 +4,21 @@ import {
   Typography,
   Grid,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  TextField,
-  DialogActions,
   Divider,
   Box,
   IconButton,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
   Select,
   MenuItem,
+  Snackbar,
+  Alert,
 } from "@mui/material";
+import PaymentModal from "../components/PaymentModal";
 import CircularProgress from "@mui/material/CircularProgress";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
@@ -31,16 +34,12 @@ import {
   eliminarVehiculo,
 } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
-import SortIcon from '@mui/icons-material/Sort';
+import SortIcon from "@mui/icons-material/Sort";
 
 export default function Dashboard({ usuario, onLogout }) {
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState("");
   const [facturaOpen, setFacturaOpen] = useState(false);
-  const [facturaForm, setFacturaForm] = useState({
-    numeroFactura: '',
-    formaPago: '',
-    referencia: ''
-  });
-  const [facturaIntento, setFacturaIntento] = useState(false);
   const [estadosServicio, setEstadosServicio] = useState([]);
   const [ordenEstado, setOrdenEstado] = useState("");
   const [ordenAsc, setOrdenAsc] = useState(true);
@@ -162,6 +161,9 @@ export default function Dashboard({ usuario, onLogout }) {
         : getDefaultStatus(),
       precio: form.precio === "" ? null : Number(form.precio),
       usuario: usuarioActivo,
+      registradoPor: usuarioActivo,
+      entregadoPor: editId ? vehiculos.find((v) => v.id === editId)?.entregadoPor : null,
+      fechaEntrega: editId ? vehiculos.find((v) => v.id === editId)?.fechaEntrega : null,
     };
     setActionLoading(true);
     if (editId) {
@@ -206,7 +208,14 @@ export default function Dashboard({ usuario, onLogout }) {
       maxWidth="xl"
       sx={{ py: 4, maxWidth: "100%", width: "100%", px: 4 }}
     >
-      <AppHeader usuarioActivo={usuarioActivo} onLogout={() => { onLogout(); navigate("/"); }} navigate={navigate} />
+      <AppHeader
+        usuarioActivo={usuarioActivo}
+        onLogout={() => {
+          onLogout();
+          navigate("/");
+        }}
+        navigate={navigate}
+      />
       <Divider sx={{ mb: 2 }} />
       <Box
         sx={{
@@ -220,7 +229,9 @@ export default function Dashboard({ usuario, onLogout }) {
           <span style={{ fontWeight: 600 }}>
             Turbinas en servicio
             {vehiculos && (
-              <span style={{ fontWeight: 400, marginLeft: 8, fontSize: '1rem' }}>
+              <span
+                style={{ fontWeight: 400, marginLeft: 8, fontSize: "1rem" }}
+              >
                 ({vehiculos.length})
               </span>
             )}
@@ -237,38 +248,61 @@ export default function Dashboard({ usuario, onLogout }) {
         </Button>
       </Box>
       {/* Resumen de trabajos por estado sincronizado */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 2,
+        }}
+      >
         <Box sx={{ display: "flex", gap: 4 }}>
-          {estadosServicio.map((estado) => (
-            <Typography
-              key={estado.nombre}
-              variant="body1"
-              color={estado.color ? `${estado.color}.main` : "text.primary"}
-              fontWeight={600}
-            >
-              {estado.label}: {vehiculos.filter((v) => (v.status || v.estado) === estado.nombre).length}
-            </Typography>
-          ))}
+          {estadosServicio
+            .filter((estado) => estado.nombre !== 'entregado')
+            .map((estado) => (
+              <Typography
+                key={estado.nombre}
+                variant="body1"
+                color={estado.color ? `${estado.color}.main` : "text.primary"}
+                fontWeight={600}
+              >
+                {estado.label}:{" "}
+                {
+                  vehiculos.filter(
+                    (v) => (v.status || v.estado) === estado.nombre
+                  ).length
+                }
+              </Typography>
+            ))}
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <SortIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+          <SortIcon sx={{ color: "text.secondary", fontSize: 20 }} />
           <Select
             size="small"
             value={ordenEstado}
-            onChange={e => setOrdenEstado(e.target.value)}
+            onChange={(e) => setOrdenEstado(e.target.value)}
             displayEmpty
-            sx={{ minWidth: 120, color: 'text.secondary' }}
+            sx={{ minWidth: 120, color: "text.secondary" }}
           >
             <MenuItem value="">Todos</MenuItem>
             {estadosServicio.map((estado) => (
-              <MenuItem key={estado.nombre} value={estado.nombre}>{estado.label}</MenuItem>
+              <MenuItem key={estado.nombre} value={estado.nombre}>
+                {estado.label}
+              </MenuItem>
             ))}
           </Select>
           <Button
             size="small"
             variant="outlined"
             onClick={() => setOrdenAsc((prev) => !prev)}
-            sx={{ minWidth: 36, px: 1, color: 'text.secondary', borderColor: '#b4b4b4ff', boxShadow: 'none', '&:hover': { bgcolor: '#e0e0e0' } }}
+            sx={{
+              minWidth: 36,
+              px: 1,
+              color: "text.secondary",
+              borderColor: "#b4b4b4ff",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "#e0e0e0" },
+            }}
           >
             {ordenAsc ? "Asc" : "Desc"}
           </Button>
@@ -288,12 +322,24 @@ export default function Dashboard({ usuario, onLogout }) {
       ) : (
         <Grid container spacing={2} columns={12}>
           {[...vehiculos]
-            .filter(v => !ordenEstado || (v.status || v.estado) === ordenEstado)
+            .filter(
+              (v) => (v.status || v.estado) !== 'entregado' && (!ordenEstado || (v.status || v.estado) === ordenEstado)
+            )
             .sort((a, b) => {
-              if (!ordenEstado) return ordenAsc ? a.arrivalTime - b.arrivalTime : b.arrivalTime - a.arrivalTime;
+              if (!ordenEstado)
+                return ordenAsc
+                  ? a.arrivalTime - b.arrivalTime
+                  : b.arrivalTime - a.arrivalTime;
               // Ordenar por estado y luego arrivalTime
-              if (ordenAsc) return (a.status || a.estado).localeCompare(b.status || b.estado) || a.arrivalTime - b.arrivalTime;
-              return (b.status || b.estado).localeCompare(a.status || a.estado) || b.arrivalTime - a.arrivalTime;
+              if (ordenAsc)
+                return (
+                  (a.status || a.estado).localeCompare(b.status || b.estado) ||
+                  a.arrivalTime - b.arrivalTime
+                );
+              return (
+                (b.status || b.estado).localeCompare(a.status || a.estado) ||
+                b.arrivalTime - a.arrivalTime
+              );
             })
             .map((v) => (
               <Grid
@@ -346,7 +392,7 @@ export default function Dashboard({ usuario, onLogout }) {
             sx={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center"
+              alignItems: "center",
             }}
           >
             <Typography variant="h6">
@@ -354,31 +400,39 @@ export default function Dashboard({ usuario, onLogout }) {
             </Typography>
             {editId && (
               <Button
-              onClick={handleDeleteClick}
-              variant="outlined"
-              size="small"
-              color="error"
+                onClick={handleDeleteClick}
+                variant="outlined"
+                size="small"
+                color="error"
               >
                 Eliminar
               </Button>
             )}
           </Box>
-            {editId && (
-              (() => {
-                const vehiculoActual = vehiculos.find(v => v.id === editId);
-                const estadoActual = estadosServicio.find(e => e.nombre === (vehiculoActual?.status || vehiculoActual?.estado));
-                return (
-                  <Box sx={{ width: '100%', display: 'block' }}>
-                    <Chip
-                      label={estadoActual?.label || (vehiculoActual?.status || vehiculoActual?.estado) || "Sin estado"}
-                      color={estadoActual?.color || "default"}
-                      size="small"
-                      sx={{ fontSize: '0.85rem', height: 26, mx: 0 }}
-                    />
-                  </Box>
-                );
-              })()
-            )}
+          {editId &&
+            (() => {
+              const vehiculoActual = vehiculos.find((v) => v.id === editId);
+              const estadoActual = estadosServicio.find(
+                (e) =>
+                  e.nombre ===
+                  (vehiculoActual?.status || vehiculoActual?.estado)
+              );
+              return (
+                <Box sx={{ width: "100%", display: "block" }}>
+                  <Chip
+                    label={
+                      estadoActual?.label ||
+                      vehiculoActual?.status ||
+                      vehiculoActual?.estado ||
+                      "Sin estado"
+                    }
+                    color={estadoActual?.color || "default"}
+                    size="small"
+                    sx={{ fontSize: "0.85rem", height: 26, mx: 0 }}
+                  />
+                </Box>
+              );
+            })()}
           {/* Modal de confirmación para eliminar */}
           <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
             <DialogTitle>Confirmar eliminación</DialogTitle>
@@ -777,7 +831,11 @@ export default function Dashboard({ usuario, onLogout }) {
                       size="small"
                       color="primary"
                       disabled={actionLoading}
-                      startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                      startIcon={
+                        actionLoading ? (
+                          <CircularProgress color="inherit" size={18} />
+                        ) : null
+                      }
                     >
                       {actionLoading ? "Guardando..." : "Guardar"}
                     </Button>
@@ -819,7 +877,7 @@ export default function Dashboard({ usuario, onLogout }) {
           )}
           {/* Botones Facturar y Volver juntos en la esquina inferior derecha */}
           {editId && !editSection && !isRegistering && (
-            <DialogActions sx={{ pb: 2, justifyContent: 'flex-end' }}>
+            <DialogActions sx={{ pb: 2, justifyContent: "flex-end" }}>
               <Button
                 onClick={handleClose}
                 variant="outlined"
@@ -840,100 +898,59 @@ export default function Dashboard({ usuario, onLogout }) {
             </DialogActions>
           )}
         </DialogActions>
-      {/* Modal de Facturación */}
-      <Dialog open={facturaOpen} onClose={() => setFacturaOpen(false)}>
-        <DialogTitle>Facturación</DialogTitle>
-        <DialogContent sx={{ minWidth: 350, maxWidth: 400 }}>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" color="primary" fontWeight={600}>Modelo</Typography>
-            <Typography variant="body1" sx={{ mb: 1 }}>{form.vehiculo}</Typography>
-            <Typography variant="subtitle2" color="primary" fontWeight={600}>Servicio</Typography>
-            <Typography variant="body1" sx={{ mb: 1 }}>{form.servicio}</Typography>
-            <Typography variant="subtitle2" color="primary" fontWeight={600}>Precio</Typography>
-            <Typography variant="body1" sx={{ mb: 1 }}>${form.precio}</Typography>
-          </Box>
-          <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
-            <TextField
-              label="No. de factura"
-              name="numeroFactura"
-              size="small"
-              value={facturaForm.numeroFactura}
-              onChange={e => setFacturaForm({ ...facturaForm, numeroFactura: e.target.value })}
-              sx={{ flex: 1 }}
-              required
-              error={facturaIntento && !facturaForm.numeroFactura}
-              helperText={facturaIntento && !facturaForm.numeroFactura ? 'Campo obligatorio' : ''}
-            />
-            <Select
-              name="formaPago"
-              size="small"
-              value={facturaForm.formaPago}
-              onChange={e => setFacturaForm({ ...facturaForm, formaPago: e.target.value })}
-              displayEmpty
-              sx={{ flex: 1 }}
-              required
-              error={facturaIntento && !facturaForm.formaPago}
-            >
-              <MenuItem value="">Forma de pago...</MenuItem>
-              <MenuItem value="efectivo">Efectivo</MenuItem>
-              <MenuItem value="pago movil">Pago móvil</MenuItem>
-              <MenuItem value="zelle">Zelle</MenuItem>
-              <MenuItem value="transferencia">Transferencia</MenuItem>
-              <MenuItem value="credito">Crédito</MenuItem>
-            </Select>
-          </Box>
-          <TextField
-            label="Referencia / Observaciones"
-            name="referencia"
-            fullWidth
-            size="small"
-            value={facturaForm.referencia}
-            onChange={e => setFacturaForm({ ...facturaForm, referencia: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'flex-end', gap: 2 }}>
-          <Button onClick={() => setFacturaOpen(false)} variant="outlined" color="primary" size="small">Cerrar</Button>
-          <Button
-            variant="contained"
-            color="success"
-            size="small"
-            onClick={async () => {
-              setFacturaIntento(true);
-              if (!facturaForm.numeroFactura || !facturaForm.formaPago) return;
-              // Registrar ingreso en Firestore
-              const nuevoIngreso = {
-                descripcion: `${form.vehiculo} - ${form.servicio}`,
-                monto: Number(form.precio) || 0,
-                montoBs: null, // Se puede calcular si tienes tasaBCV
-                factura: facturaForm.numeroFactura,
-                formaPago: facturaForm.formaPago,
-                referencia: facturaForm.referencia,
-                fecha: new Date().toLocaleDateString('es-VE'),
-              };
-              try {
-                const { guardarIngreso } = await import('../lib/ingresosFirebase');
-                await guardarIngreso(nuevoIngreso);
-              } catch (e) {
-                alert('Error al registrar el ingreso');
-              }
-              // Eliminar el VehicleCard del dashboard
-              if (editId) {
-                await eliminarVehiculo(editId);
-                const actualizados = await obtenerVehiculos();
-                setVehiculos(actualizados);
-              }
-              setFacturaOpen(false);
-              setFacturaIntento(false);
-              alert('Pago registrado y servicio eliminado');
-              setOpen(false);
-            }}
-          >
-            Registrar pago
-          </Button>
-        </DialogActions>
+        <PaymentModal
+          open={facturaOpen}
+          onClose={() => setFacturaOpen(false)}
+          form={form}
+          onRegister={async (facturaData) => {
+            // Registrar ingreso en Firestore
+            const nuevoIngreso = {
+              descripcion: `${form.vehiculo} - ${form.servicio}`,
+              monto: Number(form.precio) || 0,
+              montoBs: null, // Se puede calcular si tienes tasaBCV
+              factura: facturaData.numeroFactura,
+              formaPago: facturaData.formaPago,
+              referencia: facturaData.referencia,
+              fecha: new Date().toLocaleDateString("es-VE"),
+            };
+            try {
+              const { guardarIngreso } = await import(
+                "../lib/ingresosFirebase"
+              );
+              await guardarIngreso(nuevoIngreso);
+            } catch (e) {
+              setSnackbarMsg("Error al registrar el ingreso");
+              setSnackbarOpen(true);
+              return;
+            }
+            // Actualizar el estado del vehículo a 'entregado' y guardar entregadoPor y fechaEntrega
+            if (editId) {
+              await actualizarVehiculo(editId, {
+                ...form,
+                status: 'entregado',
+                entregadoPor: usuarioActivo,
+                fechaEntrega: Date.now(),
+                registradoPor: vehiculos.find((v) => v.id === editId)?.registradoPor || vehiculos.find((v) => v.id === editId)?.usuario || null
+              });
+              const actualizados = await obtenerVehiculos();
+              setVehiculos(actualizados);
+            }
+            setSnackbarMsg("Pago registrado exitosamente");
+            setSnackbarOpen(true);
+            setOpen(false);
+          }}
+        />
       </Dialog>
-      </Dialog>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3500}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setSnackbarOpen(false)} severity="success" sx={{ width: '100%' }}>
+          {snackbarMsg}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

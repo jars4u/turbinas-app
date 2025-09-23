@@ -16,10 +16,11 @@ import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import HistoryIcon from "@mui/icons-material/History";
 
 export default function HistorialVehiculos() {
-  const [ordenCol, setOrdenCol] = useState("arrivalTime");
+  const [ordenCol, setOrdenCol] = useState("fechaEntrega");
   const [ordenAsc, setOrdenAsc] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [vehiculos, setVehiculos] = useState([]);
+  const [orderBy, setOrderBy] = useState('fechaEntrega');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -93,6 +94,24 @@ export default function HistorialVehiculos() {
               <TableCell>#</TableCell>
               <TableCell
                 onClick={() =>
+                  setOrdenCol("fechaEntrega") ||
+                  setOrdenAsc(ordenCol === "fechaEntrega" ? !ordenAsc : false)
+                }
+                style={{ cursor: "pointer" }}
+              >
+                Fecha de entrega {ordenCol === "fechaEntrega" ? (ordenAsc ? "▲" : "▼") : ""}
+              </TableCell>
+              <TableCell
+                onClick={() =>
+                  setOrdenCol("arrivalTime") ||
+                  setOrdenAsc(ordenCol === "arrivalTime" ? !ordenAsc : false)
+                }
+                style={{ cursor: "pointer" }}
+              >
+                Fecha de registro {ordenCol === "arrivalTime" ? (ordenAsc ? "▲" : "▼") : ""}
+              </TableCell>
+              <TableCell
+                onClick={() =>
                   setOrdenCol("vehiculo") ||
                   setOrdenAsc(ordenCol === "vehiculo" ? !ordenAsc : false)
                 }
@@ -116,8 +135,7 @@ export default function HistorialVehiculos() {
                 }
                 style={{ cursor: "pointer" }}
               >
-                Cliente{" "}
-                {ordenCol === "customerName" ? (ordenAsc ? "▲" : "▼") : ""}
+                Cliente {ordenCol === "customerName" ? (ordenAsc ? "▲" : "▼") : ""}
               </TableCell>
               <TableCell
                 onClick={() =>
@@ -126,8 +144,7 @@ export default function HistorialVehiculos() {
                 }
                 style={{ cursor: "pointer" }}
               >
-                Teléfono{" "}
-                {ordenCol === "customerPhone" ? (ordenAsc ? "▲" : "▼") : ""}
+                Teléfono {ordenCol === "customerPhone" ? (ordenAsc ? "▲" : "▼") : ""}
               </TableCell>
               <TableCell
                 onClick={() =>
@@ -149,22 +166,21 @@ export default function HistorialVehiculos() {
               </TableCell>
               <TableCell
                 onClick={() =>
-                  setOrdenCol("arrivalTime") ||
-                  setOrdenAsc(ordenCol === "arrivalTime" ? !ordenAsc : false)
+                  setOrdenCol("registradoPor") ||
+                  setOrdenAsc(ordenCol === "registradoPor" ? !ordenAsc : false)
                 }
                 style={{ cursor: "pointer" }}
               >
-                Fecha registro{" "}
-                {ordenCol === "arrivalTime" ? (ordenAsc ? "▲" : "▼") : ""}
+                Registrado por {ordenCol === "registradoPor" ? (ordenAsc ? "▲" : "▼") : ""}
               </TableCell>
               <TableCell
                 onClick={() =>
-                  setOrdenCol("usuario") ||
-                  setOrdenAsc(ordenCol === "usuario" ? !ordenAsc : false)
+                  setOrdenCol("entregadoPor") ||
+                  setOrdenAsc(ordenCol === "entregadoPor" ? !ordenAsc : false)
                 }
                 style={{ cursor: "pointer" }}
               >
-                Usuario {ordenCol === "usuario" ? (ordenAsc ? "▲" : "▼") : ""}
+                Entregado por {ordenCol === "entregadoPor" ? (ordenAsc ? "▲" : "▼") : ""}
               </TableCell>
             </TableRow>
           </TableHead>
@@ -217,87 +233,35 @@ export default function HistorialVehiculos() {
                     }}
                   >
                     <TableCell>{idx + 1}</TableCell>
-                    <TableCell
-                      sx={{
-                        whiteSpace: "nowrap",
-                        maxWidth: 120,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {v.fechaEntrega ? new Date(v.fechaEntrega).toLocaleDateString("es-VE") : "-"}
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {v.arrivalTime ? new Date(v.arrivalTime).toLocaleDateString("es-VE") : "-"}
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.vehiculo || "-"}
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        whiteSpace: "nowrap",
-                        maxWidth: 120,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.servicio || "-"}
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        whiteSpace: "nowrap",
-                        maxWidth: 120,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.customerName || "-"}
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        whiteSpace: "nowrap",
-                        maxWidth: 120,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.customerPhone || "-"}
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        whiteSpace: "nowrap",
-                        maxWidth: 90,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.precio ? `$${v.precio}` : "-"}
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        whiteSpace: "nowrap",
-                        maxWidth: 90,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.status || "-"}
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        whiteSpace: "nowrap",
-                        maxWidth: 120,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {v.arrivalTime
-                        ? new Date(v.arrivalTime).toLocaleDateString("es-VE")
-                        : "-"}
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {v.registradoPor || v.usuario || "-"}
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        whiteSpace: "nowrap",
-                        maxWidth: 120,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {v.usuario || "-"}
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {v.entregadoPor || "-"}
                     </TableCell>
                   </TableRow>
                 ))

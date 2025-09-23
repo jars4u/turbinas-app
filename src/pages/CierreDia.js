@@ -25,6 +25,7 @@ import { guardarTasaBCV, obtenerTasaBCV } from "../lib/tasaBCVFirebase";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import CajaChica from "../components/CajaChica";
 import Ingresos from "../components/Ingresos";
+import Egresos from "../components/Egresos";
 
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
@@ -124,7 +125,7 @@ export default function CierreDia() {
       .filter((v) => v.status === estado.nombre)
       .reduce((acc, v) => acc + (v.precio || 0), 0);
     return { ...estado, total };
-  });
+  }).filter((estado) => estado.nombre !== 'entregado');
 
   return (
   <Container maxWidth="xl" sx={{ mt: 4, px: 6 }}>
@@ -311,22 +312,46 @@ export default function CierreDia() {
             </Tabs>
             {tabIndex === 0 && (
               <Box sx={{ p: 2 }}>
-                {/* Contenido vacío para Resumen */}
+                {loadingTasa || !vehiculos.length || !estadosServicio.length ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+                    <CircularProgress color="primary" size={40} />
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">Resumen cargado</Typography>
+                )}
               </Box>
             )}
             {tabIndex === 1 && (
               <Box sx={{ p: 2 }}>
-                <Ingresos tasaBCV={tasaBCV} />
+                {loadingTasa || !vehiculos.length ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+                    <CircularProgress color="primary" size={40} />
+                  </Box>
+                ) : (
+                  <Ingresos tasaBCV={tasaBCV} />
+                )}
               </Box>
             )}
             {tabIndex === 2 && (
               <Box sx={{ p: 2 }}>
-                {/* Contenido vacío para Egresos */}
+                {loadingTasa || !vehiculos.length ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+                    <CircularProgress color="primary" size={40} />
+                  </Box>
+                ) : (
+                  <Egresos tasaBCV={tasaBCV} />
+                )}
               </Box>
             )}
             {tabIndex === 3 && (
               <Box sx={{ p: 2 }}>
-                <CajaChica tasaBCV={tasaBCV} />
+                {loadingTasa || !vehiculos.length ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+                    <CircularProgress color="primary" size={40} />
+                  </Box>
+                ) : (
+                  <CajaChica tasaBCV={tasaBCV} />
+                )}
               </Box>
             )}
           </Box>
