@@ -27,6 +27,8 @@ import CajaChica from "../components/CajaChica";
 import Ingresos from "../components/Ingresos";
 import Egresos from "../components/Egresos";
 
+import ResumenContable from "../components/ResumenContable";
+
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 
@@ -120,15 +122,17 @@ export default function CierreDia() {
   };
 
   // Calcular totales por estado sincronizado
-  const totalesPorEstado = estadosServicio.map((estado) => {
-    const total = vehiculos
-      .filter((v) => v.status === estado.nombre)
-      .reduce((acc, v) => acc + (v.precio || 0), 0);
-    return { ...estado, total };
-  }).filter((estado) => estado.nombre !== 'entregado');
+  const totalesPorEstado = estadosServicio
+    .map((estado) => {
+      const total = vehiculos
+        .filter((v) => v.status === estado.nombre)
+        .reduce((acc, v) => acc + (v.precio || 0), 0);
+      return { ...estado, total };
+    })
+    .filter((estado) => estado.nombre !== "entregado");
 
   return (
-  <Container maxWidth="xl" sx={{ mt: 4, px: 6 }}>
+    <Container maxWidth="xl" sx={{ mt: 4, px: 6 }}>
       <Button
         variant="text"
         startIcon={<ArrowBackIcon />}
@@ -146,9 +150,23 @@ export default function CierreDia() {
       </Box>
       <Divider sx={{ mb: 2 }} />
 
-      <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', width: '100%' }}>
+      <Box
+        sx={{
+          display: "flex",
+          gap: 3,
+          alignItems: "flex-start",
+          width: "100%",
+        }}
+      >
         {/* 1/3: Tasa BCV */}
-        <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 33%' }, minWidth: 0, maxWidth: { md: '33%' }, width: { md: '33%' } }}>
+        <Box
+          sx={{
+            flex: { xs: "1 1 100%", md: "1 1 33%" },
+            minWidth: 0,
+            maxWidth: { md: "33%" },
+            width: { md: "33%" },
+          }}
+        >
           <Box
             my={2}
             p={2}
@@ -222,8 +240,8 @@ export default function CierreDia() {
                       color="warning.main"
                       sx={{ display: "block", mt: 1 }}
                     >
-                      Usando tasa BCV manual ingresada por el usuario durante esta
-                      sesión.
+                      Usando tasa BCV manual ingresada por el usuario durante
+                      esta sesión.
                     </Typography>
                   )}
               </>
@@ -248,7 +266,7 @@ export default function CierreDia() {
                       label={estado.label}
                       color={estado.color || "default"}
                       size="small"
-                      sx={{ fontWeight: 500, fontSize: '0.95rem', height: 24 }}
+                      sx={{ fontWeight: 500, fontSize: "0.95rem", height: 24 }}
                     />
                   </TableCell>
                   <TableCell align="right">
@@ -271,17 +289,24 @@ export default function CierreDia() {
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  {totalesPorEstado.reduce((acc, estado) => acc + estado.total, 0).toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {totalesPorEstado
+                    .reduce((acc, estado) => acc + estado.total, 0)
+                    .toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
                   {tasaBCV
-                    ? totalesPorEstado.reduce((acc, estado) => acc + estado.total * tasaBCV, 0).toLocaleString("de-DE", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
+                    ? totalesPorEstado
+                        .reduce(
+                          (acc, estado) => acc + estado.total * tasaBCV,
+                          0
+                        )
+                        .toLocaleString("de-DE", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
                     : "-"}
                 </TableCell>
               </TableRow>
@@ -294,9 +319,16 @@ export default function CierreDia() {
         </Box>
 
         {/* 2/3: Tabla y resumen */}
-        <Box sx={{ flex: { xs: '1 1 100%', md: '2 1 67%' }, minWidth: 0, maxWidth: { md: '67%' }, width: { md: '67%' } }}>
+        <Box
+          sx={{
+            flex: { xs: "1 1 100%", md: "2 1 67%" },
+            minWidth: 0,
+            maxWidth: { md: "67%" },
+            width: { md: "67%" },
+          }}
+        >
           {/* Pestañas: Resumen, Ingresos, Egresos, Caja Chica */}
-          <Box sx={{ width: '100%' }}>
+          <Box sx={{ width: "100%" }}>
             <Tabs
               value={tabIndex}
               onChange={(e, newValue) => setTabIndex(newValue)}
@@ -309,22 +341,37 @@ export default function CierreDia() {
               <Tab label="Ingresos" />
               <Tab label="Egresos" />
               <Tab label="Caja Chica" />
+              <Tab label="Por Pagar" />
             </Tabs>
             {tabIndex === 0 && (
               <Box sx={{ p: 2 }}>
-                {loadingTasa || !vehiculos.length || !estadosServicio.length ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+                {loadingTasa ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: 120,
+                    }}
+                  >
                     <CircularProgress color="primary" size={40} />
                   </Box>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">Resumen cargado</Typography>
+                  <ResumenContable tasaBCV={tasaBCV} />
                 )}
               </Box>
             )}
             {tabIndex === 1 && (
               <Box sx={{ p: 2 }}>
                 {loadingTasa || !vehiculos.length ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: 120,
+                    }}
+                  >
                     <CircularProgress color="primary" size={40} />
                   </Box>
                 ) : (
@@ -335,7 +382,14 @@ export default function CierreDia() {
             {tabIndex === 2 && (
               <Box sx={{ p: 2 }}>
                 {loadingTasa || !vehiculos.length ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: 120,
+                    }}
+                  >
                     <CircularProgress color="primary" size={40} />
                   </Box>
                 ) : (
@@ -346,11 +400,38 @@ export default function CierreDia() {
             {tabIndex === 3 && (
               <Box sx={{ p: 2 }}>
                 {loadingTasa || !vehiculos.length ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: 120,
+                    }}
+                  >
                     <CircularProgress color="primary" size={40} />
                   </Box>
                 ) : (
                   <CajaChica tasaBCV={tasaBCV} />
+                )}
+              </Box>
+            )}
+            {tabIndex === 4 && (
+              <Box sx={{ p: 2 }}>
+                {loadingTasa || !vehiculos.length ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: 120,
+                    }}
+                  >
+                    <CircularProgress color="primary" size={40} />
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Aquí se mostrarán los datos de la pestaña "Por Pagar".
+                  </Typography>
                 )}
               </Box>
             )}

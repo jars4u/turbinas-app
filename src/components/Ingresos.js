@@ -11,41 +11,165 @@ import {
   TableBody,
   Paper,
   Divider,
+  LinearProgress,
 } from "@mui/material";
+  // ...existing code...
 import { guardarIngreso, obtenerIngresos } from "../lib/ingresosFirebase";
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
 export default function Ingresos({ tasaBCV }) {
-  const [ingresoDesc, setIngresoDesc] = useState("");
+  const [ingresoFactura, setIngresoFactura] = useState("");
   const [ingresoMontoUSD, setIngresoMontoUSD] = useState("");
   const [ingresoMontoBs, setIngresoMontoBs] = useState("");
   const [ingresos, setIngresos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
 
   useEffect(() => {
-    obtenerIngresos().then(setIngresos);
+    setLoading(true);
+    obtenerIngresos().then(data => {
+      setIngresos(data);
+      setLoading(false);
+      // Seleccionar el día de hoy por defecto si existe
+      const hoy = new Date();
+      const hoyStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
+      const fechas = data.map(i => {
+        if (i.fecha && typeof i.fecha === 'string') {
+          const parts = i.fecha.split(/[/-]/);
+          if (parts.length === 3) {
+            return `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+          }
+          return i.fecha;
+        }
+        if (i.fecha && i.fecha.seconds) {
+          const d = String(new Date(i.fecha.seconds * 1000).getDate()).padStart(2, '0');
+          const m = String(new Date(i.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+          const y = new Date(i.fecha.seconds * 1000).getFullYear();
+          return `${d}/${m}/${y}`;
+        }
+        return null;
+      }).filter(Boolean);
+      if (fechas.includes(hoyStr)) {
+        setTimeout(() => setFechaSeleccionada(hoyStr), 0);
+      } else if (fechas.length > 0) {
+        setTimeout(() => setFechaSeleccionada(fechas[0]), 0);
+      }
+    });
   }, []);
 
   const handleAgregarIngreso = async () => {
     const montoUSD = Number(ingresoMontoUSD);
     const montoBs = Number(ingresoMontoBs);
-    if (!ingresoDesc || (!montoUSD && !montoBs)) return;
+  if (!ingresoFactura || (!montoUSD && !montoBs)) return;
+    const hoy = new Date();
+    const d = String(hoy.getDate()).padStart(2, '0');
+    const m = String(hoy.getMonth() + 1).padStart(2, '0');
+    const y = hoy.getFullYear();
     const nuevoIngreso = {
-      descripcion: ingresoDesc,
+  factura: ingresoFactura,
       monto: montoUSD || (montoBs / tasaBCV),
       montoBs: montoBs || (montoUSD * tasaBCV),
-      fecha: new Date().toLocaleDateString('es-VE'),
+      fecha: `${d}/${m}/${y}`,
     };
     await guardarIngreso(nuevoIngreso);
-    setIngresos([nuevoIngreso, ...ingresos]);
-    setIngresoDesc("");
+    // Recargar desde la base de datos para asegurar persistencia
+    const actualizados = await obtenerIngresos();
+    setIngresos(actualizados);
+    // Si el ingreso es de hoy, actualizar la fecha seleccionada
+    const hoyStr = `${d}/${m}/${y}`;
+    setFechaSeleccionada(hoyStr);
+  // setIngresoDesc eliminado, ahora se usa setIngresoFactura
+  setIngresoFactura("");
     setIngresoMontoUSD("");
     setIngresoMontoBs("");
   };
 
   return (
   <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
-      <Typography variant="h6" fontWeight={700} gutterBottom>
-        Registro de Ingresos
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 0 }}>
+          Registro de Ingresos
+        </Typography>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <DatePicker
+            label="Día"
+            views={["year", "month", "day"]}
+            value={fechaSeleccionada ? (() => {
+              const partes = fechaSeleccionada.split('/');
+              return new Date(
+                parseInt(partes[2]),
+                parseInt(partes[1]) - 1,
+                parseInt(partes[0])
+              );
+            })() : null}
+            onChange={date => {
+              if (date) {
+                const d = String(date.getDate()).padStart(2, '0');
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const y = date.getFullYear();
+                setFechaSeleccionada(`${d}/${m}/${y}`);
+              }
+            }}
+            renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
+            disableFuture
+            minDate={ingresos.length > 0 ? (() => {
+              const fechas = ingresos.map(i => {
+                if (i.fecha && typeof i.fecha === 'string') return i.fecha;
+                if (i.fecha && i.fecha.seconds) {
+                  const d = String(new Date(i.fecha.seconds * 1000).getDate()).padStart(2, '0');
+                  const m = String(new Date(i.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+                  const y = new Date(i.fecha.seconds * 1000).getFullYear();
+                  return `${d}/${m}/${y}`;
+                }
+                return null;
+              }).filter(Boolean);
+              const min = fechas.sort((a, b) => {
+                const fa = Date.parse(a.split("/").reverse().join("-"));
+                const fb = Date.parse(b.split("/").reverse().join("-"));
+                return fa - fb;
+              })[0];
+              const partes = min.split('/');
+              return new Date(
+                parseInt(partes[2]),
+                parseInt(partes[1]) - 1,
+                parseInt(partes[0])
+              );
+            })() : undefined}
+            maxDate={(() => {
+              const hoy = new Date();
+              hoy.setHours(0, 0, 0, 0);
+              return hoy;
+            })()}
+            shouldDisableDate={date => {
+              // Unificar formato dd/mm/yyyy para comparar
+              const d = String(date.getDate()).padStart(2, '0');
+              const m = String(date.getMonth() + 1).padStart(2, '0');
+              const y = date.getFullYear();
+              const fechaStr = `${d}/${m}/${y}`;
+              return !ingresos.some(i => {
+                let ingresoFecha = '';
+                if (i.fecha && typeof i.fecha === 'string') {
+                  // Si la fecha es string, normalizar separadores y ceros
+                  const parts = i.fecha.split(/[/-]/);
+                  if (parts.length === 3) {
+                    ingresoFecha = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+                  } else {
+                    ingresoFecha = i.fecha;
+                  }
+                } else if (i.fecha && i.fecha.seconds) {
+                  const dd = String(new Date(i.fecha.seconds * 1000).getDate()).padStart(2, '0');
+                  const mm = String(new Date(i.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+                  const yy = new Date(i.fecha.seconds * 1000).getFullYear();
+                  ingresoFecha = `${dd}/${mm}/${yy}`;
+                }
+                return ingresoFecha === fechaStr;
+              });
+            }}
+          />
+        </LocalizationProvider>
+      </Box>
       <Divider sx={{ mb: 2 }} />
       <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle1" fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>
@@ -53,10 +177,10 @@ export default function Ingresos({ tasaBCV }) {
         </Typography>
         <Box sx={{ display: "flex", gap: 2, flexWrap: 'wrap' }}>
           <TextField
-            label="Descripción"
+            label="N° Factura"
             size="small"
-            value={ingresoDesc}
-            onChange={e => setIngresoDesc(e.target.value)}
+            value={ingresoFactura}
+            onChange={e => setIngresoFactura(e.target.value)}
             sx={{ flex: 2, minWidth: 120 }}
           />
           <TextField
@@ -97,7 +221,7 @@ export default function Ingresos({ tasaBCV }) {
             variant="contained"
             color="primary"
             onClick={handleAgregarIngreso}
-            disabled={!ingresoDesc || (!ingresoMontoUSD && !ingresoMontoBs)}
+            disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs)}
           >
             Agregar
           </Button>
@@ -130,18 +254,71 @@ export default function Ingresos({ tasaBCV }) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {ingresos.length === 0 ? (
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={7} align="center" sx={{ p: 0 }}>
+                <LinearProgress sx={{ width: '100%' }} />
+              </TableCell>
+            </TableRow>
+          ) : ingresos.filter(ing => {
+            if (!fechaSeleccionada) return false;
+            let ingresoFecha = '';
+            if (ing.fecha && typeof ing.fecha === 'string') {
+              const parts = ing.fecha.split(/[/-]/);
+              if (parts.length === 3) {
+                ingresoFecha = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+              } else {
+                ingresoFecha = ing.fecha;
+              }
+            } else if (ing.fecha && ing.fecha.seconds) {
+              const dd = String(new Date(ing.fecha.seconds * 1000).getDate()).padStart(2, '0');
+              const mm = String(new Date(ing.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+              const yy = new Date(ing.fecha.seconds * 1000).getFullYear();
+              ingresoFecha = `${dd}/${mm}/${yy}`;
+            }
+            return ingresoFecha === fechaSeleccionada;
+          }).length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} align="center" sx={{ color: "text.secondary" }}>
                 Sin ingresos
               </TableCell>
             </TableRow>
           ) : (
-            ingresos.map((ing, idx) => (
+            ingresos.filter(ing => {
+              if (!fechaSeleccionada) return false;
+              let ingresoFecha = '';
+              if (ing.fecha && typeof ing.fecha === 'string') {
+                const parts = ing.fecha.split(/[/-]/);
+                if (parts.length === 3) {
+                  ingresoFecha = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+                } else {
+                  ingresoFecha = ing.fecha;
+                }
+              } else if (ing.fecha && ing.fecha.seconds) {
+                const dd = String(new Date(ing.fecha.seconds * 1000).getDate()).padStart(2, '0');
+                const mm = String(new Date(ing.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+                const yy = new Date(ing.fecha.seconds * 1000).getFullYear();
+                ingresoFecha = `${dd}/${mm}/${yy}`;
+              }
+              return ingresoFecha === fechaSeleccionada;
+            }).map((ing, idx) => (
               <TableRow key={idx}>
                 <TableCell>{idx + 1}</TableCell>
-                <TableCell>{ing.fecha}</TableCell>
-                <TableCell>{ing.factura || '-'}</TableCell>
+                <TableCell>{
+                  ing.fecha && typeof ing.fecha === 'string'
+                    ? (() => {
+                        const parts = ing.fecha.split(/[/-]/);
+                        if (parts.length === 3) {
+                          // Si ya está en dd/mm/yyyy, mostrar igual
+                          return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
+                        }
+                        return ing.fecha;
+                      })()
+                    : ing.fecha && ing.fecha.seconds
+                      ? new Date(ing.fecha.seconds * 1000).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                      : '-'
+                }</TableCell>
+                <TableCell>{ing.factura || ing.descripcion || '-'}</TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                   {Math.abs(ing.monto).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </TableCell>

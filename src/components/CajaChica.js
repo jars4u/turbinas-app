@@ -12,12 +12,16 @@ import {
   TableBody,
   Paper,
   Divider,
+  LinearProgress,
 } from "@mui/material";
 
 export default function CajaChica({ tasaBCV }) {
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
+    setLoading(true);
     obtenerMovimientosCajaChica().then(movs => {
       setMovimientos(movs); // Ya vienen ordenados por fecha descendente
+      setLoading(false);
     });
   }, []);
   const [grupoVisible, setGrupoVisible] = useState('egreso');
@@ -229,16 +233,34 @@ export default function CajaChica({ tasaBCV }) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {movimientos.length === 0 ? (
+          {loading ? (
             <TableRow>
-              <TableCell colSpan={4} align="center" sx={{ color: "text.secondary" }}>
+              <TableCell colSpan={5} align="center" sx={{ p: 0 }}>
+                <LinearProgress sx={{ width: '100%' }} />
+              </TableCell>
+            </TableRow>
+          ) : movimientos.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} align="center" sx={{ color: "text.secondary" }}>
                 Sin movimientos
               </TableCell>
             </TableRow>
           ) : (
             movimientos.map((mov, idx) => (
               <TableRow key={idx}>
-                <TableCell>{mov.fecha}</TableCell>
+                <TableCell>{
+                  mov.fecha && typeof mov.fecha === 'string'
+                    ? (() => {
+                        const parts = mov.fecha.split(/[/-]/);
+                        if (parts.length === 3) {
+                          return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
+                        }
+                        return mov.fecha;
+                      })()
+                    : mov.fecha && mov.fecha.seconds
+                      ? new Date(mov.fecha.seconds * 1000).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                      : '-'
+                }</TableCell>
                 <TableCell>{mov.tipo}</TableCell>
                 <TableCell>{mov.descripcion || "-"}</TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>

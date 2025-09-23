@@ -4,7 +4,7 @@ export async function guardarEgreso(egreso) {
   const db = getFirestore();
   await addDoc(collection(db, "egresos"), {
     ...egreso,
-    fecha: Timestamp.now(),
+  fecha: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
   });
 }
 

@@ -5,7 +5,8 @@ const MOVIMIENTOS_COLLECTION = "cajaChicaMovimientos";
 
 export async function guardarMovimientoCajaChica(movimiento) {
   // Guardar con fecha como Timestamp
-  const mov = { ...movimiento, fecha: Timestamp.fromDate(new Date()) };
+  const fechaStr = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const mov = { ...movimiento, fecha: fechaStr };
   await addDoc(collection(db, MOVIMIENTOS_COLLECTION), mov);
 }
 

@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Timestamp } from "firebase/firestore";
 import { guardarEgreso, obtenerEgresos } from "../lib/egresosFirebase";
 import {
@@ -25,6 +28,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
 export default function Egresos({ tasaBCV }) {
+  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [descripcion, setDescripcion] = useState("");
@@ -41,17 +45,27 @@ export default function Egresos({ tasaBCV }) {
 
   useEffect(() => {
     obtenerEgresos().then((data) => {
-      // Usar el campo original de Firestore para la fecha
+      // Usar el campo original de Firestore para la fecha y normalizar formato
       const egresosConFecha = data.map(e => {
         let fechaDate = null;
+        let fechaStr = "";
         if (e.fecha && e.fecha.seconds) {
           fechaDate = new Date(e.fecha.seconds * 1000);
+          const d = String(fechaDate.getDate()).padStart(2, '0');
+          const m = String(fechaDate.getMonth() + 1).padStart(2, '0');
+          const y = fechaDate.getFullYear();
+          fechaStr = `${d}/${m}/${y}`;
         } else if (e.fecha && typeof e.fecha === 'string') {
-          // Si es string, intentar parsear
-          const parsed = Date.parse(e.fecha);
-          fechaDate = isNaN(parsed) ? null : new Date(parsed);
+          const parts = e.fecha.split(/[/-]/);
+          if (parts.length === 3) {
+            fechaStr = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+            fechaDate = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+          } else {
+            fechaStr = e.fecha;
+            fechaDate = Date.parse(e.fecha) ? new Date(e.fecha) : null;
+          }
         }
-        return { ...e, _fechaDate: fechaDate };
+        return { ...e, _fechaDate: fechaDate, _fechaStr: fechaStr };
       });
       setEgresos(
         egresosConFecha.sort((a, b) => {
@@ -61,6 +75,15 @@ export default function Egresos({ tasaBCV }) {
         })
       );
       setLoading(false);
+      // Seleccionar el día de hoy por defecto si existe
+      const hoy = new Date();
+      const hoyStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
+      const fechas = egresosConFecha.map(e => e._fechaStr).filter(Boolean);
+      if (fechas.includes(hoyStr)) {
+        setTimeout(() => setFechaSeleccionada(hoyStr), 0);
+      } else if (fechas.length > 0) {
+        setTimeout(() => setFechaSeleccionada(fechas[0]), 0);
+      }
     });
   }, []);
 
@@ -73,19 +96,40 @@ export default function Egresos({ tasaBCV }) {
     } else if (bs && tasa) {
       usd = (Number(bs) / Number(tasa)).toFixed(2);
     }
+    const hoy = new Date();
+    const d = String(hoy.getDate()).padStart(2, '0');
+    const m = String(hoy.getMonth() + 1).padStart(2, '0');
+    const y = hoy.getFullYear();
     const egreso = {
       descripcion,
       montoUSD: Number(usd),
       montoBs: Number(bs),
       tasa: Number(tasa),
-      fecha: Timestamp.now(),
+      fecha: `${d}/${m}/${y}`,
     };
     await guardarEgreso(egreso);
     const actualizados = await obtenerEgresos();
-    const egresosConFecha = actualizados.map(e => ({
-      ...e,
-      _fechaDate: e.fecha && e.fecha.toDate ? e.fecha.toDate() : (e.fecha && e.fecha.seconds ? new Date(e.fecha.seconds * 1000) : null)
-    }));
+    const egresosConFecha = actualizados.map(e => {
+      let fechaDate = null;
+      let fechaStr = "";
+      if (e.fecha && typeof e.fecha === 'string') {
+        const parts = e.fecha.split(/[/-]/);
+        if (parts.length === 3) {
+          fechaStr = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+          fechaDate = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+        } else {
+          fechaStr = e.fecha;
+          fechaDate = Date.parse(e.fecha) ? new Date(e.fecha) : null;
+        }
+      } else if (e.fecha && e.fecha.seconds) {
+        fechaDate = new Date(e.fecha.seconds * 1000);
+        const dd = String(fechaDate.getDate()).padStart(2, '0');
+        const mm = String(fechaDate.getMonth() + 1).padStart(2, '0');
+        const yy = fechaDate.getFullYear();
+        fechaStr = `${dd}/${mm}/${yy}`;
+      }
+      return { ...e, _fechaDate: fechaDate, _fechaStr: fechaStr };
+    });
     setEgresos(
       egresosConFecha.sort((a, b) => {
         const fechaA = a._fechaDate ? a._fechaDate.getTime() : 0;
@@ -93,6 +137,7 @@ export default function Egresos({ tasaBCV }) {
         return fechaB - fechaA;
       })
     );
+    setFechaSeleccionada(`${d}/${m}/${y}`);
     setDescripcion("");
     setMontoUSD("");
     setMontoBs("");
@@ -207,9 +252,11 @@ export default function Egresos({ tasaBCV }) {
           <Button onClick={confirmDelete} color="error" autoFocus>Eliminar</Button>
         </DialogActions>
       </Dialog>
-      <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-        Registrar egreso
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 0 }}>
+          Registrar egreso
+        </Typography>
+      </Box>
       <Box
         sx={{
           display: "flex",
@@ -286,9 +333,61 @@ export default function Egresos({ tasaBCV }) {
         </Button>
       </Box>
       <Divider sx={{ mb: 2 }} />
-      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
-        Egresos registrados
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Egresos registrados
+        </Typography>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <DatePicker
+            label="Día"
+            views={["year", "month", "day"]}
+            value={fechaSeleccionada ? (() => {
+              const partes = fechaSeleccionada.split('/');
+              return new Date(
+                parseInt(partes[2]),
+                parseInt(partes[1]) - 1,
+                parseInt(partes[0])
+              );
+            })() : null}
+            onChange={date => {
+              if (date) {
+                const d = String(date.getDate()).padStart(2, '0');
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const y = date.getFullYear();
+                setFechaSeleccionada(`${d}/${m}/${y}`);
+              }
+            }}
+            renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
+            disableFuture
+            minDate={egresos.length > 0 ? (() => {
+              const fechas = egresos.map(e => e._fechaStr).filter(Boolean);
+              const min = fechas.sort((a, b) => {
+                const fa = Date.parse(a.split("/").reverse().join("-"));
+                const fb = Date.parse(b.split("/").reverse().join("-"));
+                return fa - fb;
+              })[0];
+              const partes = min.split('/');
+              return new Date(
+                parseInt(partes[2]),
+                parseInt(partes[1]) - 1,
+                parseInt(partes[0])
+              );
+            })() : undefined}
+            maxDate={(() => {
+              const hoy = new Date();
+              hoy.setHours(0, 0, 0, 0);
+              return hoy;
+            })()}
+            shouldDisableDate={date => {
+              const d = String(date.getDate()).padStart(2, '0');
+              const m = String(date.getMonth() + 1).padStart(2, '0');
+              const y = date.getFullYear();
+              const fechaStr = `${d}/${m}/${y}`;
+              return !egresos.some(e => e._fechaStr === fechaStr);
+            }}
+          />
+        </LocalizationProvider>
+      </Box>
       <Table component={Paper} size="small" sx={{ mb: 2 }}>
         <TableHead>
           {/* Fila de total de egresos al inicio */}
@@ -319,10 +418,10 @@ export default function Egresos({ tasaBCV }) {
                 <LinearProgress sx={{ width: '100%' }} />
               </TableCell>
             </TableRow>
-          ) : egresos.length === 0 ? (
+          ) : egresos.filter(e => e._fechaStr === fechaSeleccionada).length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={4}
+                colSpan={6}
                 align="center"
                 sx={{ color: "text.secondary" }}
               >
@@ -330,7 +429,7 @@ export default function Egresos({ tasaBCV }) {
               </TableCell>
             </TableRow>
           ) : (
-            egresos.map((e, idx) => (
+            egresos.filter(e => e._fechaStr === fechaSeleccionada).map((e, idx) => (
               <TableRow key={e.id || idx}>
                 <TableCell>
                   {e._fechaDate
