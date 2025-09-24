@@ -184,6 +184,15 @@ export default function ResumenContable({ tasaBCV }) {
             let totalEgresosBs = cierre?.totalEgresosBs ?? (tasaDia ? totalEgresosUSD * tasaDia : egresos.reduce((acc, e) => acc + (Number(e.montoBs) || 0), 0));
             let utilidadUSD = cierre?.utilidadUSD ?? (totalIngresosUSD - totalEgresosUSD);
             let utilidadBs = cierre?.utilidadBs ?? (tasaDia ? utilidadUSD * tasaDia : totalIngresosBs - totalEgresosBs);
+
+            // Agrupar ingresos por forma de pago
+            const pagosPorForma = ingresos.reduce((acc, i) => {
+              const forma = i.formaPago || "Sin especificar";
+              if (!acc[forma]) acc[forma] = 0;
+              acc[forma] += Number(i.montoUSD || i.monto || 0);
+              return acc;
+            }, {});
+
             return (
               <Box key={fechaSeleccionada} sx={{ mb: 4 }}>
                 <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
@@ -201,6 +210,27 @@ export default function ResumenContable({ tasaBCV }) {
                           ? `${tasaDia.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`
                           : "No disponible"}
                     </Typography>
+                  </Box>
+                  {/* Mostrar montos por forma de pago como subtítulo */}
+                  <Box sx={{ mb: 1, mt: 1 }}>
+                    {Object.entries(pagosPorForma)
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([forma, monto]) => (
+                        <Typography key={forma} variant="body2" sx={{ mb: 0.5, pl: 1 }}>
+                          <b>{forma}: </b>
+                          {forma === 'Sin especificar' ? (
+                            <span style={{ color: '#d32f2f', fontWeight: 700 }}>
+                              ${monto.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </span>
+                          ) : (
+                            <>${monto.toLocaleString("en-US", { minimumFractionDigits: 2 })}</>
+                          )}
+                          {' | Bs. '}
+                          <span style={forma === 'Sin especificar' ? { color: '#d32f2f', fontWeight: 700 } : {}}>
+                            {(monto * tasaDia).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                          </span>
+                        </Typography>
+                    ))}
                   </Box>
                   <Typography>
                     <b>Egresos totales:</b> $ {totalEgresosUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. {totalEgresosBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
@@ -242,7 +272,12 @@ export default function ResumenContable({ tasaBCV }) {
                             <TableRow key={idx} sx={{ height: 28 }}>
                               <TableCell sx={{ py: 0.5, fontSize: 13 }}>{i.descripcion}</TableCell>
                               <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>{(i.monto || i.montoUSD).toLocaleString("en-US", { minimumFractionDigits: 2 })}</TableCell>
-                              <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>{(i.montoBs || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>
+                                {((i.montoBs && i.montoBs > 0)
+                                  ? i.montoBs
+                                  : (i.montoUSD || i.monto || 0) * tasaDia
+                                ).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                              </TableCell>
                             </TableRow>
                           ))
                         )}
@@ -274,7 +309,12 @@ export default function ResumenContable({ tasaBCV }) {
                             <TableRow key={idx} sx={{ height: 28 }}>
                               <TableCell sx={{ py: 0.5, fontSize: 13 }}>{e.descripcion}</TableCell>
                               <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>{e.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}</TableCell>
-                              <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>{e.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>
+                                {((e.montoBs && e.montoBs > 0)
+                                  ? e.montoBs
+                                  : (e.montoUSD || 0) * (e.tasa || tasaDia)
+                                ).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                              </TableCell>
                               <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>{e.tasa ? e.tasa.toLocaleString("de-DE", { minimumFractionDigits: 2 }) : "-"}</TableCell>
                             </TableRow>
                           ))

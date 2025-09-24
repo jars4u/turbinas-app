@@ -30,6 +30,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from "@mui/icons-material/Delete";
 import EstadosServicios from "./EstadosServicios";
+import ConfiguracionCajaChica from "../components/ConfiguracionCajaChica";
 
 export default function Configuracion({ usuario, isAdmin }) {
   const navigate = useNavigate();
@@ -236,6 +237,8 @@ export default function Configuracion({ usuario, isAdmin }) {
           {/* Módulo de estados de servicios */}
           <Divider sx={{ my: 4 }} />
           <EstadosServicios />
+          <Divider sx={{ my: 4 }} />
+          <ConfiguracionCajaChica />
         </Box>
       )}
       {!isAdmin && (

@@ -5,8 +5,7 @@ const MOVIMIENTOS_COLLECTION = "cajaChicaMovimientos";
 
 export async function guardarMovimientoCajaChica(movimiento) {
   // Guardar con fecha como Timestamp
-  const fechaStr = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const mov = { ...movimiento, fecha: fechaStr };
+  const mov = { ...movimiento, fecha: Timestamp.now() };
   await addDoc(collection(db, MOVIMIENTOS_COLLECTION), mov);
 }
 
@@ -16,10 +15,19 @@ export async function obtenerMovimientosCajaChica() {
   const docs = snapshot.docs
     .map(doc => {
       const data = doc.data();
+      let fechaStr = "";
+      let fechaRaw = null;
+      if (data.fecha && typeof data.fecha.toDate === "function") {
+        fechaRaw = data.fecha.toDate();
+        fechaStr = fechaRaw.toLocaleDateString('es-VE');
+      } else if (typeof data.fecha === "string") {
+        fechaStr = data.fecha;
+        fechaRaw = Date.parse(data.fecha) ? new Date(data.fecha) : null;
+      }
       return {
         ...data,
-        fecha: data.fecha && data.fecha.toDate ? data.fecha.toDate().toLocaleDateString('es-VE') : '',
-        fechaRaw: data.fecha && data.fecha.toDate ? data.fecha.toDate() : null,
+        fecha: fechaStr,
+        fechaRaw,
         id: doc.id
       };
     })

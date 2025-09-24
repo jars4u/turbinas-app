@@ -45,7 +45,7 @@ export default function Egresos({ tasaBCV }) {
 
   useEffect(() => {
     obtenerEgresos().then((data) => {
-      // Usar el campo original de Firestore para la fecha y normalizar formato
+      // Normalizar la fecha a formato dd/mm/yyyy para todos los egresos
       const egresosConFecha = data.map(e => {
         let fechaDate = null;
         let fechaStr = "";
