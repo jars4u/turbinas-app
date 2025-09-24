@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Skeleton from '@mui/material/Skeleton';
 import dayjs from "dayjs";
 import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { obtenerEgresos } from "../lib/egresosFirebase";
@@ -121,7 +122,19 @@ export default function ResumenContable({ tasaBCV }) {
     });
   }, []);
 
-  if (loading) return <Typography>Cargando resumen...</Typography>;
+  if (loading) return (
+    <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Skeleton variant="text" width={180} height={38} />
+        <Skeleton variant="rectangular" width={160} height={38} />
+      </Box>
+      <Divider sx={{ mb: 2 }} />
+      <Skeleton variant="rectangular" height={60} sx={{ mb: 2 }} />
+      <Skeleton variant="text" width={220} height={32} sx={{ mb: 1 }} />
+      <Skeleton variant="rectangular" height={120} sx={{ mb: 2 }} />
+      <Skeleton variant="rectangular" height={120} sx={{ mb: 2 }} />
+    </Box>
+  );
 
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>

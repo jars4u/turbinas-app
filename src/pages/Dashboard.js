@@ -366,7 +366,14 @@ export default function Dashboard({ usuario, onLogout }) {
             ))}
         </Grid>
       )}
-      <Dialog open={open} onClose={handleClose}>
+      <Dialog
+        open={open}
+        onClose={(event, reason) => {
+          if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+            handleClose();
+          }
+        }}
+      >
         <DialogContent
           sx={{ minWidth: 400, maxWidth: 500, pt: 3, position: "relative" }}
         >
@@ -434,7 +441,11 @@ export default function Dashboard({ usuario, onLogout }) {
               );
             })()}
           {/* Modal de confirmación para eliminar */}
-          <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete}>
+          <Dialog open={confirmDeleteOpen} onClose={(event, reason) => {
+            if (reason !== 'backdropClick') {
+              handleCancelDelete();
+            }
+          }}>
             <DialogTitle>Confirmar eliminación</DialogTitle>
             <DialogContent>
               <Typography>

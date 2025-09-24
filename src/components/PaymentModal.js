@@ -38,7 +38,14 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog
+      open={open}
+      onClose={(event, reason) => {
+        if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+          onClose();
+        }
+      }}
+    >
       <DialogTitle>Facturación</DialogTitle>
       <DialogContent sx={{ minWidth: 350, maxWidth: 400 }}>
         <Box sx={{ mb: 2 }}>

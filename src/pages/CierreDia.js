@@ -161,7 +161,7 @@ export default function CierreDia() {
         {/* 1/3: Tasa BCV */}
         <Box
           sx={{
-            flex: { xs: "1 1 100%", md: "1 1 33%" },
+            flex: { xs: "1 1 100%", md: "1 1 20%" },
             minWidth: 0,
             maxWidth: { md: "33%" },
             width: { md: "33%" },
@@ -321,7 +321,7 @@ export default function CierreDia() {
         {/* 2/3: Tabla y resumen */}
         <Box
           sx={{
-            flex: { xs: "1 1 100%", md: "2 1 67%" },
+            flex: { xs: "1 1 100%", md: "2 1 80%" },
             minWidth: 0,
             maxWidth: { md: "67%" },
             width: { md: "67%" },

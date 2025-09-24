@@ -93,7 +93,7 @@ export default function CajaChica({ tasaBCV }) {
   };
 
   return (
-    <Box sx={{ maxWidth: 700, mx: "auto", p: 2 }}>
+    <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
       <Typography variant="h6" fontWeight={700} gutterBottom>
         Cuadre de Caja Chica
       </Typography>

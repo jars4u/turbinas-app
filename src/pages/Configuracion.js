@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
 import React, { useEffect, useState } from "react";
-import { registrarUsuario, obtenerUsuarios, actualizarUsuario, eliminarUsuario } from "../lib/usuariosFirebase";
 import {
   Container,
   Typography,
@@ -26,13 +25,39 @@ import {
   AccordionSummary,
   AccordionDetails,
   Divider,
+  CircularProgress,
 } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from "@mui/icons-material/Delete";
 import EstadosServicios from "./EstadosServicios";
 import ConfiguracionCajaChica from "../components/ConfiguracionCajaChica";
+import { getFirestore, collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { registrarUsuario, obtenerUsuarios, actualizarUsuario, eliminarUsuario } from "../lib/usuariosFirebase";
 
 export default function Configuracion({ usuario, isAdmin }) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
+
+  // Función para borrar todos los movimientos y vehículos
+  const handleDeleteAllData = async () => {
+    setDeleting(true);
+    setDeleteMsg("");
+    try {
+      const db = getFirestore();
+      // Borrar movimientos caja chica
+      const movSnap = await getDocs(collection(db, "cajaChicaMovimientos"));
+      const movPromises = movSnap.docs.map((d) => deleteDoc(d.ref));
+      // Borrar vehículos
+      const vehSnap = await getDocs(collection(db, "vehiculos"));
+      const vehPromises = vehSnap.docs.map((d) => deleteDoc(d.ref));
+      await Promise.all([...movPromises, ...vehPromises]);
+      setDeleteMsg("¡Datos borrados correctamente!");
+    } catch (err) {
+      setDeleteMsg("Error al borrar datos: " + (err.message || ""));
+    }
+    setDeleting(false);
+  };
   const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState([]);
   const [open, setOpen] = useState(false);
@@ -155,7 +180,7 @@ export default function Configuracion({ usuario, isAdmin }) {
                       <TableCell sx={{ py: 0.5, px: 1, flex: 1, textAlign: 'right' }}>
                         <Tooltip title="Eliminar">
                           <IconButton
-                            color="error"
+                            // ...existing code...
                             onClick={() => handleDelete(u.id)}
                             size="small"
                             sx={{ p: 0.5 }}
@@ -239,6 +264,32 @@ export default function Configuracion({ usuario, isAdmin }) {
           <EstadosServicios />
           <Divider sx={{ my: 4 }} />
           <ConfiguracionCajaChica />
+          {/* Botón para borrar todos los datos al final */}
+          <Divider sx={{ my: 4 }} />
+          {/* <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button color="error" variant="contained" onClick={() => setDeleteDialogOpen(true)}>
+              Borrar todos los datos
+            </Button>
+          </Box> */}
+          <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+            <DialogTitle>Advertencia</DialogTitle>
+            <DialogContent>
+              <Typography color="error" fontWeight={600} mb={2}>
+                ¿Seguro que deseas borrar <u>todos los datos</u> de movimientos y vehículos?
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Esta acción eliminará todos los registros y no se puede deshacer. Los esquemas y configuraciones se mantendrán.
+              </Typography>
+              {deleting && <Box sx={{ mt: 2 }}><CircularProgress size={24} /></Box>}
+              {deleteMsg && <Typography sx={{ mt: 2 }} color={deleteMsg.startsWith('¡') ? 'success.main' : 'error'}>{deleteMsg}</Typography>}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeleteDialogOpen(false)} color="primary" disabled={deleting}>Cancelar</Button>
+              <Button onClick={handleDeleteAllData} color="error" variant="contained" disabled={deleting}>
+                Borrar datos
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       )}
       {!isAdmin && (
