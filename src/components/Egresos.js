@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 import { Timestamp } from "firebase/firestore";
 import { guardarEgreso, obtenerEgresos } from "../lib/egresosFirebase";
 import {
@@ -337,56 +338,41 @@ export default function Egresos({ tasaBCV }) {
         <Typography variant="subtitle1" fontWeight={600}>
           Egresos registrados
         </Typography>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <DatePicker
-            label="Día"
-            views={["year", "month", "day"]}
-            value={fechaSeleccionada ? (() => {
-              const partes = fechaSeleccionada.split('/');
-              return new Date(
-                parseInt(partes[2]),
-                parseInt(partes[1]) - 1,
-                parseInt(partes[0])
-              );
-            })() : null}
-            onChange={date => {
-              if (date) {
-                const d = String(date.getDate()).padStart(2, '0');
-                const m = String(date.getMonth() + 1).padStart(2, '0');
-                const y = date.getFullYear();
-                setFechaSeleccionada(`${d}/${m}/${y}`);
-              }
-            }}
-            renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
-            disableFuture
-            minDate={egresos.length > 0 ? (() => {
-              const fechas = egresos.map(e => e._fechaStr).filter(Boolean);
-              const min = fechas.sort((a, b) => {
-                const fa = Date.parse(a.split("/").reverse().join("-"));
-                const fb = Date.parse(b.split("/").reverse().join("-"));
-                return fa - fb;
-              })[0];
-              const partes = min.split('/');
-              return new Date(
-                parseInt(partes[2]),
-                parseInt(partes[1]) - 1,
-                parseInt(partes[0])
-              );
-            })() : undefined}
-            maxDate={(() => {
-              const hoy = new Date();
-              hoy.setHours(0, 0, 0, 0);
-              return hoy;
-            })()}
-            shouldDisableDate={date => {
-              const d = String(date.getDate()).padStart(2, '0');
-              const m = String(date.getMonth() + 1).padStart(2, '0');
-              const y = date.getFullYear();
-              const fechaStr = `${d}/${m}/${y}`;
-              return !egresos.some(e => e._fechaStr === fechaStr);
-            }}
-          />
-        </LocalizationProvider>
+  <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <DatePicker
+      label="Día"
+      views={["year", "month", "day"]}
+      value={fechaSeleccionada ? dayjs(fechaSeleccionada.split('/').reverse().join('-')) : null}
+      onChange={date => {
+        if (date && dayjs(date).isValid()) {
+          const d = String(dayjs(date).date()).padStart(2, '0');
+          const m = String(dayjs(date).month() + 1).padStart(2, '0');
+          const y = dayjs(date).year();
+          setFechaSeleccionada(`${d}/${m}/${y}`);
+        }
+      }}
+      renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
+      disableFuture
+      minDate={egresos.length > 0 ? (() => {
+        const fechas = egresos.map(e => e._fechaStr).filter(Boolean);
+        const min = fechas.sort((a, b) => {
+          const fa = Date.parse(a.split("/").reverse().join("-"));
+          const fb = Date.parse(b.split("/").reverse().join("-"));
+          return fa - fb;
+        })[0];
+        return dayjs(min.split('/').reverse().join('-'));
+      })() : undefined}
+      maxDate={dayjs().startOf('day')}
+      shouldDisableDate={date => {
+        if (!dayjs(date).isValid()) return true;
+        const d = String(dayjs(date).date()).padStart(2, '0');
+        const m = String(dayjs(date).month() + 1).padStart(2, '0');
+        const y = dayjs(date).year();
+        const fechaStr = `${d}/${m}/${y}`;
+        return !egresos.some(e => e._fechaStr === fechaStr);
+      }}
+    />
+  </LocalizationProvider>
       </Box>
       <Table component={Paper} size="small" sx={{ mb: 2 }}>
         <TableHead>
