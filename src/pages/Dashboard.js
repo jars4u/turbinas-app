@@ -17,6 +17,7 @@ import {
   MenuItem,
   Snackbar,
   Alert,
+  Autocomplete,
 } from "@mui/material";
 import PaymentModal from "../components/PaymentModal";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -38,6 +39,27 @@ import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
 
 export default function Dashboard({ usuario, onLogout }) {
+  // Clientes base: extraer de vehículos
+  const [clientes, setClientes] = useState([]);
+  useEffect(() => {
+    obtenerVehiculos().then((data) => {
+      // Extraer clientes únicos por nombre y teléfono
+      const clientesUnicos = [];
+      const seen = new Set();
+      data.forEach(v => {
+        const nombre = v.customerName?.trim() || "";
+        const telefono = v.customerPhone?.trim() || "";
+        if (nombre && telefono) {
+          const key = nombre + "|" + telefono;
+          if (!seen.has(key)) {
+            clientesUnicos.push({ nombre, telefono });
+            seen.add(key);
+          }
+        }
+      });
+      setClientes(clientesUnicos);
+    });
+  }, []);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
   const [facturaOpen, setFacturaOpen] = useState(false);
@@ -989,16 +1011,31 @@ export default function Dashboard({ usuario, onLogout }) {
           >
             {editSection === "cliente" || isRegistering ? (
               <>
-                <TextField
-                  margin="none"
-                  label="Cliente (Nombre)"
-                  name="customerName"
-                  fullWidth
-                  size="small"
-                  value={form.customerName}
-                  onChange={handleChange}
-                  sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
+                <Autocomplete
+                  options={clientes}
+                  getOptionLabel={opt => opt.nombre + (opt.telefono ? ` (${opt.telefono})` : "")}
+                  freeSolo
+                  value={clientes.find(c => c.nombre === form.customerName && c.telefono === form.customerPhone) || { nombre: form.customerName, telefono: form.customerPhone }}
+                  onChange={(e, value) => {
+                    if (value) {
+                      setForm({ ...form, customerName: value.nombre, customerPhone: value.telefono });
+                    }
+                  }}
+                  sx={{ width: '100%' }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      margin="none"
+                      label="Cliente (Nombre)"
+                      name="customerName"
+                      fullWidth
+                      size="small"
+                      value={form.customerName}
+                      onChange={e => setForm({ ...form, customerName: e.target.value })}
+                      sx={{ mb: 1.5, width: '100%' }}
+                      InputProps={{ ...params.InputProps, sx: { fontSize: "1rem", py: 0.5 } }}
+                    />
+                  )}
                 />
                 <TextField
                   margin="none"
@@ -1006,11 +1043,7 @@ export default function Dashboard({ usuario, onLogout }) {
                   name="customerPhone"
                   fullWidth
                   size="small"
-                  value={
-                    form.customerPhone.startsWith("+58")
-                      ? form.customerPhone
-                      : "+58" + form.customerPhone.replace(/^0+/, "")
-                  }
+                  value={form.customerPhone.startsWith("+58") ? form.customerPhone : "+58" + form.customerPhone.replace(/^0+/, "")}
                   onChange={(e) => {
                     let value = e.target.value;
                     // Forzar el prefijo +58
