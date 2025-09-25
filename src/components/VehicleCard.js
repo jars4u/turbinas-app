@@ -173,7 +173,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
             open={Boolean(anchorEl)}
             onClose={handleClose}
           >
-            {estadosServicio.map((estado) => (
+            {estadosServicio.filter(e => e.nombre !== "entregado").map((estado) => (
               <MenuItem
                 key={estado.nombre}
                 selected={estado.nombre === currentStatus}
