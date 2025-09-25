@@ -19,6 +19,9 @@ import {
   Paper,
   Divider,
   LinearProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
@@ -93,7 +96,7 @@ export default function CajaChica({ tasaBCV }) {
   };
 
   return (
-    <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
+  <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
       <Typography variant="h6" fontWeight={700} gutterBottom>
         Cuadre de Caja Chica
       </Typography>
@@ -124,7 +127,8 @@ export default function CajaChica({ tasaBCV }) {
         </Box>
       </Box>
 
-      <Box sx={{ mb: 2 }}>
+      {/* xs: Accordion, sm+: bloque normal */}
+      <Box sx={{ display: { xs: 'none', sm: 'block' }, mb: 2 }}>
         <Typography
           variant="subtitle2"
           fontWeight={600}
@@ -185,7 +189,69 @@ export default function CajaChica({ tasaBCV }) {
           </Button>
         </Box>
       </Box>
-      <Table component={Paper} size="small" sx={{ mb: 2 }}>
+      <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 2 }}>
+        <Accordion>
+          <AccordionSummary expandIcon={<span>▼</span>}>
+            <Typography variant="subtitle2" fontWeight={600} color="error">Agregar salida de caja chica</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="Descripción"
+                size="small"
+                value={egresoDesc}
+                onChange={(e) => setEgresoDesc(e.target.value)}
+                sx={{ mb: 1 }}
+              />
+              <TextField
+                label="Monto ($)"
+                type="number"
+                size="small"
+                value={egresoMontoUSD}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEgresoMontoUSD(val);
+                  if (val !== "" && !isNaN(Number(val))) {
+                    setEgresoMontoBs((Number(val) * tasaBCV).toFixed(2));
+                  } else {
+                    setEgresoMontoBs("");
+                  }
+                }}
+                sx={{ mb: 1, bgcolor: "#f5f5f5", color: "text.secondary" }}
+                inputProps={{ min: 0 }}
+              />
+              <TextField
+                label="Monto (Bs)"
+                type="number"
+                size="small"
+                value={egresoMontoBs}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEgresoMontoBs(val);
+                  if (val !== "" && !isNaN(Number(val))) {
+                    setEgresoMontoUSD((Number(val) / tasaBCV).toFixed(2));
+                  } else {
+                    setEgresoMontoUSD("");
+                  }
+                }}
+                sx={{ mb: 1, bgcolor: "#f5f5f5", color: "text.secondary" }}
+                inputProps={{ min: 0 }}
+              />
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleAgregarEgreso}
+                disabled={!egresoDesc || (!egresoMontoUSD && !egresoMontoBs)}
+                sx={{ mb: 1 }}
+              >
+                Agregar
+              </Button>
+            </Box>
+          </AccordionDetails>
+        </Accordion>
+      </Box>
+      <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+        <Table component={Paper} size="small" sx={{ mb: 2 }}>
         {/* Boxes para fondo y saldo fuera de la tabla */}
         <TableHead>
           <TableRow>
@@ -349,7 +415,8 @@ export default function CajaChica({ tasaBCV }) {
             </>
           )}
         </TableBody>
-      </Table>
+        </Table>
+      </Box>
       <Snackbar
         open={snackOpen}
         autoHideDuration={3500}

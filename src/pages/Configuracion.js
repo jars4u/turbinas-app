@@ -260,18 +260,18 @@ export default function Configuracion({ usuario, isAdmin }) {
             </DialogActions>
           </Dialog>
           {/* Módulo de estados de servicios */}
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={{ my: { xs: 2, sm: 4 } }} />
           <EstadosServicios />
           <Divider sx={{ my: 4 }} />
           <ConfiguracionCajaChica />
           {/* Botón para borrar todos los datos al final */}
           <Divider sx={{ my: 4 }} />
-          {/* <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button color="error" variant="contained" onClick={() => setDeleteDialogOpen(true)}>
+          {/* <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>
+            <Button color="error" variant="contained" onClick={() => setDeleteDialogOpen(true)} sx={{ width: { xs: '100%', sm: 'auto' } }}>
               Borrar todos los datos
             </Button>
           </Box> */}
-          <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+          <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullWidth maxWidth="xs">
             <DialogTitle>Advertencia</DialogTitle>
             <DialogContent>
               <Typography color="error" fontWeight={600} mb={2}>

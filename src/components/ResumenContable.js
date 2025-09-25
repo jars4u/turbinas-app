@@ -137,20 +137,26 @@ export default function ResumenContable({ tasaBCV }) {
   );
 
   return (
-    <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
+    <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
       <Box
         sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'center', sm: 'center' },
+          justifyContent: { xs: 'center', sm: 'space-between' },
           mb: 2,
+          gap: { xs: 2, sm: 0 },
         }}
       >
-        <Typography variant="h5" fontWeight={700} gutterBottom>
+        <Typography
+          variant="h5"
+          fontWeight={700}
+          gutterBottom
+          sx={{ textAlign: { xs: 'center', sm: 'left' }, width: { xs: '100%', sm: 'auto' } }}
+        >
           Resumen diario
         </Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {/* <Typography variant="subtitle1">Selecciona el día:</Typography> */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'center', sm: 'flex-start' } }}>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
               label="Día"
@@ -235,40 +241,33 @@ export default function ResumenContable({ tasaBCV }) {
             (() => {
               const { ingresos, egresos } = datosPorDia[fechaSeleccionada];
               const cierre = cierresPorDia[fechaSeleccionada];
-              // Si hay cierre, mostrar la tasa guardada; si no, mostrar la tasaBCV recibida por prop
-              let tasaDia = cierre?.tasa ?? tasaBCV;
-              let totalIngresosUSD =
-                cierre?.totalIngresosUSD ??
-                ingresos.reduce(
-                  (acc, i) => acc + Number(i.montoUSD || i.monto || 0),
-                  0
-                );
-              let totalIngresosBs =
-                cierre?.totalIngresosBs ??
-                (tasaDia
-                  ? totalIngresosUSD * tasaDia
-                  : ingresos.reduce(
-                      (acc, i) => acc + (Number(i.montoBs) || 0),
-                      0
-                    ));
-              let totalEgresosUSD =
-                cierre?.totalEgresosUSD ??
-                egresos.reduce((acc, e) => acc + (Number(e.montoUSD) || 0), 0);
-              let totalEgresosBs =
-                cierre?.totalEgresosBs ??
-                (tasaDia
-                  ? totalEgresosUSD * tasaDia
-                  : egresos.reduce(
-                      (acc, e) => acc + (Number(e.montoBs) || 0),
-                      0
-                    ));
-              let utilidadUSD =
-                cierre?.utilidadUSD ?? totalIngresosUSD - totalEgresosUSD;
-              let utilidadBs =
-                cierre?.utilidadBs ??
-                (tasaDia
-                  ? utilidadUSD * tasaDia
-                  : totalIngresosBs - totalEgresosBs);
+
+              // Usar la tasa histórica del cierre del día para todos los cálculos y visualización
+              const tasaHistorica = cierre?.tasa ?? tasaBCV;
+              let totalIngresosUSD = cierre?.totalIngresosUSD ?? ingresos.reduce(
+                (acc, i) => acc + Number(i.montoUSD || i.monto || 0),
+                0
+              );
+              let totalIngresosBs = cierre?.totalIngresosBs ?? (
+                tasaHistorica
+                  ? totalIngresosUSD * tasaHistorica
+                  : ingresos.reduce((acc, i) => acc + (Number(i.montoBs) || 0), 0)
+              );
+              let totalEgresosUSD = cierre?.totalEgresosUSD ?? egresos.reduce(
+                (acc, e) => acc + (Number(e.montoUSD) || 0),
+                0
+              );
+              let totalEgresosBs = cierre?.totalEgresosBs ?? (
+                tasaHistorica
+                  ? totalEgresosUSD * tasaHistorica
+                  : egresos.reduce((acc, e) => acc + (Number(e.montoBs) || 0), 0)
+              );
+              let utilidadUSD = cierre?.utilidadUSD ?? totalIngresosUSD - totalEgresosUSD;
+              let utilidadBs = cierre?.utilidadBs ?? (
+                tasaHistorica
+                  ? utilidadUSD * tasaHistorica
+                  : totalIngresosBs - totalEgresosBs
+              );
 
               // Agrupar ingresos por forma de pago
               const pagosPorForma = ingresos.reduce((acc, i) => {
@@ -288,11 +287,30 @@ export default function ResumenContable({ tasaBCV }) {
                     Fecha: {fechaSeleccionada}
                   </Typography>
                   <Paper sx={{ p: 2, mb: 2, bgcolor: "#f5f5f5" }}>
+                  {/* Tasa BCV en bloque al inicio para móviles */}
+                  <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 1 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                    >
+                      Tasa BCV:{" "}
+                      {cierre?.tasa
+                        ? `${cierre.tasa.toLocaleString("de-DE", {
+                            minimumFractionDigits: 2,
+                          })} (histórica)`
+                        : tasaBCV
+                        ? `${tasaBCV.toLocaleString("de-DE", {
+                            minimumFractionDigits: 2,
+                          })}`
+                        : "No disponible"}
+                    </Typography>
+                  </Box>
                     <Box
                       sx={{
                         display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        justifyContent: { xs: 'flex-start', sm: 'space-between' },
+                        alignItems: { xs: 'flex-start', sm: 'center' },
                       }}
                     >
                       <Typography>
@@ -305,22 +323,25 @@ export default function ResumenContable({ tasaBCV }) {
                           minimumFractionDigits: 2,
                         })}
                       </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ ml: 2 }}
-                      >
-                        Tasa BCV:{" "}
-                        {cierre?.tasa
-                          ? `${cierre.tasa.toLocaleString("de-DE", {
-                              minimumFractionDigits: 2,
-                            })} (guardada)`
-                          : tasaDia
-                          ? `${tasaDia.toLocaleString("de-DE", {
-                              minimumFractionDigits: 2,
-                            })}`
-                          : "No disponible"}
-                      </Typography>
+                      {/* Tasa BCV en línea para desktop */}
+                      <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ ml: 2 }}
+                        >
+                          Tasa BCV:{" "}
+                          {cierre?.tasa
+                            ? `${cierre.tasa.toLocaleString("de-DE", {
+                                minimumFractionDigits: 2,
+                              })} (histórica)`
+                            : tasaBCV
+                            ? `${tasaBCV.toLocaleString("de-DE", {
+                                minimumFractionDigits: 2,
+                              })}`
+                            : "No disponible"}
+                        </Typography>
+                      </Box>
                     </Box>
                     {/* Mostrar montos por forma de pago como subtítulo */}
                     <Box sx={{ mb: 1, mt: 1 }}>
@@ -358,7 +379,7 @@ export default function ResumenContable({ tasaBCV }) {
                                   : {}
                               }
                             >
-                              {(monto * tasaDia).toLocaleString("de-DE", {
+                              {(monto * tasaHistorica).toLocaleString("de-DE", {
                                 minimumFractionDigits: 2,
                               })}
                             </span>
@@ -421,76 +442,78 @@ export default function ResumenContable({ tasaBCV }) {
                       </Typography>
                     </AccordionSummary>
                     <AccordionDetails sx={{ py: 0.5 }}>
-                      <Table
-                        component={Paper}
-                        size="small"
-                        sx={{ boxShadow: "none", mb: 0 }}
-                      >
-                        <TableHead>
-                          <TableRow sx={{ height: 28 }}>
-                            <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                              Descripción
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Monto ($)
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Monto (Bs)
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {ingresos.length === 0 ? (
-                            <TableRow>
+                      <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+                        <Table
+                          component={Paper}
+                          size="small"
+                          sx={{ boxShadow: "none", mb: 0, minWidth: 340 }}
+                        >
+                          <TableHead>
+                            <TableRow sx={{ height: 28 }}>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                Descripción
+                              </TableCell>
                               <TableCell
-                                colSpan={3}
-                                align="center"
-                                sx={{
-                                  color: "text.secondary",
-                                  py: 0.5,
-                                  fontSize: 13,
-                                }}
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
                               >
-                                Sin ingresos
+                                Monto ($)
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
+                              >
+                                Monto (Bs)
                               </TableCell>
                             </TableRow>
-                          ) : (
-                            ingresos.map((i, idx) => (
-                              <TableRow key={idx} sx={{ height: 28 }}>
-                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                  {i.descripcion}
-                                </TableCell>
+                          </TableHead>
+                          <TableBody>
+                            {ingresos.length === 0 ? (
+                              <TableRow>
                                 <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
+                                  colSpan={3}
+                                  align="center"
+                                  sx={{
+                                    color: "text.secondary",
+                                    py: 0.5,
+                                    fontSize: 13,
+                                  }}
                                 >
-                                  {(i.monto || i.montoUSD).toLocaleString(
-                                    "en-US",
-                                    { minimumFractionDigits: 2 }
-                                  )}
-                                </TableCell>
-                                <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
-                                >
-                                  {(i.montoBs && i.montoBs > 0
-                                    ? i.montoBs
-                                    : (i.montoUSD || i.monto || 0) * tasaDia
-                                  ).toLocaleString("de-DE", {
-                                    minimumFractionDigits: 2,
-                                  })}
+                                  Sin ingresos
                                 </TableCell>
                               </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
+                            ) : (
+                              ingresos.map((i, idx) => (
+                                <TableRow key={idx} sx={{ height: 28 }}>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                    {i.descripcion}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {(i.monto || i.montoUSD).toLocaleString(
+                                      "en-US",
+                                      { minimumFractionDigits: 2 }
+                                    )}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {(i.montoBs && i.montoBs > 0
+                                      ? i.montoBs
+                                      : (i.montoUSD || i.monto || 0) * tasaHistorica
+                                    ).toLocaleString("de-DE", {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </Box>
                     </AccordionDetails>
                   </Accordion>
                   <Accordion
@@ -514,91 +537,93 @@ export default function ResumenContable({ tasaBCV }) {
                       </Typography>
                     </AccordionSummary>
                     <AccordionDetails sx={{ py: 0.5 }}>
-                      <Table
-                        component={Paper}
-                        size="small"
-                        sx={{ boxShadow: "none", mb: 0 }}
-                      >
-                        <TableHead>
-                          <TableRow sx={{ height: 28 }}>
-                            <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                              Descripción
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Monto ($)
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Monto (Bs)
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Tasa
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {egresos.length === 0 ? (
-                            <TableRow>
+                      <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+                        <Table
+                          component={Paper}
+                          size="small"
+                          sx={{ boxShadow: "none", mb: 0, minWidth: 400 }}
+                        >
+                          <TableHead>
+                            <TableRow sx={{ height: 28 }}>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                Descripción
+                              </TableCell>
                               <TableCell
-                                colSpan={4}
-                                align="center"
-                                sx={{
-                                  color: "text.secondary",
-                                  py: 0.5,
-                                  fontSize: 13,
-                                }}
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
                               >
-                                Sin egresos
+                                Monto ($)
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
+                              >
+                                Monto (Bs)
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
+                              >
+                                Tasa
                               </TableCell>
                             </TableRow>
-                          ) : (
-                            egresos.map((e, idx) => (
-                              <TableRow key={idx} sx={{ height: 28 }}>
-                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                  {e.descripcion}
-                                </TableCell>
+                          </TableHead>
+                          <TableBody>
+                            {egresos.length === 0 ? (
+                              <TableRow>
                                 <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
+                                  colSpan={4}
+                                  align="center"
+                                  sx={{
+                                    color: "text.secondary",
+                                    py: 0.5,
+                                    fontSize: 13,
+                                  }}
                                 >
-                                  {e.montoUSD.toLocaleString("en-US", {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                </TableCell>
-                                <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
-                                >
-                                  {(e.montoBs && e.montoBs > 0
-                                    ? e.montoBs
-                                    : (e.montoUSD || 0) * (e.tasa || tasaDia)
-                                  ).toLocaleString("de-DE", {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                </TableCell>
-                                <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
-                                >
-                                  {e.tasa
-                                    ? e.tasa.toLocaleString("de-DE", {
-                                        minimumFractionDigits: 2,
-                                      })
-                                    : "-"}
+                                  Sin egresos
                                 </TableCell>
                               </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
+                            ) : (
+                              egresos.map((e, idx) => (
+                                <TableRow key={idx} sx={{ height: 28 }}>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                    {e.descripcion}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {e.montoUSD.toLocaleString("en-US", {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {(e.montoBs && e.montoBs > 0
+                                      ? e.montoBs
+                                      : (e.montoUSD || 0) * (e.tasa || tasaHistorica)
+                                    ).toLocaleString("de-DE", {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {e.tasa
+                                      ? e.tasa.toLocaleString("de-DE", {
+                                          minimumFractionDigits: 2,
+                                        })
+                                      : "-"}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </Box>
                     </AccordionDetails>
                   </Accordion>
                 </Box>

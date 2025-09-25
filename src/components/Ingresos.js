@@ -12,7 +12,11 @@ import {
   Paper,
   Divider,
   LinearProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
   // ...existing code...
 import { guardarIngreso, obtenerIngresos } from "../lib/ingresosFirebase";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -88,7 +92,7 @@ export default function Ingresos({ tasaBCV }) {
   };
 
   return (
-  <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
+  <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6" sx={{ mb: 0 }}>
           Registro de Ingresos
@@ -155,63 +159,138 @@ export default function Ingresos({ tasaBCV }) {
   </LocalizationProvider>
       </Box>
       <Divider sx={{ mb: 2 }} />
+      {/* Accordion para ingreso manual en móviles, box normal en desktop */}
       <Box sx={{ mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>
-          Ingreso manual
-        </Typography>
-        <Box sx={{ display: "flex", gap: 2, flexWrap: 'wrap' }}>
-          <TextField
-            label="N° Factura"
-            size="small"
-            value={ingresoFactura}
-            onChange={e => setIngresoFactura(e.target.value)}
-            sx={{ flex: 2, minWidth: 120 }}
-          />
-          <TextField
-            label="Monto ($)"
-            type="number"
-            size="small"
-            value={ingresoMontoUSD}
-            onChange={e => {
-              const val = e.target.value;
-              setIngresoMontoUSD(val);
-              if (val !== "" && !isNaN(Number(val))) {
-                setIngresoMontoBs((Number(val) * tasaBCV).toFixed(2));
-              } else {
-                setIngresoMontoBs("");
-              }
+        <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+          <Accordion sx={{ mb: 1 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1" fontWeight={600} color="text.secondary">Ingreso manual</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <TextField
+                  label="N° Factura"
+                  size="small"
+                  value={ingresoFactura}
+                  onChange={e => setIngresoFactura(e.target.value)}
+                  sx={{ minWidth: 180, width: '100%' }}
+                />
+                <TextField
+                  label="Monto ($)"
+                  type="number"
+                  size="small"
+                  value={ingresoMontoUSD}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setIngresoMontoUSD(val);
+                    if (val !== "" && !isNaN(Number(val))) {
+                      setIngresoMontoBs((Number(val) * tasaBCV).toFixed(2));
+                    } else {
+                      setIngresoMontoBs("");
+                    }
+                  }}
+                  sx={{ bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 180, width: '100%' }}
+                  inputProps={{ min: 0 }}
+                />
+                <TextField
+                  label="Monto (Bs)"
+                  type="number"
+                  size="small"
+                  value={ingresoMontoBs}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setIngresoMontoBs(val);
+                    if (val !== "" && !isNaN(Number(val))) {
+                      setIngresoMontoUSD((Number(val) / tasaBCV).toFixed(2));
+                    } else {
+                      setIngresoMontoUSD("");
+                    }
+                  }}
+                  sx={{ bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 180, width: '100%' }}
+                  inputProps={{ min: 0 }}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleAgregarIngreso}
+                  disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs)}
+                  sx={{ width: '100%' }}
+                >
+                  Agregar
+                </Button>
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        </Box>
+        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+          <Typography variant="subtitle1" fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>
+            Ingreso manual
+          </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 2,
+              flexWrap: 'wrap',
+              justifyContent: 'flex-start',
+              mb: 1,
             }}
-            sx={{ flex: 1, bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 90 }}
-            inputProps={{ min: 0 }}
-          />
-          <TextField
-            label="Monto (Bs)"
-            type="number"
-            size="small"
-            value={ingresoMontoBs}
-            onChange={e => {
-              const val = e.target.value;
-              setIngresoMontoBs(val);
-              if (val !== "" && !isNaN(Number(val))) {
-                setIngresoMontoUSD((Number(val) / tasaBCV).toFixed(2));
-              } else {
-                setIngresoMontoUSD("");
-              }
-            }}
-            sx={{ flex: 1, bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 90 }}
-            inputProps={{ min: 0 }}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleAgregarIngreso}
-            disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs)}
           >
-            Agregar
-          </Button>
+            <TextField
+              label="N° Factura"
+              size="small"
+              value={ingresoFactura}
+              onChange={e => setIngresoFactura(e.target.value)}
+              sx={{ flex: 2, minWidth: 120 }}
+            />
+            <TextField
+              label="Monto ($)"
+              type="number"
+              size="small"
+              value={ingresoMontoUSD}
+              onChange={e => {
+                const val = e.target.value;
+                setIngresoMontoUSD(val);
+                if (val !== "" && !isNaN(Number(val))) {
+                  setIngresoMontoBs((Number(val) * tasaBCV).toFixed(2));
+                } else {
+                  setIngresoMontoBs("");
+                }
+              }}
+              sx={{ flex: 1, bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 90 }}
+              inputProps={{ min: 0 }}
+            />
+            <TextField
+              label="Monto (Bs)"
+              type="number"
+              size="small"
+              value={ingresoMontoBs}
+              onChange={e => {
+                const val = e.target.value;
+                setIngresoMontoBs(val);
+                if (val !== "" && !isNaN(Number(val))) {
+                  setIngresoMontoUSD((Number(val) / tasaBCV).toFixed(2));
+                } else {
+                  setIngresoMontoUSD("");
+                }
+              }}
+              sx={{ flex: 1, bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 90 }}
+              inputProps={{ min: 0 }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAgregarIngreso}
+              disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs)}
+            >
+              Agregar
+            </Button>
+          </Box>
         </Box>
       </Box>
-      <Table component={Paper} size="small" sx={{ mb: 2 }}>
+      <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+          <Table component={Paper} size="small" sx={{ mb: 2, minWidth: 400 }}>
         {/* Fila de total de ingresos al inicio */}
         <TableHead>
           <TableRow>
@@ -316,6 +395,7 @@ export default function Ingresos({ tasaBCV }) {
           )}
         </TableBody>
       </Table>
+      </Box>
     </Box>
   );
 }

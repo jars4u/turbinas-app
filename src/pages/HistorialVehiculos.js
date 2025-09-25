@@ -31,7 +31,7 @@ export default function HistorialVehiculos() {
   }, []);
 
   return (
-    <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: 6, overflowX: "auto" }}>
+  <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: 6 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
         <Button
           variant="text"
@@ -84,13 +84,14 @@ export default function HistorialVehiculos() {
           <CircularProgress color="primary" size={48} />
         </Box>
       ) : (
-        <Table
-          component={Paper}
-          size="small"
-          sx={{ mb: 2, minWidth: 900, whiteSpace: "nowrap" }}
-        >
-          <TableHead>
-            <TableRow>
+        <Box sx={{ width: '100%', overflowX: 'auto', display: { xs: 'block', sm: 'block' } }}>
+          <Table
+            component={Paper}
+            size="small"
+            sx={{ mb: 2, minWidth: 900, whiteSpace: "nowrap" }}
+          >
+            <TableHead>
+              <TableRow>
               <TableCell>#</TableCell>
               <TableCell
                 onClick={() =>
@@ -267,7 +268,8 @@ export default function HistorialVehiculos() {
                 ))
             )}
           </TableBody>
-        </Table>
+          </Table>
+        </Box>
       )}
     </Box>
   );

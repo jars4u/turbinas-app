@@ -18,6 +18,9 @@ import {
   Paper,
   Divider,
   IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import LinearProgress from '@mui/material/LinearProgress';
 import Dialog from '@mui/material/Dialog';
@@ -240,99 +243,189 @@ export default function Egresos({ tasaBCV }) {
   };
 
   return (
-    <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
-      <Dialog open={confirmOpen} onClose={cancelDelete}>
-        <DialogTitle>Confirmar eliminación</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            ¿Estás seguro que deseas eliminar este egreso? Esta acción no se puede deshacer.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={cancelDelete} color="primary">Cancelar</Button>
-          <Button onClick={confirmDelete} color="error" autoFocus>Eliminar</Button>
-        </DialogActions>
-      </Dialog>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+  <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
+    <Dialog open={confirmOpen} onClose={cancelDelete}>
+      <DialogTitle>Confirmar eliminación</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          ¿Estás seguro que deseas eliminar este egreso? Esta acción no se puede deshacer.
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={cancelDelete} color="primary">Cancelar</Button>
+        <Button onClick={confirmDelete} color="error" autoFocus>Eliminar</Button>
+      </DialogActions>
+    </Dialog>
+    {/* Accordion para móviles, bloque normal para desktop */}
+    <Box sx={{ mb: 2 }}>
+      {/* xs: Accordion, sm+: bloque normal */}
+      <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6" sx={{ mb: 0 }}>
           Registrar egreso
         </Typography>
       </Box>
-      <Box
-        sx={{
-          display: "flex",
-          gap: 2,
-          mb: 2,
-          pt: 1,
-          flexWrap: "nowrap",
-          overflowX: "auto",
-        }}
-      >
-        <TextField
-          label="Tasa"
-          type="number"
-          value={tasa}
-          onChange={(e) => {
-            const val = e.target.value.replace(/[^0-9.]/g, "");
-            setTasa(val);
-            // Actualizar los montos si ya hay valores
-            if (montoUSD && val) {
-              setMontoBs((Number(montoUSD) * Number(val)).toFixed(2));
-            } else if (montoBs && val) {
-              setMontoUSD((Number(montoBs) / Number(val)).toFixed(2));
-            }
+      <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            mb: 2,
+            pt: 1,
+            flexWrap: "nowrap",
+            overflowX: "auto",
           }}
-          size="small"
-          sx={{ maxWidth: 120 }}
-        />
-        <TextField
-          label="Descripción"
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-          size="small"
-          fullWidth
-        />
-        <TextField
-          label="Monto ($)"
-          type="number"
-          value={montoUSD}
-          onChange={(e) => {
-            const val = e.target.value.replace(/[^0-9.]/g, "");
-            setMontoUSD(val);
-            if (tasa && val) {
-              setMontoBs((Number(val) * Number(tasa)).toFixed(2));
-            } else {
-              setMontoBs("");
-            }
-          }}
-          size="small"
-          sx={{ maxWidth: 120 }}
-        />
-        <TextField
-          label="Monto (Bs)"
-          type="number"
-          value={montoBs}
-          onChange={(e) => {
-            const val = e.target.value.replace(/[^0-9.]/g, "");
-            setMontoBs(val);
-            if (tasa && val) {
-              setMontoUSD((Number(val) / Number(tasa)).toFixed(2));
-            } else {
-              setMontoUSD("");
-            }
-          }}
-          size="small"
-          sx={{ maxWidth: 120 }}
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleAddEgreso}
-          disabled={!descripcion || !montoUSD}
         >
-          +
-        </Button>
+          <TextField
+            label="Tasa"
+            type="number"
+            value={tasa}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^0-9.]/g, "");
+              setTasa(val);
+              // Actualizar los montos si ya hay valores
+              if (montoUSD && val) {
+                setMontoBs((Number(montoUSD) * Number(val)).toFixed(2));
+              } else if (montoBs && val) {
+                setMontoUSD((Number(montoBs) / Number(val)).toFixed(2));
+              }
+            }}
+            size="small"
+            sx={{ maxWidth: 120 }}
+          />
+          <TextField
+            label="Descripción"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Monto ($)"
+            type="number"
+            value={montoUSD}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^0-9.]/g, "");
+              setMontoUSD(val);
+              if (tasa && val) {
+                setMontoBs((Number(val) * Number(tasa)).toFixed(2));
+              } else {
+                setMontoBs("");
+              }
+            }}
+            size="small"
+            sx={{ maxWidth: 120 }}
+          />
+          <TextField
+            label="Monto (Bs)"
+            type="number"
+            value={montoBs}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^0-9.]/g, "");
+              setMontoBs(val);
+              if (tasa && val) {
+                setMontoUSD((Number(val) / Number(tasa)).toFixed(2));
+              } else {
+                setMontoUSD("");
+              }
+            }}
+            size="small"
+            sx={{ maxWidth: 120 }}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleAddEgreso}
+            disabled={!descripcion || !montoUSD}
+          >
+            +
+          </Button>
+        </Box>
       </Box>
+      {/* Accordion para xs */}
+      <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+        <Accordion sx={{ mb: 2 }}>
+          <AccordionSummary expandIcon={<span>▼</span>}>
+            <Typography variant="h6">Registrar egreso</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                pt: 1,
+              }}
+            >
+              <TextField
+                label="Tasa"
+                type="number"
+                value={tasa}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9.]/g, "");
+                  setTasa(val);
+                  if (montoUSD && val) {
+                    setMontoBs((Number(montoUSD) * Number(val)).toFixed(2));
+                  } else if (montoBs && val) {
+                    setMontoUSD((Number(montoBs) / Number(val)).toFixed(2));
+                  }
+                }}
+                size="small"
+                sx={{ mb: 1 }}
+              />
+              <TextField
+                label="Descripción"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                size="small"
+                fullWidth
+                sx={{ mb: 1 }}
+              />
+              <TextField
+                label="Monto ($)"
+                type="number"
+                value={montoUSD}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9.]/g, "");
+                  setMontoUSD(val);
+                  if (tasa && val) {
+                    setMontoBs((Number(val) * Number(tasa)).toFixed(2));
+                  } else {
+                    setMontoBs("");
+                  }
+                }}
+                size="small"
+                sx={{ mb: 1 }}
+              />
+              <TextField
+                label="Monto (Bs)"
+                type="number"
+                value={montoBs}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9.]/g, "");
+                  setMontoBs(val);
+                  if (tasa && val) {
+                    setMontoUSD((Number(val) / Number(tasa)).toFixed(2));
+                  } else {
+                    setMontoUSD("");
+                  }
+                }}
+                size="small"
+                sx={{ mb: 1 }}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleAddEgreso}
+                disabled={!descripcion || !montoUSD}
+                sx={{ mb: 1 }}
+              >
+                Agregar
+              </Button>
+            </Box>
+          </AccordionDetails>
+        </Accordion>
+      </Box>
+    </Box>
       <Divider sx={{ mb: 2 }} />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle1" fontWeight={600}>
@@ -374,7 +467,8 @@ export default function Egresos({ tasaBCV }) {
     />
   </LocalizationProvider>
       </Box>
-      <Table component={Paper} size="small" sx={{ mb: 2 }}>
+      <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+        <Table component={Paper} size="small" sx={{ mb: 2, minWidth: 400 }}>
         <TableHead>
           {/* Fila de total de egresos al inicio */}
           <TableRow>
@@ -417,24 +511,25 @@ export default function Egresos({ tasaBCV }) {
           ) : (
             egresos.filter(e => e._fechaStr === fechaSeleccionada).map((e, idx) => (
               <TableRow key={e.id || idx}>
-                <TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
                   {e._fechaDate
                     ? e._fechaDate.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" })
                     : "-"}
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
                   {editIdx === idx ? (
                     <TextField
                       value={editDescripcion}
                       onChange={(ev) => setEditDescripcion(ev.target.value)}
                       size="small"
                       fullWidth
+                      sx={{ whiteSpace: 'nowrap' }}
                     />
                   ) : (
                     e.descripcion
                   )}
                 </TableCell>
-                <TableCell align="right">
+                <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500, whiteSpace: 'nowrap' }}>
                   {editIdx === idx ? (
                     <TextField
                       value={editMontoUSD}
@@ -448,7 +543,7 @@ export default function Egresos({ tasaBCV }) {
                         }
                       }}
                       size="small"
-                      sx={{ maxWidth: 90 }}
+                      sx={{ maxWidth: 90, whiteSpace: 'nowrap' }}
                     />
                   ) : (
                     e.montoUSD.toLocaleString("en-US", {
@@ -457,7 +552,7 @@ export default function Egresos({ tasaBCV }) {
                     })
                   )}
                 </TableCell>
-                <TableCell align="right">
+                <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500, whiteSpace: 'nowrap' }}>
                   {editIdx === idx ? (
                     <TextField
                       value={editMontoBs}
@@ -503,51 +598,53 @@ export default function Egresos({ tasaBCV }) {
                     e.tasa ? e.tasa.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (tasaBCV ? tasaBCV.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-")
                   )}
                 </TableCell>
-                <TableCell align="center">
-                  {editIdx === idx ? (
-                    <>
-                      <Button
-                        color="success"
-                        size="small"
-                        onClick={() => handleSaveEdit(e.id)}
-                        sx={{ minWidth: 32, mr: 1 }}
-                      >
-                        Guardar
-                      </Button>
-                      <Button
-                        color="error"
-                        size="small"
-                        onClick={handleCancelEdit}
-                        sx={{ minWidth: 32 }}
-                      >
-                        Cancelar
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <IconButton
-                        color="primary"
-                        size="small"
-                        onClick={() => handleEdit(idx)}
-                        sx={{ mr: 1 }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        color="error"
-                        size="small"
-                        onClick={() => handleDelete(e.id)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </>
-                  )}
+                <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1, whiteSpace: 'nowrap' }}>
+                    {editIdx === idx ? (
+                      <>
+                        <Button
+                          color="success"
+                          size="small"
+                          onClick={() => handleSaveEdit(e.id)}
+                          sx={{ minWidth: 32 }}
+                        >
+                          Guardar
+                        </Button>
+                        <Button
+                          color="error"
+                          size="small"
+                          onClick={handleCancelEdit}
+                          sx={{ minWidth: 32 }}
+                        >
+                          Cancelar
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <IconButton
+                          color="primary"
+                          size="small"
+                          onClick={() => handleEdit(idx)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          color="error"
+                          size="small"
+                          onClick={() => handleDelete(e.id)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </>
+                    )}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
+      </Box>
     </Box>
   );
 }
