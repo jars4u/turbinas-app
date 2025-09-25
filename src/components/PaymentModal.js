@@ -79,11 +79,11 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             error={facturaIntento && !facturaForm.formaPago}
           >
             <MenuItem value="">Forma de pago...</MenuItem>
-            <MenuItem value="efectivo">Efectivo</MenuItem>
-            <MenuItem value="pago movil">Pago móvil</MenuItem>
-            <MenuItem value="zelle">Zelle</MenuItem>
-            <MenuItem value="transferencia">Transferencia</MenuItem>
-            <MenuItem value="credito">Crédito</MenuItem>
+            <MenuItem value="efectivo">Efectivo ($)</MenuItem>
+            <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
+            <MenuItem value="zelle">Zelle ($)</MenuItem>
+            <MenuItem value="transferencia" disabled>Transferencia</MenuItem>
+            <MenuItem value="credito" disabled>Crédito</MenuItem>
           </Select>
         </Box>
         <TextField
