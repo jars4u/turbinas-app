@@ -16,14 +16,18 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
       <Toolbar
         sx={{
           display: "flex",
-          justifyContent: "space-between",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "center", sm: "center" },
+          justifyContent: { xs: "center", sm: "space-between" },
           minHeight: 48,
-          p: 0,
+          p: { xs: 1, sm: 0 },
           m: 0,
+          width: "100%",
           background: "none",
+          gap: { xs: 1, sm: 0 },
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
+  <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "center", sm: "flex-start" }, gap: 1, width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 } }}>
           <img
             src="/logo.png"
             alt="Logo"
@@ -32,8 +36,17 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
           />
           <Chip label="v.2.0" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "center", sm: "center" },
+            justifyContent: { xs: "center", sm: "flex-end" },
+            gap: { xs: 1.5, sm: 2 },
+            width: { xs: "100%", sm: "auto" },
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: { xs: "row" }, alignItems: "center", justifyContent: { xs: "center", sm: "flex-end" }, gap: 1, width: { xs: "100%", sm: "auto" } }}>
             <Tooltip title="Historial" arrow>
               <span>
                 <IconButton
@@ -74,8 +87,8 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
               </span>
             </Tooltip>
           </Box>
-          <Divider orientation="vertical" flexItem sx={{ mx: 2, height: 28 }} />
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Divider orientation="horizontal" flexItem sx={{ my: { xs: 1, sm: 0 }, mx: { xs: 0, sm: 2 }, width: { xs: "100%", sm: 0 }, height: { xs: 2, sm: 28 } }} />
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "center", sm: "flex-end" }, gap: 1, width: { xs: "100%", sm: "auto" } }}>
             <Avatar sx={{ bgcolor: "#e0e0e0", width: 22, height: 22 }} aria-label="Usuario">
               <PersonIcon fontSize="small" style={{ color: "#757575" }} />
             </Avatar>

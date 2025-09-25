@@ -21,6 +21,7 @@ import {
 import PaymentModal from "../components/PaymentModal";
 import CircularProgress from "@mui/material/CircularProgress";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
@@ -162,8 +163,12 @@ export default function Dashboard({ usuario, onLogout }) {
       precio: form.precio === "" ? null : Number(form.precio),
       usuario: usuarioActivo,
       registradoPor: usuarioActivo,
-      entregadoPor: editId ? vehiculos.find((v) => v.id === editId)?.entregadoPor : null,
-      fechaEntrega: editId ? vehiculos.find((v) => v.id === editId)?.fechaEntrega : null,
+      entregadoPor: editId
+        ? vehiculos.find((v) => v.id === editId)?.entregadoPor
+        : null,
+      fechaEntrega: editId
+        ? vehiculos.find((v) => v.id === editId)?.fechaEntrega
+        : null,
     };
     setActionLoading(true);
     if (editId) {
@@ -220,29 +225,66 @@ export default function Dashboard({ usuario, onLogout }) {
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "center", sm: "center" },
+          justifyContent: { xs: "center", sm: "space-between" },
           mb: 2,
+          gap: { xs: 1.5, sm: 0 },
         }}
       >
-        <Typography variant="h4" gutterBottom sx={{ m: 0 }}>
-          <span style={{ fontWeight: 600 }}>
+        <Box
+          sx={{
+            width: { xs: "100%", sm: "auto" },
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: { xs: "center", sm: "flex-start" },
+          }}
+        >
+          <Typography
+            variant="h5"
+            gutterBottom
+            sx={{
+              m: 0,
+              fontSize: { xs: "1.25rem", sm: "2rem" },
+              fontWeight: 600,
+              textAlign: { xs: "center", sm: "left" },
+              width: { xs: "auto", sm: "auto" },
+            }}
+          >
             Turbinas en servicio
-            {vehiculos && (
-              <span
-                style={{ fontWeight: 400, marginLeft: 8, fontSize: "1rem" }}
-              >
-                ({vehiculos.length})
-              </span>
-            )}
-          </span>
-        </Typography>
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              fontWeight: 400,
+              fontSize: { xs: "1rem", sm: "1.25rem" },
+              marginLeft: 1,
+              textAlign: "center",
+              minWidth: 40,
+            }}
+          >
+            (
+            {
+              [...vehiculos].filter(
+                (v) =>
+                  (v.status || v.estado) !== "entregado" &&
+                  (!ordenEstado || (v.status || v.estado) === ordenEstado)
+              ).length
+            }
+            )
+          </Typography>
+        </Box>
         <Button
           variant="outlined"
           color="primary"
           size="small"
           startIcon={<AddIcon />}
           onClick={() => handleOpen()}
+          sx={{
+            width: { xs: "100%", sm: "auto" },
+            maxWidth: { xs: 320, sm: "none" },
+          }}
         >
           Registrar servicio
         </Button>
@@ -251,20 +293,38 @@ export default function Dashboard({ usuario, onLogout }) {
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "center", sm: "center" },
+          justifyContent: { xs: "center", sm: "space-between" },
           mb: 2,
+          gap: { xs: 2, sm: 0 },
         }}
       >
-        <Box sx={{ display: "flex", gap: 4 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "row", sm: "row" },
+            flexWrap: { xs: "wrap", sm: "nowrap" },
+            gap: { xs: 1, sm: 4 },
+            alignItems: { xs: "center", sm: "center" },
+            width: { xs: "100%", sm: "auto" },
+            justifyContent: { xs: "center", sm: "flex-start" },
+          }}
+        >
           {estadosServicio
-            .filter((estado) => estado.nombre !== 'entregado')
+            .filter((estado) => estado.nombre !== "entregado")
             .map((estado) => (
               <Typography
                 key={estado.nombre}
-                variant="body1"
+                variant="body2"
                 color={estado.color ? `${estado.color}.main` : "text.primary"}
                 fontWeight={600}
+                sx={{
+                  textAlign: { xs: "center", sm: "left" },
+                  width: { xs: "auto", sm: "auto" },
+                  fontSize: { xs: "0.95rem", sm: "1.15rem" },
+                  px: { xs: 0.5, sm: 0 },
+                }}
               >
                 {estado.label}:{" "}
                 {
@@ -275,14 +335,27 @@ export default function Dashboard({ usuario, onLogout }) {
               </Typography>
             ))}
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 1,
+            width: { xs: "100%", sm: "auto" },
+            mt: { xs: 1, sm: 0 },
+          }}
+        >
           <SortIcon sx={{ color: "text.secondary", fontSize: 20 }} />
           <Select
             size="small"
             value={ordenEstado}
             onChange={(e) => setOrdenEstado(e.target.value)}
             displayEmpty
-            sx={{ minWidth: 120, color: "text.secondary" }}
+            sx={{
+              minWidth: 120,
+              color: "text.secondary",
+              width: { xs: "100%", sm: "auto" },
+            }}
           >
             <MenuItem value="">Todos</MenuItem>
             {estadosServicio.map((estado) => (
@@ -301,6 +374,8 @@ export default function Dashboard({ usuario, onLogout }) {
               color: "text.secondary",
               borderColor: "#b4b4b4ff",
               boxShadow: "none",
+              width: { xs: "100%", sm: "auto" },
+              mt: { xs: 1, sm: 0 },
               "&:hover": { bgcolor: "#e0e0e0" },
             }}
           >
@@ -320,62 +395,250 @@ export default function Dashboard({ usuario, onLogout }) {
           <CircularProgress color="primary" size={48} />
         </Box>
       ) : (
-        <Grid container spacing={2} columns={12}>
-          {[...vehiculos]
-            .filter(
-              (v) => (v.status || v.estado) !== 'entregado' && (!ordenEstado || (v.status || v.estado) === ordenEstado)
-            )
-            .sort((a, b) => {
-              if (!ordenEstado)
-                return ordenAsc
-                  ? a.arrivalTime - b.arrivalTime
-                  : b.arrivalTime - a.arrivalTime;
-              // Ordenar por estado y luego arrivalTime
-              if (ordenAsc)
+        <>
+          {/* Vista tabla en móviles */}
+          <Box
+            sx={{
+              display: { xs: "block", sm: "none" },
+              width: "100%",
+              overflowX: "auto",
+            }}
+          >
+            <table
+              style={{
+                minWidth: 600,
+                borderCollapse: "collapse",
+                fontSize: "0.95rem",
+                width: "100%",
+              }}
+            >
+              <thead>
+                <tr style={{ background: "#f5f5f5" }}>
+                  <th
+                    style={{
+                      padding: "8px",
+                      border: "1px solid #ddd",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Modelo
+                  </th>
+                  <th
+                    style={{
+                      padding: "8px",
+                      border: "1px solid #ddd",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Servicio
+                  </th>
+                  <th
+                    style={{
+                      padding: "8px",
+                      border: "1px solid #ddd",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Estado
+                  </th>
+                  <th
+                    style={{
+                      padding: "8px",
+                      border: "1px solid #ddd",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Obs
+                  </th>
+                  <th
+                    style={{
+                      padding: "8px",
+                      border: "1px solid #ddd",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Hora
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...vehiculos]
+                  .filter(
+                    (v) =>
+                      (v.status || v.estado) !== "entregado" &&
+                      (!ordenEstado || (v.status || v.estado) === ordenEstado)
+                  )
+                  .sort((a, b) => {
+                    if (!ordenEstado)
+                      return ordenAsc
+                        ? a.arrivalTime - b.arrivalTime
+                        : b.arrivalTime - a.arrivalTime;
+                    if (ordenAsc)
+                      return (
+                        (a.status || a.estado).localeCompare(
+                          b.status || b.estado
+                        ) || a.arrivalTime - b.arrivalTime
+                      );
+                    return (
+                      (b.status || b.estado).localeCompare(
+                        a.status || a.estado
+                      ) || b.arrivalTime - a.arrivalTime
+                    );
+                  })
+                  .map((v) => (
+                    <tr
+                      key={v.id}
+                      style={{ cursor: "pointer", whiteSpace: "nowrap" }}
+                      onClick={() => handleOpen(v)}
+                    >
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #ddd",
+                          textAlign: "center",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {v.vehiculo && v.vehiculo.toUpperCase()}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #ddd",
+                          textAlign: "center",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {v.servicio}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #ddd",
+                          textAlign: "center",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <Chip
+                          label={(() => {
+                            const estadoObj = estadosServicio.find(
+                              (e) => e.nombre === (v.status || v.estado)
+                            );
+                            return estadoObj?.label || v.status || v.estado;
+                          })()}
+                          color={(() => {
+                            const estadoObj = estadosServicio.find(
+                              (e) => e.nombre === (v.status || v.estado)
+                            );
+                            return estadoObj?.color || "default";
+                          })()}
+                          size="small"
+                          sx={{ fontSize: "0.80rem", height: 24 }}
+                        />
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #ddd",
+                          textAlign: "center",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {v.observaciones || "-"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #ddd",
+                          textAlign: "center",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {new Date(
+                          typeof v.arrivalTime === "string"
+                            ? Number(v.arrivalTime)
+                            : v.arrivalTime
+                        ).toLocaleTimeString()}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </Box>
+          {/* Vista cards en desktop/tablet */}
+          <Grid
+            container
+            spacing={2}
+            columns={12}
+            sx={{ display: { xs: "none", sm: "flex" } }}
+          >
+            {[...vehiculos]
+              .filter(
+                (v) =>
+                  (v.status || v.estado) !== "entregado" &&
+                  (!ordenEstado || (v.status || v.estado) === ordenEstado)
+              )
+              .sort((a, b) => {
+                if (!ordenEstado)
+                  return ordenAsc
+                    ? a.arrivalTime - b.arrivalTime
+                    : b.arrivalTime - a.arrivalTime;
+                if (ordenAsc)
+                  return (
+                    (a.status || a.estado).localeCompare(
+                      b.status || b.estado
+                    ) || a.arrivalTime - b.arrivalTime
+                  );
                 return (
-                  (a.status || a.estado).localeCompare(b.status || b.estado) ||
-                  a.arrivalTime - b.arrivalTime
+                  (b.status || b.estado).localeCompare(a.status || a.estado) ||
+                  b.arrivalTime - a.arrivalTime
                 );
-              return (
-                (b.status || b.estado).localeCompare(a.status || a.estado) ||
-                b.arrivalTime - a.arrivalTime
-              );
-            })
-            .map((v) => (
-              <Grid
-                key={v.id}
-                sx={{
-                  mb: 3,
-                  gridColumn: {
-                    xs: "span 12",
-                    sm: "span 6",
-                    md: "span 3",
-                    lg: "span 2",
-                    xl: "span 2",
-                  },
-                }}
-              >
-                <VehicleCard
-                  vehiculo={v}
-                  onEdit={() => handleOpen(v)}
-                  onStatusChange={(newStatus) =>
-                    handleStatusChange(v.id, newStatus)
-                  }
-                />
-              </Grid>
-            ))}
-        </Grid>
+              })
+              .map((v) => (
+                <Grid
+                  key={v.id}
+                  sx={{
+                    mb: 3,
+                    gridColumn: {
+                      sm: "span 6",
+                      md: "span 3",
+                      lg: "span 2",
+                      xl: "span 2",
+                    },
+                  }}
+                >
+                  <VehicleCard
+                    vehiculo={v}
+                    onEdit={() => handleOpen(v)}
+                    onStatusChange={(newStatus) =>
+                      handleStatusChange(v.id, newStatus)
+                    }
+                  />
+                </Grid>
+              ))}
+          </Grid>
+        </>
       )}
       <Dialog
         open={open}
         onClose={(event, reason) => {
-          if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+          if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
             handleClose();
           }
         }}
       >
         <DialogContent
-          sx={{ minWidth: 400, maxWidth: 500, pt: 3, position: "relative" }}
+            sx={{
+              minWidth: { xs: 'auto', sm: 400 },
+              maxWidth: { xs: '100vw', sm: 500 },
+              py: 2,
+              position: "relative",
+              display: { xs: 'flex', sm: 'block' },
+              flexDirection: { xs: 'column', sm: 'initial' },
+              alignItems: { xs: 'center', sm: 'initial' },
+              justifyContent: { xs: 'center', sm: 'initial' },
+              px: { xs: 2, sm: 3 },
+            }}
         >
           {actionLoading && (
             <Box
@@ -406,14 +669,24 @@ export default function Dashboard({ usuario, onLogout }) {
               {editId ? "Información del servicio" : "Registrar servicio"}
             </Typography>
             {editId && (
-              <Button
-                onClick={handleDeleteClick}
-                variant="outlined"
-                size="small"
-                color="error"
-              >
-                Eliminar
-              </Button>
+              <Box>
+                <IconButton
+                  onClick={handleDeleteClick}
+                  color="error"
+                  sx={{ display: { xs: 'inline-flex', sm: 'none' }, p: 0.5, ml: 5 }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+                <Button
+                  onClick={handleDeleteClick}
+                  variant="outlined"
+                  size="small"
+                  color="error"
+                  sx={{ display: { xs: 'none', sm: 'inline-flex' }, minWidth: 40, px: 2 }}
+                >
+                  Eliminar
+                </Button>
+              </Box>
             )}
           </Box>
           {editId &&
@@ -441,11 +714,14 @@ export default function Dashboard({ usuario, onLogout }) {
               );
             })()}
           {/* Modal de confirmación para eliminar */}
-          <Dialog open={confirmDeleteOpen} onClose={(event, reason) => {
-            if (reason !== 'backdropClick') {
-              handleCancelDelete();
-            }
-          }}>
+          <Dialog
+            open={confirmDeleteOpen}
+            onClose={(event, reason) => {
+              if (reason !== "backdropClick") {
+                handleCancelDelete();
+              }
+            }}
+          >
             <DialogTitle>Confirmar eliminación</DialogTitle>
             <DialogContent>
               <Typography>
@@ -463,7 +739,15 @@ export default function Dashboard({ usuario, onLogout }) {
             </DialogActions>
           </Dialog>
         </DialogContent>
-        <DialogContent sx={{ minWidth: 400, maxWidth: 500 }}>
+        <DialogContent sx={{
+          minWidth: { xs: 'auto', sm: 400 },
+          maxWidth: { xs: '100vw', sm: 500 },
+          display: { xs: 'flex', sm: 'block' },
+          flexDirection: { xs: 'column', sm: 'initial' },
+          alignItems: { xs: 'center', sm: 'initial' },
+          justifyContent: { xs: 'center', sm: 'initial' },
+          px: { xs: 1, sm: 3 },
+        }}>
           {/* Sección: Datos de turbina */}
           <Box
             sx={{
@@ -497,6 +781,8 @@ export default function Dashboard({ usuario, onLogout }) {
               display: "flex",
               flexDirection: "column",
               gap: 0.5,
+              alignItems: { xs: 'center', sm: 'flex-start' },
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             {editSection === "vehiculo" || isRegistering ? (
@@ -567,6 +853,8 @@ export default function Dashboard({ usuario, onLogout }) {
               display: "flex",
               flexDirection: "column",
               gap: 0.5,
+              alignItems: { xs: 'center', sm: 'flex-start' },
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             {editSection === "servicio" || isRegistering ? (
@@ -695,6 +983,8 @@ export default function Dashboard({ usuario, onLogout }) {
               display: "flex",
               flexDirection: "column",
               gap: 0.5,
+              alignItems: { xs: 'center', sm: 'flex-start' },
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             {editSection === "cliente" || isRegistering ? (
@@ -790,7 +1080,7 @@ export default function Dashboard({ usuario, onLogout }) {
           </Box>
         </DialogContent>
         <DialogActions
-          sx={{ display: "flex", justifyContent: "space-between", px: 3 }}
+          sx={{ display: "flex", justifyContent: "space-between", px: 3, mb: 2 }}
         >
           {isRegistering ? (
             <>
@@ -854,7 +1144,7 @@ export default function Dashboard({ usuario, onLogout }) {
                 </>
               ) : (
                 <>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}>
                     <Button
                       variant="outlined"
                       size="small"
@@ -878,8 +1168,15 @@ export default function Dashboard({ usuario, onLogout }) {
                         }
                       }}
                       disabled={!form.customerPhone}
+                      sx={{
+                        minWidth: 120,
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        px: 2,
+                      }}
                     >
-                      Enviar WhatsApp
+                      <Box sx={{ display: { xs: 'inline', sm: 'none' } }}>Enviar</Box>
+                      <Box sx={{ display: { xs: 'none', sm: 'inline' } }}>Enviar WhatsApp</Box>
                     </Button>
                   </Box>
                 </>
@@ -938,10 +1235,13 @@ export default function Dashboard({ usuario, onLogout }) {
             if (editId) {
               await actualizarVehiculo(editId, {
                 ...form,
-                status: 'entregado',
+                status: "entregado",
                 entregadoPor: usuarioActivo,
                 fechaEntrega: Date.now(),
-                registradoPor: vehiculos.find((v) => v.id === editId)?.registradoPor || vehiculos.find((v) => v.id === editId)?.usuario || null
+                registradoPor:
+                  vehiculos.find((v) => v.id === editId)?.registradoPor ||
+                  vehiculos.find((v) => v.id === editId)?.usuario ||
+                  null,
               });
               const actualizados = await obtenerVehiculos();
               setVehiculos(actualizados);
@@ -956,9 +1256,13 @@ export default function Dashboard({ usuario, onLogout }) {
         open={snackbarOpen}
         autoHideDuration={3500}
         onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert onClose={() => setSnackbarOpen(false)} severity="success" sx={{ width: '100%' }}>
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
           {snackbarMsg}
         </Alert>
       </Snackbar>
