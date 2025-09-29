@@ -1,12 +1,12 @@
 import React from "react";
-import { Button, Accordion, AccordionSummary, AccordionDetails, TextField } from "@mui/material";
+import { Button, Accordion, AccordionSummary, AccordionDetails, TextField, Tooltip } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SavingsIcon from '@mui/icons-material/Savings';
 import AddIcon from '@mui/icons-material/Add';
 import { Box, Typography, Divider, Paper } from "@mui/material";
 import { guardarFondoCajaChica, obtenerFondoCajaChica } from "../lib/configuracionCajaChicaFirebase";
 
-export default function ConfiguracionCajaChica() {
+export default function ConfiguracionCajaChica({ isOwner }) {
   const [valorGuardado, setValorGuardado] = React.useState(0);
   const [inputValue, setInputValue] = React.useState('');
   const [loading, setLoading] = React.useState(true);
@@ -54,24 +54,29 @@ export default function ConfiguracionCajaChica() {
               disabled={loading || guardando}
               placeholder={loading ? 'Cargando...' : '0.00'}
             />
-            <Button
-              variant="contained"
-              size="small"
-              sx={{ ml: 2 }}
-              disabled={
-                loading || guardando || inputValue === '' || Number(Number(inputValue).toFixed(2)) === Number(Number(valorGuardado).toFixed(2))
-              }
-              onClick={async () => {
-                setGuardando(true);
-                await guardarFondoCajaChica(inputValue);
-                const nuevoValor = Number(Number(inputValue).toFixed(2));
-                setValorGuardado(nuevoValor);
-                setInputValue(nuevoValor.toFixed(2));
-                setGuardando(false);
-              }}
-            >
-              Guardar
-            </Button>
+            <Tooltip title={isOwner ? "Guardar fondo de caja chica" : "Solo el Owner puede modificar el fondo de caja chica"}>
+              <span>
+                <Button
+                  variant="contained"
+                  size="small"
+                  sx={{ ml: 2 }}
+                  disabled={
+                    !isOwner || loading || guardando || inputValue === '' || Number(Number(inputValue).toFixed(2)) === Number(Number(valorGuardado).toFixed(2))
+                  }
+                  onClick={async () => {
+                    if (!isOwner) return;
+                    setGuardando(true);
+                    await guardarFondoCajaChica(inputValue);
+                    const nuevoValor = Number(Number(inputValue).toFixed(2));
+                    setValorGuardado(nuevoValor);
+                    setInputValue(nuevoValor.toFixed(2));
+                    setGuardando(false);
+                  }}
+                >
+                  Guardar
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
           <Typography color="text.secondary" sx={{ mb: 1 }}>
             Este monto será el total base para el cálculo de la pestaña caja chica en cierre del día.

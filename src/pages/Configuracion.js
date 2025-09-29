@@ -286,7 +286,7 @@ export default function Configuracion({ usuario, isAdmin }) {
           <Divider sx={{ my: { xs: 2, sm: 4 } }} />
           <EstadosServicios />
           <Divider sx={{ my: 4 }} />
-          <ConfiguracionCajaChica />
+          <ConfiguracionCajaChica isOwner={usuarios.find(u => u.usuario === usuario || u.email === usuario)?.owner} />
           {/* Botón para borrar todos los datos al final */}
           <Divider sx={{ my: 4 }} />
           {/* <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>

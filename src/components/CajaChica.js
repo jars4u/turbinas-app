@@ -26,7 +26,7 @@ import {
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
 
-export default function CajaChica({ tasaBCV }) {
+export default function CajaChica({ tasaBCV, isOwner }) {
   const [snackOpen, setSnackOpen] = useState(false);
   const [snackMsg, setSnackMsg] = useState("");
   // Reponer movimiento: eliminar de caja chica y agregar a egresos
@@ -404,7 +404,9 @@ export default function CajaChica({ tasaBCV }) {
                       <Button
                         variant="outlined"
                         size="small"
-                        onClick={() => handleReponer(mov)}
+                        onClick={() => isOwner && handleReponer(mov)}
+                        disabled={!isOwner}
+                        title={isOwner ? '' : 'Solo el Owner puede reponer a egresos'}
                       >
                         Reponer
                       </Button>

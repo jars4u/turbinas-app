@@ -536,7 +536,7 @@ export default function CierreDia({ usuario, isOwner }) {
                     <CircularProgress color="primary" size={40} />
                   </Box>
                 ) : (
-                  <CajaChica tasaBCV={tasaBCV} />
+                  <CajaChica tasaBCV={tasaBCV} isOwner={isOwner} />
                 )}
               </Box>
             )}
