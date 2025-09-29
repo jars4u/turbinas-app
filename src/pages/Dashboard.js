@@ -39,6 +39,9 @@ import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
 
 export default function Dashboard({ usuario, onLogout }) {
+  // Estado para modal de cambio de estado
+  const [openEstadoModal, setOpenEstadoModal] = useState(false);
+  const [vehiculoEstadoModal, setVehiculoEstadoModal] = useState(null);
   // Clientes base: extraer de vehículos
   const [clientes, setClientes] = useState([]);
   useEffect(() => {
@@ -731,11 +734,46 @@ export default function Dashboard({ usuario, onLogout }) {
                     }
                     color={estadoActual?.color || "default"}
                     size="small"
-                    sx={{ fontSize: "0.85rem", height: 26, mx: 0 }}
+                    sx={{ fontSize: "0.85rem", height: 26, mx: 0, cursor: 'pointer' }}
+                    onClick={() => {
+                      setVehiculoEstadoModal(vehiculoActual);
+                      setOpenEstadoModal(true);
+                    }}
                   />
                 </Box>
               );
             })()}
+      {/* Modal para cambiar estado */}
+      <Dialog open={openEstadoModal} onClose={() => setOpenEstadoModal(false)}>
+        <DialogTitle>Cambiar estado</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 220 }}>
+            {estadosServicio.filter(e => !e.defaultFacturar).map((estado) => (
+              <Button
+                key={estado.nombre}
+                variant={vehiculoEstadoModal && (vehiculoEstadoModal.status === estado.nombre || vehiculoEstadoModal.estado === estado.nombre) ? 'contained' : 'outlined'}
+                color={estado.color || 'primary'}
+                onClick={async () => {
+                  setOpenEstadoModal(false);
+                  if (!vehiculoEstadoModal) return;
+                  await actualizarVehiculo(vehiculoEstadoModal.id, {
+                    ...vehiculoEstadoModal,
+                    status: estado.nombre,
+                  });
+                  const actualizados = await obtenerVehiculos();
+                  setVehiculos(actualizados);
+                }}
+                sx={{ justifyContent: 'flex-start', textTransform: 'none', fontWeight: 600 }}
+              >
+                {estado.label}
+              </Button>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEstadoModal(false)} color="primary">Cancelar</Button>
+        </DialogActions>
+      </Dialog>
           {/* Modal de confirmación para eliminar */}
           <Dialog
             open={confirmDeleteOpen}
