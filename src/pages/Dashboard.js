@@ -1253,6 +1253,8 @@ export default function Dashboard({ usuario, onLogout }) {
               factura: facturaData.numeroFactura,
               formaPago: facturaData.formaPago,
               referencia: facturaData.referencia,
+              formaPago2: facturaData.formaPago2,
+              referencia2: facturaData.referencia2,
               fecha: new Date().toLocaleDateString("es-VE"),
             };
             try {

@@ -388,7 +388,37 @@ export default function Ingresos({ tasaBCV }) {
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                   {Math.abs(ing.montoBs || ing.monto * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                 </TableCell>
-                <TableCell>{ing.formaPago || '-'}</TableCell>
+                <TableCell>
+                  {Array.isArray(ing.formasPago) && ing.formasPago.length > 0
+                    ? ing.formasPago.map(fp => {
+                        // Abreviaciones comunes
+                        if (!fp) return '-';
+                        const lower = fp.toLowerCase();
+                        if (lower.includes('efect')) return 'Efe.';
+                        if (lower.includes('zelle')) return 'Zel.';
+                        if (lower.includes('pago mov') || lower.includes('pago móvil')) return 'PM.';
+                        if (lower.includes('divisa')) return 'Div.';
+                        if (lower.includes('bs')) return 'Bs.';
+                        if (lower.includes('tarjeta')) return 'Tj.';
+                        if (lower.includes('transfer')) return 'Trf.';
+                        return fp.length > 6 ? fp.slice(0, 6) + '.' : fp;
+                      }).join(' + ')
+                    : (ing.formaPago
+                        ? (() => {
+                            const fp = ing.formaPago;
+                            const lower = fp.toLowerCase();
+                            if (lower.includes('efect')) return 'Efe.';
+                            if (lower.includes('zelle')) return 'Zel.';
+                            if (lower.includes('pago mov') || lower.includes('pago móvil')) return 'PM.';
+                            if (lower.includes('divisa')) return 'Div.';
+                            if (lower.includes('bs')) return 'Bs.';
+                            if (lower.includes('tarjeta')) return 'Tj.';
+                            if (lower.includes('transfer')) return 'Trf.';
+                            return fp.length > 6 ? fp.slice(0, 6) + '.' : fp;
+                          })()
+                        : '-')
+                  }
+                </TableCell>
                 <TableCell>{ing.referencia || '-'}</TableCell>
               </TableRow>
             ))

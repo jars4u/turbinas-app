@@ -6,6 +6,27 @@ const INGRESOS_COLLECTION = "ingresosMovimientos";
 export async function guardarIngreso(ingreso) {
   const fechaStr = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const mov = { ...ingreso, fecha: fechaStr };
+  // Si hay segunda forma de pago, guardar ambas en un array con monto
+  if (mov.formaPago2) {
+    mov.formasPago = [
+      { formaPago: mov.formaPago, monto: Number(mov.monto), referencia: mov.referencia },
+      { formaPago: mov.formaPago2, monto: Number(mov.monto2), referencia: mov.referencia2 }
+    ];
+    delete mov.formaPago;
+    delete mov.monto;
+    delete mov.referencia;
+    delete mov.formaPago2;
+    delete mov.monto2;
+    delete mov.referencia2;
+  } else if (mov.formaPago && mov.monto) {
+    // Solo una forma de pago, guardar como array para unificar estructura
+    mov.formasPago = [
+      { formaPago: mov.formaPago, monto: Number(mov.monto), referencia: mov.referencia }
+    ];
+    delete mov.formaPago;
+    delete mov.monto;
+    delete mov.referencia;
+  }
   await addDoc(collection(db, INGRESOS_COLLECTION), mov);
 }
 
@@ -32,8 +53,15 @@ export async function obtenerIngresos() {
         fechaRaw = data.fecha.toDate();
         fechaStr = fechaRaw.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
       }
+      // Compatibilidad: exponer montos de formas de pago si existen
+      let formasPago = data.formasPago || [];
+      // Si no existe formasPago pero sí formaPago y monto, adaptarlo
+      if ((!formasPago || formasPago.length === 0) && data.formaPago && data.monto) {
+        formasPago = [{ formaPago: data.formaPago, monto: Number(data.monto), referencia: data.referencia }];
+      }
       return {
         ...data,
+        formasPago,
         fecha: fechaStr,
         fechaRaw,
         id: doc.id
