@@ -15,7 +15,7 @@ import {
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import HistoryIcon from "@mui/icons-material/History";
 
-export default function HistorialVehiculos() {
+export default function HistorialVehiculos({ isOwner }) {
   const [ordenCol, setOrdenCol] = useState("fechaEntrega");
   const [ordenAsc, setOrdenAsc] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -30,8 +30,49 @@ export default function HistorialVehiculos() {
     });
   }, []);
 
+  if (!isOwner) {
+    return (
+      <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: 6 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+          <Button
+            variant="text"
+            color="primary"
+            size="small"
+            onClick={() => window.history.back()}
+            startIcon={
+              <span style={{ fontSize: 18, marginRight: 2 }}>&larr;</span>
+            }
+            sx={{ textTransform: "uppercase", fontWeight: 700 }}
+          >
+            Atrás
+          </Button>
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <HistoryIcon sx={{ fontSize: 28, mr: 1 }} />
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            sx={{ fontFamily: "inherit", fontWeight: 900 }}
+          >
+            Historial de servicios
+          </Typography>
+        </Box>
+        <Divider sx={{ mb: 2 }} />
+        <Box sx={{ mt: 6, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img
+            src="/animaciones/User%20Authentication.gif"
+            alt="Sin permisos de owner"
+            style={{ maxWidth: 220, marginBottom: 16 }}
+          />
+          <Typography variant="body1" align="center">
+            No tienes permisos para acceder al historial de vehículos.
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
   return (
-  <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: 6 }}>
+    <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: 6 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
         <Button
           variant="text"

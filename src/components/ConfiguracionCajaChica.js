@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Accordion, AccordionSummary, AccordionDetails, TextField, Tooltip } from "@mui/material";
+import { Button, Accordion, AccordionSummary, AccordionDetails, TextField } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SavingsIcon from '@mui/icons-material/Savings';
 import AddIcon from '@mui/icons-material/Add';
@@ -44,42 +44,42 @@ export default function ConfiguracionCajaChica({ isOwner }) {
               value={loading ? '' : inputValue}
               onChange={e => {
                 const val = e.target.value;
-                // Solo números positivos y máximo 2 decimales
                 if (/^\d*(\.\d{0,2})?$/.test(val)) {
                   setInputValue(val);
                 }
               }}
               size="small"
               sx={{ width: 120 }}
-              disabled={loading || guardando}
+              disabled={loading || guardando || !isOwner}
               placeholder={loading ? 'Cargando...' : '0.00'}
             />
-            <Tooltip title={isOwner ? "Guardar fondo de caja chica" : "Solo el Owner puede modificar el fondo de caja chica"}>
-              <span>
-                <Button
-                  variant="contained"
-                  size="small"
-                  sx={{ ml: 2 }}
-                  disabled={
-                    !isOwner || loading || guardando || inputValue === '' || Number(Number(inputValue).toFixed(2)) === Number(Number(valorGuardado).toFixed(2))
-                  }
-                  onClick={async () => {
-                    if (!isOwner) return;
-                    setGuardando(true);
-                    await guardarFondoCajaChica(inputValue);
-                    const nuevoValor = Number(Number(inputValue).toFixed(2));
-                    setValorGuardado(nuevoValor);
-                    setInputValue(nuevoValor.toFixed(2));
-                    setGuardando(false);
-                  }}
-                >
-                  Guardar
-                </Button>
-              </span>
-            </Tooltip>
+            <Button
+              variant="contained"
+              size="small"
+              sx={{ ml: 2 }}
+              disabled={
+                loading || guardando || inputValue === '' || Number(Number(inputValue).toFixed(2)) === Number(Number(valorGuardado).toFixed(2)) || !isOwner
+              }
+              onClick={async () => {
+                setGuardando(true);
+                await guardarFondoCajaChica(inputValue);
+                const nuevoValor = Number(Number(inputValue).toFixed(2));
+                setValorGuardado(nuevoValor);
+                setInputValue(nuevoValor.toFixed(2));
+                setGuardando(false);
+              }}
+              title={isOwner ? '' : 'Solo el Owner puede modificar el fondo de caja chica'}
+            >
+              Guardar
+            </Button>
           </Box>
           <Typography color="text.secondary" sx={{ mb: 1 }}>
             Este monto será el total base para el cálculo de la pestaña caja chica en cierre del día.
+            {!isOwner && (
+              <Box sx={{ color: 'error.main', fontWeight: 500, mt: 1 }}>
+                Solo el usuario Owner puede modificar el fondo de caja chica.
+              </Box>
+            )}
           </Typography>
         </AccordionDetails>
       </Accordion>
