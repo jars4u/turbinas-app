@@ -71,9 +71,10 @@ export default function Dashboard({ usuario, onLogout }) {
   // El usuario autenticado debe mantenerse fijo
   // Si el nombre cambia tras crear usuario, probablemente se está actualizando el prop "usuario" desde el padre
   // Solución: guardar el usuario autenticado en un estado local solo al montar
-  const [usuarioActivo, setUsuarioActivo] = useState(usuario);
+  // usuario ahora es un objeto { email }
+  const [usuarioActivo, setUsuarioActivo] = useState(usuario?.email || "");
   useEffect(() => {
-    setUsuarioActivo(usuario);
+    setUsuarioActivo(usuario?.email || "");
   }, [usuario]);
   const handleStatusChange = async (id, newStatus) => {
     const vehiculo = vehiculos.find((v) => v.id === id);

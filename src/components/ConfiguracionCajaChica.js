@@ -23,6 +23,10 @@ export default function ConfiguracionCajaChica({ isOwner }) {
   };
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto" }}>
+      <Box sx={{ mb: 1 }}>
+        <Typography variant="caption" color={isOwner ? 'success.main' : 'error.main'}>
+        </Typography>
+      </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <SavingsIcon fontSize="small" sx={{ mb: '2px' }} />

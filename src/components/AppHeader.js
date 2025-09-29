@@ -34,7 +34,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
             style={{ height: 40, marginRight: 8 }}
             aria-label="Logo"
           />
-          <Chip label="v.2.2" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
+          <Chip label="v.2.5" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
         </Box>
         <Box
           sx={{
@@ -93,7 +93,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
               <PersonIcon fontSize="small" style={{ color: "#757575" }} />
             </Avatar>
             <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ fontSize: 13 }}>
-              {usuarioActivo}
+              {usuarioActivo ? usuarioActivo.split("@")[0] : ""}
             </Typography>
             <Button
               variant="outlined"

@@ -10,16 +10,27 @@ import AccesoDenegado from "./pages/AccesoDenegado";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 function App() {
-  const [usuario, setUsuario] = useState(() => localStorage.getItem("usuario") || null);
+  const [usuario, setUsuario] = useState(() => {
+    const u = localStorage.getItem("usuario");
+    if (!u) return null;
+    try {
+      return JSON.parse(u);
+    } catch (e) {
+      localStorage.removeItem("usuario");
+      return null;
+    }
+  });
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
   // Escuchar cambios de usuario autenticado
   React.useEffect(() => {
+    setLoadingAuth(true);
     const unsubscribe = observarUsuario(async (user) => {
       if (user) {
-        setUsuario(user.email);
-        localStorage.setItem("usuario", user.email);
+        setUsuario({ email: user.email });
+        localStorage.setItem("usuario", JSON.stringify({ email: user.email }));
         // Consultar si el usuario es admin/owner en Firestore
         const usuarios = await obtenerUsuarios();
         const usuarioFirestore = usuarios.find(u => u.email === user.email);
@@ -31,6 +42,7 @@ function App() {
         setIsOwner(false);
         localStorage.removeItem("usuario");
       }
+      setLoadingAuth(false);
     });
     return () => unsubscribe();
   }, []);
@@ -46,13 +58,33 @@ function App() {
   };
 
   // Componente para proteger rutas
-  function ProtectedRoute({ children }) {
+  function ProtectedRoute({ children, skeleton }) {
+    if (loadingAuth) {
+      return skeleton || null;
+    }
     if (!usuario) {
       return <AccesoDenegado />;
     }
     return children;
   }
 
+  // Skeleton para la página de configuración
+  const ConfigSkeleton = (
+    <div style={{ maxWidth: 700, margin: '40px auto', padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eee', marginRight: 12 }} />
+        <div style={{ width: 180, height: 28, borderRadius: 6, background: '#eee' }} />
+      </div>
+      <div style={{ width: 140, height: 36, borderRadius: 6, background: '#eee', marginBottom: 24 }} />
+      <div style={{ width: '100%', height: 48, borderRadius: 8, background: '#eee', marginBottom: 16 }} />
+      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+    </div>
+  );
   return (
     <BrowserRouter>
       <Routes>
@@ -63,7 +95,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/configuracion" element={
-          <ProtectedRoute>
+          <ProtectedRoute skeleton={ConfigSkeleton}>
             <Configuracion usuario={usuario} isAdmin={isAdmin} isOwner={isOwner} />
           </ProtectedRoute>
         } />

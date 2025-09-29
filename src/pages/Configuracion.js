@@ -221,7 +221,10 @@ export default function Configuracion({ usuario, isAdmin, isOwner }) {
               onClick={() => isOwner && handleOpen(null)}
               disabled={!isOwner}
             >
-              Crear usuario
+              <span style={{ display: 'inline', fontWeight: 500 }}>
+                <span style={{ display: 'inline', '@media (min-width:600px)': { display: 'none' } }}>Crear</span>
+                <span style={{ display: 'none', '@media (min-width:600px)': { display: 'inline' } }}>Crear usuario</span>
+              </span>
             </Button>
           </Box>
           <Accordion
@@ -242,7 +245,8 @@ export default function Configuracion({ usuario, isAdmin, isOwner }) {
               </Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ px: 0, py: 0 }}>
-              <Table sx={{ border: "none", minWidth: 0 }} size="small">
+              <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+                <Table sx={{ border: "none", minWidth: 600 }} size="small">
                 <TableHead>
                   <TableRow
                     sx={{
@@ -251,7 +255,20 @@ export default function Configuracion({ usuario, isAdmin, isOwner }) {
                       justifyContent: "space-between",
                     }}
                   >
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>
+                    <TableCell
+                      sx={{
+                        py: 0.5,
+                        px: 1,
+                        fontSize: 12,
+                        flex: 1,
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 2,
+                        background: '#fff',
+                        minWidth: 120,
+                        boxShadow: { xs: '2px 0 4px -2px #ccc', sm: 'none' },
+                      }}
+                    >
                       Usuario
                     </TableCell>
                     <TableCell
@@ -301,7 +318,20 @@ export default function Configuracion({ usuario, isAdmin, isOwner }) {
                         justifyContent: "space-between",
                       }}
                     >
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>
+                      <TableCell
+                        sx={{
+                          py: 0.5,
+                          px: 1,
+                          fontSize: 12,
+                          flex: 1,
+                          position: 'sticky',
+                          left: 0,
+                          zIndex: 1,
+                          background: '#fff',
+                          minWidth: 120,
+                          boxShadow: { xs: '2px 0 4px -2px #ccc', sm: 'none' },
+                        }}
+                      >
                         {u.email || u.usuario}
                       </TableCell>
                       <TableCell
@@ -423,7 +453,8 @@ export default function Configuracion({ usuario, isAdmin, isOwner }) {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </Box>
               {!isOwner && (
                 <Box sx={{ mt: 2 }}>
                   <Typography color="error" fontWeight={500}>
