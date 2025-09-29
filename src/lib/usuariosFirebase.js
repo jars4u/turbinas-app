@@ -58,7 +58,42 @@ export async function actualizarUsuario(id, data) {
   return await updateDoc(doc(db, "usuarios", id), data);
 }
 
-// Eliminar usuario
-export async function eliminarUsuario(id) {
-  return await deleteDoc(doc(db, "usuarios", id));
+
+// Eliminar usuario de Firestore y Auth
+export async function eliminarUsuario({ id, email }) {
+  // Eliminar de Firestore
+  await deleteDoc(doc(db, "usuarios", id));
+
+  // Eliminar de Auth usando la API REST de Firebase
+  // Necesitamos la API key
+  const apiKey = (auth.app && auth.app.options && auth.app.options.apiKey) || process.env.REACT_APP_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey) throw new Error("No se encontró la API key de Firebase");
+
+  // Buscar el uid del usuario por email usando la API REST de Firebase
+  // 1. Obtener el idToken de un usuario admin (el actual)
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error("No hay usuario autenticado");
+  const idToken = await currentUser.getIdToken();
+
+  // 2. Buscar el usuario por email
+  const lookupUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`;
+  const lookupRes = await fetch(lookupUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ email: [email] }),
+  });
+  const lookupData = await lookupRes.json();
+  if (!lookupRes.ok || !lookupData.users || !lookupData.users[0]) {
+    // Si no se encuentra el usuario en Auth, ya está eliminado
+    return;
+  }
+  const uid = lookupData.users[0].localId;
+
+  // 3. Eliminar el usuario de Auth
+  const deleteUrl = `https://identitytoolkit.googleapis.com/v1/projects/${auth.app.options.projectId}/accounts:delete`;
+  await fetch(deleteUrl + `?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ localId: uid }),
+  });
 }

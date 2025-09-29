@@ -31,7 +31,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from "@mui/icons-material/Delete";
 import EstadosServicios from "./EstadosServicios";
 import ConfiguracionCajaChica from "../components/ConfiguracionCajaChica";
-import { getFirestore, collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { getFirestore, collection, getDocs, deleteDoc } from "firebase/firestore";
 import { registrarUsuario, obtenerUsuarios, actualizarUsuario, eliminarUsuario } from "../lib/usuariosFirebase";
 
 export default function Configuracion({ usuario, isAdmin }) {
@@ -75,7 +75,7 @@ export default function Configuracion({ usuario, isAdmin }) {
   };
 
   // Guardar usuario (solo crear)
-  const [form, setForm] = useState({ usuario: "", clave: "", admin: false });
+  const [form, setForm] = useState({ usuario: "", clave: "", admin: false, owner: false });
   const [repeatClave, setRepeatClave] = useState("");
   const [claveError, setClaveError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -87,7 +87,7 @@ export default function Configuracion({ usuario, isAdmin }) {
     setClaveError("");
     setLoading(true);
     try {
-      await registrarUsuario(form.usuario, form.clave, { admin: form.admin });
+      await registrarUsuario(form.usuario, form.clave, { admin: form.admin, owner: form.owner });
       const nuevosUsuarios = await obtenerUsuarios();
       setUsuarios(nuevosUsuarios);
       setOpen(false);
@@ -117,7 +117,10 @@ export default function Configuracion({ usuario, isAdmin }) {
 
   // Eliminar usuario
   const handleDelete = async (id) => {
-    await eliminarUsuario(id);
+    // Buscar el usuario por id para obtener el email
+    const user = usuarios.find((u) => u.id === id);
+    if (!user) return;
+    await eliminarUsuario({ id, email: user.email || user.usuario });
     setUsuarios(usuarios.filter((u) => u.id !== id));
   };
 
@@ -162,6 +165,7 @@ export default function Configuracion({ usuario, isAdmin }) {
                   <TableRow sx={{ height: 28, display: 'flex', justifyContent: 'space-between' }}>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>Usuario</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1, textAlign: 'center' }}>Admin</TableCell>
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1, textAlign: 'center' }}>Owner</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1, textAlign: 'right' }}>Acciones</TableCell>
                   </TableRow>
                 </TableHead>
@@ -177,13 +181,26 @@ export default function Configuracion({ usuario, isAdmin }) {
                           sx={{ p: 0.5 }}
                         />
                       </TableCell>
+                      <TableCell sx={{ py: 0.5, px: 1, flex: 1, textAlign: 'center' }}>
+                        <Checkbox
+                          checked={u.owner}
+                          onChange={() => {
+                            // Permitir a cualquier admin cambiar el owner
+                            actualizarUsuario(u.id, { owner: !u.owner }).then(async () => {
+                              const nuevosUsuarios = await obtenerUsuarios();
+                              setUsuarios(nuevosUsuarios);
+                            });
+                          }}
+                          color="secondary"
+                          sx={{ p: 0.5 }}
+                        />
+                      </TableCell>
                       <TableCell sx={{ py: 0.5, px: 1, flex: 1, textAlign: 'right' }}>
                         <Tooltip title="Eliminar">
                           <IconButton
-                            // ...existing code...
                             onClick={() => handleDelete(u.id)}
                             size="small"
-                            sx={{ p: 0.5 }}
+                            sx={{ p: 0.5, color: 'error.main' }}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -232,6 +249,12 @@ export default function Configuracion({ usuario, isAdmin }) {
                   onChange={(e) => setForm({ ...form, admin: e.target.checked })}
                 />
                 <Typography>Administrador</Typography>
+                <Checkbox
+                  checked={form.owner}
+                  onChange={(e) => setForm({ ...form, owner: e.target.checked })}
+                  sx={{ ml: 2 }}
+                />
+                <Typography>Owner</Typography>
               </Box>
             </DialogContent>
             <DialogActions>
@@ -293,9 +316,16 @@ export default function Configuracion({ usuario, isAdmin }) {
         </Box>
       )}
       {!isAdmin && (
-        <Typography variant="body1" sx={{ mt: 4 }}>
-          No tienes permisos de administrador para gestionar usuarios.
-        </Typography>
+        <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img
+            src="/animaciones/User%20Authentication.gif"
+            alt="Sin permisos de administrador"
+            style={{ maxWidth: 220, marginBottom: 16 }}
+          />
+          <Typography variant="body1" align="center" px={15}>
+            No tienes permisos de administrador para acceder a la configuración, contacta a un administrador o solicita acceso.
+          </Typography>
+        </Box>
       )}
     </Container>
   );

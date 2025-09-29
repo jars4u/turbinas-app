@@ -12,6 +12,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 function App() {
   const [usuario, setUsuario] = useState(() => localStorage.getItem("usuario") || null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
 
   // Escuchar cambios de usuario autenticado
   React.useEffect(() => {
@@ -19,13 +20,15 @@ function App() {
       if (user) {
         setUsuario(user.email);
         localStorage.setItem("usuario", user.email);
-        // Consultar si el usuario es admin en Firestore
+        // Consultar si el usuario es admin/owner en Firestore
         const usuarios = await obtenerUsuarios();
         const usuarioFirestore = usuarios.find(u => u.email === user.email);
         setIsAdmin(usuarioFirestore?.admin === true);
+        setIsOwner(usuarioFirestore?.owner === true);
       } else {
         setUsuario(null);
         setIsAdmin(false);
+        setIsOwner(false);
         localStorage.removeItem("usuario");
       }
     });
@@ -38,6 +41,7 @@ function App() {
     await logoutUsuario(); // Cierra sesión en Firebase
     setUsuario(null);
     setIsAdmin(false);
+    setIsOwner(false);
     localStorage.removeItem("usuario");
   };
 
@@ -60,12 +64,12 @@ function App() {
         } />
         <Route path="/configuracion" element={
           <ProtectedRoute>
-            <Configuracion usuario={usuario} isAdmin={isAdmin} />
+            <Configuracion usuario={usuario} isAdmin={isAdmin} isOwner={isOwner} />
           </ProtectedRoute>
         } />
         <Route path="/cierredia" element={
           <ProtectedRoute>
-            <CierreDia />
+            <CierreDia usuario={usuario} isOwner={isOwner} />
           </ProtectedRoute>
         } />
         <Route path="/historial" element={

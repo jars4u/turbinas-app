@@ -37,7 +37,7 @@ import { guardarCierreDiario } from "../lib/cierresDiariosFirebase";
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 
-export default function CierreDia() {
+export default function CierreDia({ usuario, isOwner }) {
   const navigate = useNavigate();
   const [vehiculos, setVehiculos] = useState([]);
   const [estadosServicio, setEstadosServicio] = useState([]);
@@ -518,7 +518,7 @@ export default function CierreDia() {
                     <CircularProgress color="primary" size={40} />
                   </Box>
                 ) : (
-                  <Egresos tasaBCV={tasaBCV} />
+                  <Egresos tasaBCV={tasaBCV} isOwner={isOwner} />
                 )}
               </Box>
             )}

@@ -31,7 +31,7 @@ import DialogActions from '@mui/material/DialogActions';
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-export default function Egresos({ tasaBCV }) {
+export default function Egresos({ tasaBCV, isOwner }) {
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -599,7 +599,7 @@ export default function Egresos({ tasaBCV }) {
                   )}
                 </TableCell>
                 <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1, whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1, whiteSpace: 'nowrap', justifyContent: 'center' }}>
                     {editIdx === idx ? (
                       <>
                         <Button
@@ -621,20 +621,43 @@ export default function Egresos({ tasaBCV }) {
                       </>
                     ) : (
                       <>
-                        <IconButton
-                          color="primary"
-                          size="small"
-                          onClick={() => handleEdit(idx)}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          onClick={() => handleDelete(e.id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        {isOwner ? (
+                          <>
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              onClick={() => handleEdit(idx)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              color="error"
+                              size="small"
+                              onClick={() => handleDelete(e.id)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </>
+                        ) : (
+                          <>
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              disabled
+                              title="Solo el Owner puede editar egresos"
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              color="error"
+                              size="small"
+                              disabled
+                              title="Solo el Owner puede eliminar egresos"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </>
+                        )}
                       </>
                     )}
                   </Box>
