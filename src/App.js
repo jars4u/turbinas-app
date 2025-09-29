@@ -1,7 +1,7 @@
 import Login from "./pages/Login";
 
-import React, { useState } from "react";
-import { obtenerUsuarios, observarUsuario, logoutUsuario } from "./lib/usuariosFirebase";
+import React from "react";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import HistorialVehiculos from "./pages/HistorialVehiculos";
 import Configuracion from "./pages/Configuracion";
@@ -10,54 +10,15 @@ import AccesoDenegado from "./pages/AccesoDenegado";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 function App() {
-  const [usuario, setUsuario] = useState(() => {
-    const u = localStorage.getItem("usuario");
-    if (!u) return null;
-    try {
-      return JSON.parse(u);
-    } catch (e) {
-      localStorage.removeItem("usuario");
-      return null;
-    }
-  });
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
-  const [loadingAuth, setLoadingAuth] = useState(true);
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  );
+}
 
-  // Escuchar cambios de usuario autenticado
-  React.useEffect(() => {
-    setLoadingAuth(true);
-    const unsubscribe = observarUsuario(async (user) => {
-      if (user) {
-        setUsuario({ email: user.email });
-        localStorage.setItem("usuario", JSON.stringify({ email: user.email }));
-        // Consultar si el usuario es admin/owner en Firestore
-        const usuarios = await obtenerUsuarios();
-        const usuarioFirestore = usuarios.find(u => u.email === user.email);
-        setIsAdmin(usuarioFirestore?.admin === true);
-        setIsOwner(usuarioFirestore?.owner === true);
-      } else {
-        setUsuario(null);
-        setIsAdmin(false);
-        setIsOwner(false);
-        localStorage.removeItem("usuario");
-      }
-      setLoadingAuth(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Eliminado: handleLogin y error, ya no se usan
-
-  const handleLogout = async () => {
-    await logoutUsuario(); // Cierra sesión en Firebase
-    setUsuario(null);
-    setIsAdmin(false);
-    setIsOwner(false);
-    localStorage.removeItem("usuario");
-  };
-
-  // Componente para proteger rutas
+function AppRoutes() {
+  const { usuario, isAdmin, isOwner, loadingAuth, handleLogout } = useAuth();
   function ProtectedRoute({ children, skeleton }) {
     if (loadingAuth) {
       return skeleton || null;

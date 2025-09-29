@@ -1,6 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 import {
   Container,
@@ -37,7 +38,8 @@ import { guardarCierreDiario } from "../lib/cierresDiariosFirebase";
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 
-export default function CierreDia({ usuario, isAdmin, isOwner }) {
+export default function CierreDia() {
+  const { usuario, isAdmin, isOwner } = useAuth();
   const navigate = useNavigate();
   const [vehiculos, setVehiculos] = useState([]);
   const [estadosServicio, setEstadosServicio] = useState([]);

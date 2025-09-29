@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+
 import {
   Box,
   Typography,
@@ -11,68 +12,102 @@ import {
   CircularProgress,
   Button,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TableContainer,
 } from "@mui/material";
-import { obtenerVehiculos } from "../lib/vehiculosFirebase";
+import ServicioTimeline from "../components/ServicioTimeline";
 import HistoryIcon from "@mui/icons-material/History";
 
-export default function HistorialVehiculos({ isOwner }) {
-  const [ordenCol, setOrdenCol] = useState("fechaEntrega");
-  const [ordenAsc, setOrdenAsc] = useState(false);
-  const [busqueda, setBusqueda] = useState("");
-  const [vehiculos, setVehiculos] = useState([]);
-  const [orderBy, setOrderBy] = useState('fechaEntrega');
-  const [loading, setLoading] = useState(true);
+function ServicioHistorialModal({ open, onClose, servicio }) {
+  const eventos = React.useMemo(() => {
+    if (!servicio) return [];
+    const arr = [];
+    // Registro
+    if (servicio.arrivalTime) {
+      arr.push({
+        titulo: 'Registro del servicio',
+        descripcion: `Servicio registrado: ${servicio.vehiculo || ''} - ${servicio.servicio || ''}`,
+        usuario: servicio.registradoPor || servicio.usuario || '',
+        fecha: servicio.arrivalTime,
+        color: 'primary',
+      });
+    }
+    // Entrega
+    if (servicio.entregadoPor && servicio.fechaEntrega) {
+      arr.push({
+        titulo: 'Entrega del servicio',
+        descripcion: 'El servicio fue entregado al cliente.',
+        usuario: servicio.entregadoPor,
+        fecha: servicio.fechaEntrega,
+        color: 'success',
+      });
+    }
+    // Pagos
+    if (servicio.factura || servicio.formaPago || servicio.referencia) {
+      arr.push({
+        titulo: 'Pago registrado',
+        descripcion: `Factura: ${servicio.factura || '-'} | Forma de pago: ${servicio.formaPago || '-'}${servicio.referencia ? ' | Ref: ' + servicio.referencia : ''}`,
+        usuario: servicio.registradoPor || servicio.usuario || '',
+        fecha: servicio.fechaEntrega || servicio.arrivalTime,
+        color: 'info',
+      });
+    }
+    // Eventos de historial de cambios
+    if (Array.isArray(servicio.historial)) {
+      servicio.historial.forEach((h) => {
+        arr.push({
+          titulo: `Cambio en '${h.campo}'`,
+          descripcion: `De: ${h.valorAnterior ?? '-'} → A: ${h.valorNuevo ?? '-'}`,
+          usuario: h.usuario || '',
+          fecha: h.fecha,
+          color: 'warning',
+        });
+      });
+    }
+    return arr.sort((a, b) => (a.fecha || 0) - (b.fecha || 0));
+  }, [servicio]);
 
-  useEffect(() => {
-    obtenerVehiculos().then((data) => {
-      setVehiculos(data);
-      setLoading(false);
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Historial del servicio</DialogTitle>
+      <DialogContent sx={{ px: { xs: 1, sm: 2 } }}>
+        <ServicioTimeline eventos={eventos} />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cerrar</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+export default function HistorialVehiculos() {
+  // Estados principales para la tabla y el modal
+  const [busqueda, setBusqueda] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [vehiculos, setVehiculos] = React.useState([]);
+  const [ordenCol, setOrdenCol] = React.useState("fechaEntrega");
+  const [ordenAsc, setOrdenAsc] = React.useState(false);
+  const [openHistorial, setOpenHistorial] = React.useState(false);
+  const [servicioSeleccionado, setServicioSeleccionado] = React.useState(null);
+
+  // Cargar datos reales de Firestore
+  React.useEffect(() => {
+    setLoading(true);
+    import('../lib/vehiculosFirebase').then(({ obtenerVehiculos }) => {
+      obtenerVehiculos().then((data) => {
+        setVehiculos(data);
+        setLoading(false);
+      });
     });
   }, []);
 
-  if (!isOwner) {
-    return (
-      <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: { xs: 1, md: 6 } }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
-          <Button
-            variant="text"
-            color="primary"
-            size="small"
-            onClick={() => window.history.back()}
-            startIcon={
-              <span style={{ fontSize: 18, marginRight: 2 }}>&larr;</span>
-            }
-            sx={{ textTransform: "uppercase", fontWeight: 700 }}
-          >
-            Atrás
-          </Button>
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-          <HistoryIcon sx={{ fontSize: 28, mr: 1 }} />
-          <Typography
-            variant="h5"
-            fontWeight={700}
-            sx={{ fontFamily: "inherit", fontWeight: 900 }}
-          >
-            Historial de servicios
-          </Typography>
-        </Box>
-        <Divider sx={{ mb: 2 }} />
-        <Box sx={{ mt: 6, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img
-            src="/animaciones/User%20Authentication.gif"
-            alt="Sin permisos de owner"
-            style={{ maxWidth: 220, marginBottom: 16 }}
-          />
-          <Typography variant="body1" align="center">
-            No tienes permisos para acceder al historial de vehículos.
-          </Typography>
-        </Box>
-      </Box>
-    );
-  }
+
   return (
-  <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: { xs: 1, md: 6 } }}>
+    <>
+      <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: { xs: 1, md: 6 } }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
         <Button
           variant="text"
@@ -125,11 +160,10 @@ export default function HistorialVehiculos({ isOwner }) {
           <CircularProgress color="primary" size={48} />
         </Box>
       ) : (
-        <Box sx={{ width: '100%', overflowX: 'auto', display: { xs: 'block', sm: 'block' } }}>
+        <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'auto', mb: 2 }}>
           <Table
-            component={Paper}
             size="small"
-            sx={{ mb: 2, minWidth: 900, whiteSpace: "nowrap" }}
+            sx={{ minWidth: 900, whiteSpace: "nowrap" }}
           >
             <TableHead>
               <TableRow>
@@ -272,14 +306,19 @@ export default function HistorialVehiculos({ isOwner }) {
                     key={v.id || idx}
                     sx={{
                       bgcolor: idx % 2 === 0 ? "background.paper" : "grey.100",
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      setServicioSeleccionado(v);
+                      setOpenHistorial(true);
                     }}
                   >
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.fechaEntrega ? new Date(v.fechaEntrega).toLocaleDateString("es-VE") : "-"}
+                      {v.fechaEntrega ? (() => { const d = new Date(v.fechaEntrega); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.arrivalTime ? new Date(v.arrivalTime).toLocaleDateString("es-VE") : "-"}
+                      {v.arrivalTime ? (() => { const d = new Date(v.arrivalTime); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.vehiculo || "-"}
@@ -300,18 +339,24 @@ export default function HistorialVehiculos({ isOwner }) {
                       {v.status || "-"}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.registradoPor || v.usuario || "-"}
+                      {(v.registradoPor || v.usuario || "-").split('@')[0]}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.entregadoPor || "-"}
+                      {(v.entregadoPor || "-").split('@')[0]}
                     </TableCell>
                   </TableRow>
                 ))
             )}
           </TableBody>
           </Table>
-        </Box>
+        </TableContainer>
       )}
     </Box>
+      <ServicioHistorialModal
+        open={openHistorial}
+        onClose={() => setOpenHistorial(false)}
+        servicio={servicioSeleccionado}
+      />
+    </>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 import {
   Container,
   Typography,
@@ -38,7 +39,8 @@ import {
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
 
-export default function Dashboard({ usuario, onLogout }) {
+export default function Dashboard() {
+  const { usuario, handleLogout } = useAuth();
   // Estado para modal de cambio de estado
   const [openEstadoModal, setOpenEstadoModal] = useState(false);
   const [vehiculoEstadoModal, setVehiculoEstadoModal] = useState(null);
@@ -49,7 +51,7 @@ export default function Dashboard({ usuario, onLogout }) {
       // Extraer clientes únicos por nombre y teléfono
       const clientesUnicos = [];
       const seen = new Set();
-      data.forEach(v => {
+      data.forEach((v) => {
         const nombre = v.customerName?.trim() || "";
         const telefono = v.customerPhone?.trim() || "";
         if (nombre && telefono) {
@@ -71,14 +73,8 @@ export default function Dashboard({ usuario, onLogout }) {
   const [ordenAsc, setOrdenAsc] = useState(true);
   // Cambiar status y guardar en la base de datos
   const navigate = useNavigate();
-  // El usuario autenticado debe mantenerse fijo
-  // Si el nombre cambia tras crear usuario, probablemente se está actualizando el prop "usuario" desde el padre
-  // Solución: guardar el usuario autenticado en un estado local solo al montar
-  // usuario ahora es un objeto { email }
-  const [usuarioActivo, setUsuarioActivo] = useState(usuario?.email || "");
-  useEffect(() => {
-    setUsuarioActivo(usuario?.email || "");
-  }, [usuario]);
+  // usuario.email está disponible desde el contexto
+  const usuarioActivo = usuario?.email || "";
   const handleStatusChange = async (id, newStatus) => {
     const vehiculo = vehiculos.find((v) => v.id === id);
     if (!vehiculo) return;
@@ -242,7 +238,7 @@ export default function Dashboard({ usuario, onLogout }) {
       <AppHeader
         usuarioActivo={usuarioActivo}
         onLogout={() => {
-          onLogout();
+          handleLogout();
           navigate("/");
         }}
         navigate={navigate}
@@ -654,17 +650,17 @@ export default function Dashboard({ usuario, onLogout }) {
         }}
       >
         <DialogContent
-            sx={{
-              minWidth: { xs: 'auto', sm: 400 },
-              maxWidth: { xs: '100vw', sm: 500 },
-              py: 2,
-              position: "relative",
-              display: { xs: 'flex', sm: 'block' },
-              flexDirection: { xs: 'column', sm: 'initial' },
-              alignItems: { xs: 'center', sm: 'initial' },
-              justifyContent: { xs: 'center', sm: 'initial' },
-              px: { xs: 2, sm: 3 },
-            }}
+          sx={{
+            minWidth: { xs: "auto", sm: 400 },
+            maxWidth: { xs: "100vw", sm: 500 },
+            py: 2,
+            position: "relative",
+            display: { xs: "flex", sm: "block" },
+            flexDirection: { xs: "column", sm: "initial" },
+            alignItems: { xs: "center", sm: "initial" },
+            justifyContent: { xs: "center", sm: "initial" },
+            px: { xs: 2, sm: 3 },
+          }}
         >
           {actionLoading && (
             <Box
@@ -699,7 +695,11 @@ export default function Dashboard({ usuario, onLogout }) {
                 <IconButton
                   onClick={handleDeleteClick}
                   color="error"
-                  sx={{ display: { xs: 'inline-flex', sm: 'none' }, p: 0.5, ml: 5 }}
+                  sx={{
+                    display: { xs: "inline-flex", sm: "none" },
+                    p: 0.5,
+                    ml: 5,
+                  }}
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
@@ -708,7 +708,11 @@ export default function Dashboard({ usuario, onLogout }) {
                   variant="outlined"
                   size="small"
                   color="error"
-                  sx={{ display: { xs: 'none', sm: 'inline-flex' }, minWidth: 40, px: 2 }}
+                  sx={{
+                    display: { xs: "none", sm: "inline-flex" },
+                    minWidth: 40,
+                    px: 2,
+                  }}
                 >
                   Eliminar
                 </Button>
@@ -734,7 +738,12 @@ export default function Dashboard({ usuario, onLogout }) {
                     }
                     color={estadoActual?.color || "default"}
                     size="small"
-                    sx={{ fontSize: "0.85rem", height: 26, mx: 0, cursor: 'pointer' }}
+                    sx={{
+                      fontSize: "0.85rem",
+                      height: 26,
+                      mx: 0,
+                      cursor: "pointer",
+                    }}
                     onClick={() => {
                       setVehiculoEstadoModal(vehiculoActual);
                       setOpenEstadoModal(true);
@@ -743,37 +752,61 @@ export default function Dashboard({ usuario, onLogout }) {
                 </Box>
               );
             })()}
-      {/* Modal para cambiar estado */}
-      <Dialog open={openEstadoModal} onClose={() => setOpenEstadoModal(false)}>
-        <DialogTitle>Cambiar estado</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 220 }}>
-            {estadosServicio.filter(e => !e.defaultFacturar).map((estado) => (
-              <Button
-                key={estado.nombre}
-                variant={vehiculoEstadoModal && (vehiculoEstadoModal.status === estado.nombre || vehiculoEstadoModal.estado === estado.nombre) ? 'contained' : 'outlined'}
-                color={estado.color || 'primary'}
-                onClick={async () => {
-                  setOpenEstadoModal(false);
-                  if (!vehiculoEstadoModal) return;
-                  await actualizarVehiculo(vehiculoEstadoModal.id, {
-                    ...vehiculoEstadoModal,
-                    status: estado.nombre,
-                  });
-                  const actualizados = await obtenerVehiculos();
-                  setVehiculos(actualizados);
+          {/* Modal para cambiar estado */}
+          <Dialog
+            open={openEstadoModal}
+            onClose={() => setOpenEstadoModal(false)}
+          >
+            <DialogTitle>Cambiar estado</DialogTitle>
+            <DialogContent>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  minWidth: 220,
                 }}
-                sx={{ justifyContent: 'flex-start', textTransform: 'none', fontWeight: 600 }}
               >
-                {estado.label}
+                {estadosServicio
+                  .filter((e) => !e.defaultFacturar)
+                  .map((estado) => (
+                    <Button
+                      key={estado.nombre}
+                      variant={
+                        vehiculoEstadoModal &&
+                        (vehiculoEstadoModal.status === estado.nombre ||
+                          vehiculoEstadoModal.estado === estado.nombre)
+                          ? "contained"
+                          : "outlined"
+                      }
+                      color={estado.color || "primary"}
+                      onClick={async () => {
+                        setOpenEstadoModal(false);
+                        if (!vehiculoEstadoModal) return;
+                        await actualizarVehiculo(vehiculoEstadoModal.id, {
+                          ...vehiculoEstadoModal,
+                          status: estado.nombre,
+                        });
+                        const actualizados = await obtenerVehiculos();
+                        setVehiculos(actualizados);
+                      }}
+                      sx={{
+                        justifyContent: "flex-start",
+                        textTransform: "none",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {estado.label}
+                    </Button>
+                  ))}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenEstadoModal(false)} color="primary">
+                Cancelar
               </Button>
-            ))}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEstadoModal(false)} color="primary">Cancelar</Button>
-        </DialogActions>
-      </Dialog>
+            </DialogActions>
+          </Dialog>
           {/* Modal de confirmación para eliminar */}
           <Dialog
             open={confirmDeleteOpen}
@@ -800,22 +833,23 @@ export default function Dashboard({ usuario, onLogout }) {
             </DialogActions>
           </Dialog>
         </DialogContent>
-        <DialogContent sx={{
-          minWidth: { xs: 'auto', sm: 400 },
-          maxWidth: { xs: '100vw', sm: 500 },
-          display: { xs: 'flex', sm: 'block' },
-          flexDirection: { xs: 'column', sm: 'initial' },
-          alignItems: { xs: 'center', sm: 'initial' },
-          justifyContent: { xs: 'center', sm: 'initial' },
-          px: { xs: 1, sm: 3 },
-        }}>
-          {/* Sección: Datos de turbina */}
+        <DialogContent
+          sx={{
+            minWidth: { xs: "auto", sm: 400 },
+            maxWidth: { xs: "100vw", sm: 500 },
+            display: { xs: "flex", sm: "block" },
+            flexDirection: { xs: "column", sm: "initial" },
+            alignItems: { xs: "center", sm: "initial" },
+            justifyContent: { xs: "center", sm: "initial" },
+            px: { xs: 1, sm: 3 },
+          }}
+        >
           <Box
             sx={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              mb: 1,
+              mb: { xs: 0, sm: 1 },
             }}
           >
             <Typography
@@ -835,50 +869,61 @@ export default function Dashboard({ usuario, onLogout }) {
               </IconButton>
             )}
           </Box>
-          <Divider sx={{ mb: 1 }} />
+          <Divider sx={{ mb: { xs: 0, sm: 1 } }} />
           <Box
             sx={{
               minHeight: 80,
               display: "flex",
               flexDirection: "column",
               gap: 0.5,
-              alignItems: { xs: 'center', sm: 'flex-start' },
-              width: { xs: '100%', sm: 'auto' },
+              alignItems: { xs: "center", sm: "flex-start" },
+              width: { xs: "100%", sm: "auto" },
+              pl: { xs: 1, sm: 0 }
             }}
           >
             {editSection === "vehiculo" || isRegistering ? (
-              <>
-                <TextField
-                  margin="none"
-                  label="Modelo"
-                  name="vehiculo"
-                  fullWidth
-                  size="small"
-                  value={form.vehiculo}
-                  onChange={handleChange}
-                  sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                />
-              </>
+              <TextField
+                margin="none"
+                label="Modelo"
+                name="vehiculo"
+                fullWidth
+                size="small"
+                value={form.vehiculo}
+                onChange={handleChange}
+                sx={{ mb: 1.5 }}
+                InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
+              />
             ) : (
-              <>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "row", sm: "column" },
+                  alignItems: { xs: "center", sm: "flex-start" },
+                  gap: { xs: 1, sm: 0 },
+                  width: "100%",
+                  mb: 0.5,
+                }}
+              >
                 <Typography
                   variant="caption"
                   sx={{
-                    fontSize: "0.80rem",
-                    display: "block",
+                    fontSize: { xs: "0.90rem", sm: "0.80rem" },
                     color: "text.secondary",
+                    minWidth: 60,
                   }}
                 >
-                  Modelo
+                  Modelo:
                 </Typography>
                 <Typography
                   variant="caption"
-                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
+                  sx={{
+                    fontSize: { xs: "1rem", sm: "1rem" },
+                    fontWeight: 500,
+                  }}
                 >
                   {form.vehiculo && form.vehiculo.toUpperCase()}
                 </Typography>
-              </>
+              </Box>
             )}
           </Box>
 
@@ -907,15 +952,16 @@ export default function Dashboard({ usuario, onLogout }) {
               </IconButton>
             )}
           </Box>
-          <Divider sx={{ mb: 1 }} />
+          <Divider sx={{ mb: { xs: 0, sm: 1 } }} />
           <Box
             sx={{
               minHeight: 110,
               display: "flex",
               flexDirection: "column",
               gap: 0.5,
-              alignItems: { xs: 'center', sm: 'flex-start' },
-              width: { xs: '100%', sm: 'auto' },
+              alignItems: { xs: "center", sm: "flex-start" },
+              width: { xs: "100%", sm: "auto" },
+              pl: { xs: 1, sm: 0 }
             }}
           >
             {editSection === "servicio" || isRegistering ? (
@@ -957,56 +1003,111 @@ export default function Dashboard({ usuario, onLogout }) {
               </>
             ) : (
               <>
-                <Typography
-                  variant="caption"
+                <Box
                   sx={{
-                    fontSize: "0.80rem",
-                    display: "block",
-                    color: "text.secondary",
+                    display: "flex",
+                    flexDirection: { xs: "row", sm: "column" },
+                    alignItems: { xs: "flex-start", sm: "flex-start" },
+                    gap: { xs: 0.5, sm: 0 },
+                    width: "100%",
+                    mb: 0.5,
+                    flexWrap: { xs: "wrap", sm: "nowrap" },
                   }}
                 >
-                  Servicio
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
-                >
-                  {form.servicio}
-                </Typography>
-                <Typography
-                  variant="caption"
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
+                      color: "text.secondary",
+                      minWidth: 60,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Servicio:
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "1rem", sm: "1rem" },
+                      fontWeight: 500,
+                      wordBreak: "break-word",
+                      whiteSpace: { xs: "pre-line", sm: "normal" },
+                      maxWidth: { xs: "calc(100% - 70px)", sm: "100%" },
+                    }}
+                  >
+                    {form.servicio}
+                  </Typography>
+                </Box>
+                <Box
                   sx={{
-                    fontSize: "0.80rem",
-                    display: "block",
-                    color: "text.secondary",
-                    mt: 1,
+                    display: "flex",
+                    flexDirection: { xs: "row", sm: "column" },
+                    alignItems: { xs: "flex-start", sm: "flex-start" },
+                    gap: { xs: 0.5, sm: 0 },
+                    width: "100%",
+                    mb: 0.5,
+                    flexWrap: { xs: "wrap", sm: "nowrap" },
                   }}
                 >
-                  Observaciones
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
-                >
-                  {form.observaciones}
-                </Typography>
-                <Typography
-                  variant="caption"
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
+                      color: "text.secondary",
+                      minWidth: 60,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Observaciones:
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "1rem", sm: "1rem" },
+                      fontWeight: 500,
+                      wordBreak: "break-word",
+                      whiteSpace: { xs: "pre-line", sm: "normal" },
+                      maxWidth: { xs: "calc(100% - 70px)", sm: "100%" },
+                    }}
+                  >
+                    {form.observaciones}
+                  </Typography>
+                </Box>
+                <Box
                   sx={{
-                    fontSize: "0.80rem",
-                    display: "block",
-                    color: "text.secondary",
-                    mt: 1,
+                    display: "flex",
+                    flexDirection: { xs: "row", sm: "column" },
+                    alignItems: { xs: "flex-start", sm: "flex-start" },
+                    gap: { xs: 0.5, sm: 0 },
+                    width: "100%",
+                    mb: 0.5,
+                    flexWrap: { xs: "wrap", sm: "nowrap" },
                   }}
                 >
-                  Precio
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
-                >
-                  ${form.precio}
-                </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
+                      color: "text.secondary",
+                      minWidth: 60,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Precio:
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "1rem", sm: "1rem" },
+                      fontWeight: 500,
+                      wordBreak: "break-word",
+                      whiteSpace: { xs: "pre-line", sm: "normal" },
+                      maxWidth: { xs: "calc(100% - 70px)", sm: "100%" },
+                    }}
+                  >
+                    ${form.precio}
+                  </Typography>
+                </Box>
               </>
             )}
           </Box>
@@ -1044,23 +1145,39 @@ export default function Dashboard({ usuario, onLogout }) {
               display: "flex",
               flexDirection: "column",
               gap: 0.5,
-              alignItems: { xs: 'center', sm: 'flex-start' },
-              width: { xs: '100%', sm: 'auto' },
+              alignItems: { xs: "center", sm: "flex-start" },
+              width: { xs: "100%", sm: "auto" },
+              pl: { xs: 1, sm: 0 }
             }}
           >
             {editSection === "cliente" || isRegistering ? (
               <>
                 <Autocomplete
                   options={clientes}
-                  getOptionLabel={opt => opt.nombre + (opt.telefono ? ` (${opt.telefono})` : "")}
+                  getOptionLabel={(opt) =>
+                    opt.nombre + (opt.telefono ? ` (${opt.telefono})` : "")
+                  }
                   freeSolo
-                  value={clientes.find(c => c.nombre === form.customerName && c.telefono === form.customerPhone) || { nombre: form.customerName, telefono: form.customerPhone }}
+                  value={
+                    clientes.find(
+                      (c) =>
+                        c.nombre === form.customerName &&
+                        c.telefono === form.customerPhone
+                    ) || {
+                      nombre: form.customerName,
+                      telefono: form.customerPhone,
+                    }
+                  }
                   onChange={(e, value) => {
                     if (value) {
-                      setForm({ ...form, customerName: value.nombre, customerPhone: value.telefono });
+                      setForm({
+                        ...form,
+                        customerName: value.nombre,
+                        customerPhone: value.telefono,
+                      });
                     }
                   }}
-                  sx={{ width: '100%' }}
+                  sx={{ width: "100%" }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1070,9 +1187,14 @@ export default function Dashboard({ usuario, onLogout }) {
                       fullWidth
                       size="small"
                       value={form.customerName}
-                      onChange={e => setForm({ ...form, customerName: e.target.value })}
-                      sx={{ mb: 1.5, width: '100%' }}
-                      InputProps={{ ...params.InputProps, sx: { fontSize: "1rem", py: 0.5 } }}
+                      onChange={(e) =>
+                        setForm({ ...form, customerName: e.target.value })
+                      }
+                      sx={{ mb: 1.5, width: "100%" }}
+                      InputProps={{
+                        ...params.InputProps,
+                        sx: { fontSize: "1rem", py: 0.5 },
+                      }}
                     />
                   )}
                 />
@@ -1082,7 +1204,11 @@ export default function Dashboard({ usuario, onLogout }) {
                   name="customerPhone"
                   fullWidth
                   size="small"
-                  value={form.customerPhone.startsWith("+58") ? form.customerPhone : "+58" + form.customerPhone.replace(/^0+/, "")}
+                  value={
+                    form.customerPhone.startsWith("+58")
+                      ? form.customerPhone
+                      : "+58" + form.customerPhone.replace(/^0+/, "")
+                  }
                   onChange={(e) => {
                     let value = e.target.value;
                     // Forzar el prefijo +58
@@ -1114,45 +1240,79 @@ export default function Dashboard({ usuario, onLogout }) {
               </>
             ) : (
               <>
-                <Typography
-                  variant="caption"
+                <Box
                   sx={{
-                    fontSize: "0.80rem",
-                    display: "block",
-                    color: "text.secondary",
+                    display: "flex",
+                    flexDirection: { xs: "row", sm: "column" },
+                    alignItems: { xs: "center", sm: "flex-start" },
+                    gap: { xs: 1, sm: 0 },
+                    width: "100%",
+                    mb: 0.5,
                   }}
                 >
-                  Cliente
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
-                >
-                  {form.customerName}
-                </Typography>
-                <Typography
-                  variant="caption"
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
+                      color: "text.secondary",
+                      minWidth: 60,
+                    }}
+                  >
+                    Cliente:
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "1rem", sm: "1rem" },
+                      fontWeight: 500,
+                    }}
+                  >
+                    {form.customerName}
+                  </Typography>
+                </Box>
+                <Box
                   sx={{
-                    fontSize: "0.80rem",
-                    display: "block",
-                    color: "text.secondary",
-                    mt: 1,
+                    display: "flex",
+                    flexDirection: { xs: "row", sm: "column" },
+                    alignItems: { xs: "center", sm: "flex-start" },
+                    gap: { xs: 1, sm: 0 },
+                    width: "100%",
+                    mb: 0.5,
                   }}
                 >
-                  Teléfono
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ fontSize: "1rem", display: "block", mt: 0.2 }}
-                >
-                  {form.customerPhone}
-                </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
+                      color: "text.secondary",
+                      minWidth: 60,
+                    }}
+                  >
+                    Teléfono:
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: { xs: "1rem", sm: "1rem" },
+                      fontWeight: 500,
+                    }}
+                  >
+                    {form.customerPhone}
+                  </Typography>
+                </Box>
               </>
             )}
           </Box>
         </DialogContent>
         <DialogActions
-          sx={{ display: "flex", justifyContent: "space-between", px: 3, mb: 2 }}
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            justifyContent: "space-between",
+            px: 3,
+            mb: 2,
+            gap: { xs: 1, sm: 0 },
+          }}
         >
           {isRegistering ? (
             <>
@@ -1216,7 +1376,16 @@ export default function Dashboard({ usuario, onLogout }) {
                 </>
               ) : (
                 <>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}>
+                  {/* WhatsApp button: en una fila separada en móvil, inline en desktop */}
+                  <Box
+                    sx={{
+                      width: "100%",
+                      display: { xs: "flex", sm: "inline-flex" },
+                      flexDirection: { xs: "row", sm: "row" },
+                      justifyContent: { xs: "center", sm: "flex-start" },
+                      mb: { xs: 1, sm: 0 },
+                    }}
+                  >
                     <Button
                       variant="outlined"
                       size="small"
@@ -1242,40 +1411,53 @@ export default function Dashboard({ usuario, onLogout }) {
                       disabled={!form.customerPhone}
                       sx={{
                         minWidth: 120,
-                        justifyContent: 'center',
-                        textAlign: 'center',
+                        justifyContent: "center",
+                        textAlign: "center",
                         px: 2,
                       }}
                     >
-                      <Box sx={{ display: { xs: 'inline', sm: 'none' } }}>Enviar</Box>
-                      <Box sx={{ display: { xs: 'none', sm: 'inline' } }}>Enviar WhatsApp</Box>
+                      <Box sx={{ display: { xs: "inline", sm: "none" } }}>
+                        Enviar
+                      </Box>
+                      <Box sx={{ display: { xs: "none", sm: "inline" } }}>
+                        Enviar WhatsApp
+                      </Box>
                     </Button>
                   </Box>
+                  {/* Botones Facturar y Volver juntos en la esquina inferior derecha */}
+                  {editId && !editSection && !isRegistering && (
+                    <Box
+                      sx={{
+                        width: "100%",
+                        display: "flex",
+                        flexDirection: "row",
+                        justifyContent: { xs: "center", sm: "flex-end" },
+                        gap: 1,
+                        pb: 0,
+                      }}
+                    >
+                      <Button
+                        onClick={handleClose}
+                        variant="outlined"
+                        size="small"
+                        color="primary"
+                      >
+                        Volver
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        startIcon={<PointOfSaleIcon />}
+                        onClick={() => setFacturaOpen(true)}
+                      >
+                        Facturar
+                      </Button>
+                    </Box>
+                  )}
                 </>
               )}
             </>
-          )}
-          {/* Botones Facturar y Volver juntos en la esquina inferior derecha */}
-          {editId && !editSection && !isRegistering && (
-            <DialogActions sx={{ pb: 2, justifyContent: "flex-end" }}>
-              <Button
-                onClick={handleClose}
-                variant="outlined"
-                size="small"
-                color="primary"
-              >
-                Volver
-              </Button>
-              <Button
-                variant="contained"
-                color="success"
-                size="small"
-                startIcon={<PointOfSaleIcon />}
-                onClick={() => setFacturaOpen(true)}
-              >
-                Facturar
-              </Button>
-            </DialogActions>
           )}
         </DialogActions>
         <PaymentModal
@@ -1308,8 +1490,12 @@ export default function Dashboard({ usuario, onLogout }) {
             // Actualizar el estado del vehículo al estado defaultFacturar y guardar entregadoPor y fechaEntrega
             if (editId) {
               // Buscar el estado defaultFacturar
-              const estadoFacturar = estadosServicio.find(e => e.defaultFacturar);
-              const statusFacturar = estadoFacturar ? estadoFacturar.nombre : "entregado";
+              const estadoFacturar = estadosServicio.find(
+                (e) => e.defaultFacturar
+              );
+              const statusFacturar = estadoFacturar
+                ? estadoFacturar.nombre
+                : "entregado";
               await actualizarVehiculo(editId, {
                 ...form,
                 status: statusFacturar,

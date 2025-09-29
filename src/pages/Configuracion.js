@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import GroupIcon from "@mui/icons-material/Group";
 import AddIcon from "@mui/icons-material/Add";
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { auth } from "../firebase";
 import {
   Container,
@@ -45,7 +46,8 @@ import {
   eliminarUsuario,
 } from "../lib/usuariosFirebase";
 
-export default function Configuracion({ usuario, isAdmin, isOwner }) {
+export default function Configuracion() {
+  const { usuario, isAdmin, isOwner } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState("");
