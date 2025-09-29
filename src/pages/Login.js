@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { TextField, Button, Paper, Typography, Box } from "@mui/material";
-import { loginUsuario, logoutUsuario, observarUsuario } from "../lib/usuariosFirebase";
+import { TextField, Button, Paper, Typography, Box, Autocomplete } from "@mui/material";
+import { loginUsuario, logoutUsuario, observarUsuario, obtenerUsuarios } from "../lib/usuariosFirebase";
 
 
 const Login = () => {
@@ -9,11 +9,17 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [usuarioActual, setUsuarioActual] = useState(null);
+  const [usuarios, setUsuarios] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     const unsubscribe = observarUsuario(setUsuarioActual);
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // Cargar usuarios registrados para el autocomplete
+    obtenerUsuarios().then(us => setUsuarios(us.map(u => u.email)));
   }, []);
 
   const handleSubmit = async (e) => {
@@ -40,14 +46,24 @@ const Login = () => {
           Iniciar sesión
         </Typography>
         <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-          <TextField
-            label="Usuario"
-            variant="outlined"
-            fullWidth
-            margin="normal"
+          <Autocomplete
+            options={usuarios}
+            freeSolo
             value={username}
-            onChange={e => setUsername(e.target.value)}
-            autoFocus
+            onChange={(e, value) => setUsername(value || "")}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Usuario"
+                variant="outlined"
+                fullWidth
+                margin="normal"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                autoFocus
+              />
+            )}
+            sx={{ mb: 2 }}
           />
           <TextField
             label="Clave"
