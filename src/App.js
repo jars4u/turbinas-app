@@ -69,12 +69,12 @@ function App() {
         } />
         <Route path="/cierredia" element={
           <ProtectedRoute>
-            <CierreDia usuario={usuario} isOwner={isOwner} />
+            <CierreDia usuario={usuario} isAdmin={isAdmin} isOwner={isOwner} />
           </ProtectedRoute>
         } />
         <Route path="/historial" element={
           <ProtectedRoute>
-            <HistorialVehiculos />
+            <HistorialVehiculos isOwner={isOwner} />
           </ProtectedRoute>
         } />
       </Routes>

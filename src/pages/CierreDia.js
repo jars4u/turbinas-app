@@ -37,7 +37,7 @@ import { guardarCierreDiario } from "../lib/cierresDiariosFirebase";
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 
-export default function CierreDia({ usuario, isOwner }) {
+export default function CierreDia({ usuario, isAdmin, isOwner }) {
   const navigate = useNavigate();
   const [vehiculos, setVehiculos] = useState([]);
   const [estadosServicio, setEstadosServicio] = useState([]);
@@ -175,6 +175,38 @@ export default function CierreDia({ usuario, isOwner }) {
     })
     .filter((estado) => estado.nombre !== "entregado");
 
+  if (!isAdmin && !isOwner) {
+    return (
+      <Container maxWidth="xl" sx={{ mt: 4, px: 6 }}>
+        <Button
+          variant="text"
+          startIcon={<ArrowBackIcon />}
+          size="small"
+          sx={{ mb: 2 }}
+          onClick={() => navigate("/dashboard")}
+        >
+          Atrás
+        </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <PointOfSaleIcon fontSize="small" />
+          <Typography variant="h5" fontWeight={600}>
+            Cierre del día
+          </Typography>
+        </Box>
+        <Divider sx={{ mb: 2 }} />
+        <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img
+            src="/animaciones/User%20Authentication.gif"
+            alt="Sin permisos de administrador"
+            style={{ maxWidth: 220, marginBottom: 16 }}
+          />
+          <Typography variant="body1" align="center" px={15}>
+            No tienes permisos de administrador para acceder a la configuración, contacta a un administrador o solicita acceso.
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
   return (
     <Container maxWidth="xl" sx={{ mt: 4, px: 6 }}>
       <Button

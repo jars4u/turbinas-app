@@ -42,10 +42,12 @@ export default function EstadosServicios() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ nombre: "", label: "", color: "default", accionTimer: "continuar" });
+  const [form, setForm] = useState({ nombre: "", label: "", color: "default", accionTimer: "continuar", defaultFacturar: false });
   const [actionLoading, setActionLoading] = useState(false);
   const [defaultEstado, setDefaultEstado] = useState(null);
   const [savingDefaultId, setSavingDefaultId] = useState(null);
+  const [defaultFacturar, setDefaultFacturar] = useState(null);
+  const [savingDefaultFacturarId, setSavingDefaultFacturarId] = useState(null);
 
   useEffect(() => {
     obtenerEstadosServicio().then((data) => {
@@ -54,6 +56,9 @@ export default function EstadosServicios() {
       // Buscar el estado default
       const def = data.find(e => e.defaultEstado);
       setDefaultEstado(def ? def.id : null);
+      // Buscar el estado default de facturación
+      const defFact = data.find(e => e.defaultFacturar);
+      setDefaultFacturar(defFact ? defFact.id : null);
     });
   }, []);
 
@@ -63,11 +68,12 @@ export default function EstadosServicios() {
         nombre: estado.nombre,
         label: estado.label,
         color: estado.color || "default",
-        accionTimer: estado.accionTimer || "continuar"
+        accionTimer: estado.accionTimer || "continuar",
+        defaultFacturar: !!estado.defaultFacturar
       });
       setEditId(estado.id);
     } else {
-      setForm({ nombre: "", label: "", color: "default", accionTimer: "continuar" });
+      setForm({ nombre: "", label: "", color: "default", accionTimer: "continuar", defaultFacturar: false });
       setEditId(null);
     }
     setOpen(true);
@@ -82,12 +88,12 @@ export default function EstadosServicios() {
   const handleSave = async () => {
     setActionLoading(true);
     if (editId) {
-      await actualizarEstadoServicio(editId, { ...form, defaultEstado: editId === defaultEstado });
+      await actualizarEstadoServicio(editId, { ...form, defaultEstado: editId === defaultEstado, defaultFacturar: editId === defaultFacturar });
     } else {
-      const res = await agregarEstadoServicio({ ...form, defaultEstado: false });
+      const res = await agregarEstadoServicio({ ...form, defaultEstado: false, defaultFacturar: false });
       // Si es el primero, lo marcamos como default
       if (estados.length === 0) {
-        await actualizarEstadoServicio(res.id, { ...form, defaultEstado: true });
+        await actualizarEstadoServicio(res.id, { ...form, defaultEstado: true, defaultFacturar: false });
         setDefaultEstado(res.id);
       }
     }
@@ -95,6 +101,23 @@ export default function EstadosServicios() {
     setEstados(actualizados);
     setActionLoading(false);
     handleClose();
+  };
+  const handleDefaultFacturarChange = async (id) => {
+    setSavingDefaultFacturarId(id);
+    setDefaultFacturar(id);
+    // Desmarcar todos los demás como defaultFacturar
+    const nuevosEstados = estados.map(e => ({ ...e, defaultFacturar: e.id === id }));
+    setEstados(nuevosEstados);
+    try {
+      // Quitar defaultFacturar a todos menos el seleccionado
+      await Promise.all(estados.map(e => e.id !== id ? actualizarEstadoServicio(e.id, { ...e, defaultFacturar: false }) : null));
+      await actualizarEstadoServicio(id, { ...estados.find(e => e.id === id), defaultFacturar: true });
+      const actualizados = await obtenerEstadosServicio();
+      setEstados(actualizados);
+    } catch (err) {
+      setEstados(estados);
+    }
+    setSavingDefaultFacturarId(null);
   };
 
   const handleDelete = async (id) => {
@@ -155,7 +178,8 @@ export default function EstadosServicios() {
                 <TableRow sx={{ height: 28 }}>
                   <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Nombre</TableCell>
                   <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Etiqueta</TableCell>
-                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Default</TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Default Registro</TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Default Facturar</TableCell>
                   <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Color</TableCell>
                   <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Acción Timer</TableCell>
                   <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }} align="right">Acciones</TableCell>
@@ -166,21 +190,35 @@ export default function EstadosServicios() {
                   <TableRow key={estado.id} sx={{ border: 'none', background: 'transparent', height: 28 }}>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{estado.nombre}</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{estado.label}</TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>
-                        <Checkbox
-                          checked={!!estado.defaultEstado}
-                          onChange={() => handleDefaultChange(estado.id)}
-                          color="primary"
-                          inputProps={{ 'aria-label': 'Estado predeterminado' }}
-                          disabled={savingDefaultId === estado.id}
-                        />
-                        {savingDefaultId === estado.id && (
-                          <CircularProgress size={16} sx={{ ml: 1 }} />
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>
-                        <Chip color={estado.color || "default"} size="small" sx={{ minWidth: 15, height: 15 }} />
-                      </TableCell>
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
+                      <Checkbox
+                        checked={!!estado.defaultEstado}
+                        onChange={() => handleDefaultChange(estado.id)}
+                        color="primary"
+                        inputProps={{ 'aria-label': 'Estado predeterminado' }}
+                        disabled={savingDefaultId === estado.id}
+                        sx={{ mx: 'auto', display: 'block' }}
+                      />
+                      {savingDefaultId === estado.id && (
+                        <CircularProgress size={16} sx={{ ml: 1 }} />
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
+                      <Checkbox
+                        checked={!!estado.defaultFacturar}
+                        onChange={() => handleDefaultFacturarChange(estado.id)}
+                        color="success"
+                        inputProps={{ 'aria-label': 'Estado default de facturación' }}
+                        disabled={savingDefaultFacturarId === estado.id}
+                        sx={{ mx: 'auto', display: 'block' }}
+                      />
+                      {savingDefaultFacturarId === estado.id && (
+                        <CircularProgress size={16} sx={{ ml: 1 }} />
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>
+                      <Chip color={estado.color || "default"} size="small" sx={{ minWidth: 15, height: 15 }} />
+                    </TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{estado.accionTimer === "pausar" ? "Pausar" : "Continuar"}</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1 }} align="right">
                       <Tooltip title="Editar">

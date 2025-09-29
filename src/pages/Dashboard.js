@@ -1264,11 +1264,14 @@ export default function Dashboard({ usuario, onLogout }) {
               setSnackbarOpen(true);
               return;
             }
-            // Actualizar el estado del vehículo a 'entregado' y guardar entregadoPor y fechaEntrega
+            // Actualizar el estado del vehículo al estado defaultFacturar y guardar entregadoPor y fechaEntrega
             if (editId) {
+              // Buscar el estado defaultFacturar
+              const estadoFacturar = estadosServicio.find(e => e.defaultFacturar);
+              const statusFacturar = estadoFacturar ? estadoFacturar.nombre : "entregado";
               await actualizarVehiculo(editId, {
                 ...form,
-                status: "entregado",
+                status: statusFacturar,
                 entregadoPor: usuarioActivo,
                 fechaEntrega: Date.now(),
                 registradoPor:

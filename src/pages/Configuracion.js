@@ -1,8 +1,9 @@
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate } from 'react-router-dom';
-import GroupIcon from '@mui/icons-material/Group';
-import AddIcon from '@mui/icons-material/Add';
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useNavigate } from "react-router-dom";
+import GroupIcon from "@mui/icons-material/Group";
+import AddIcon from "@mui/icons-material/Add";
 import React, { useEffect, useState } from "react";
+import { auth } from "../firebase";
 import {
   Container,
   Typography,
@@ -27,14 +28,24 @@ import {
   Divider,
   CircularProgress,
 } from "@mui/material";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EstadosServicios from "./EstadosServicios";
 import ConfiguracionCajaChica from "../components/ConfiguracionCajaChica";
-import { getFirestore, collection, getDocs, deleteDoc } from "firebase/firestore";
-import { registrarUsuario, obtenerUsuarios, actualizarUsuario, eliminarUsuario } from "../lib/usuariosFirebase";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  deleteDoc,
+} from "firebase/firestore";
+import {
+  registrarUsuario,
+  obtenerUsuarios,
+  actualizarUsuario,
+  eliminarUsuario,
+} from "../lib/usuariosFirebase";
 
-export default function Configuracion({ usuario, isAdmin }) {
+export default function Configuracion({ usuario, isAdmin, isOwner }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState("");
@@ -75,7 +86,12 @@ export default function Configuracion({ usuario, isAdmin }) {
   };
 
   // Guardar usuario (solo crear)
-  const [form, setForm] = useState({ usuario: "", clave: "", admin: false, owner: false });
+  const [form, setForm] = useState({
+    usuario: "",
+    clave: "",
+    admin: false,
+    owner: false,
+  });
   const [repeatClave, setRepeatClave] = useState("");
   const [claveError, setClaveError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -87,7 +103,10 @@ export default function Configuracion({ usuario, isAdmin }) {
     setClaveError("");
     setLoading(true);
     try {
-      await registrarUsuario(form.usuario, form.clave, { admin: form.admin, owner: form.owner });
+      await registrarUsuario(form.usuario, form.clave, {
+        admin: form.admin,
+        owner: form.owner,
+      });
       const nuevosUsuarios = await obtenerUsuarios();
       setUsuarios(nuevosUsuarios);
       setOpen(false);
@@ -115,13 +134,52 @@ export default function Configuracion({ usuario, isAdmin }) {
     setSelectedUser(null);
   };
 
-  // Eliminar usuario
-  const handleDelete = async (id) => {
-    // Buscar el usuario por id para obtener el email
+  // Eliminar usuario con confirmación
+  const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+  const [deleteUserMsg, setDeleteUserMsg] = useState("");
+
+  const handleDelete = (id) => {
     const user = usuarios.find((u) => u.id === id);
     if (!user) return;
-    await eliminarUsuario({ id, email: user.email || user.usuario });
-    setUsuarios(usuarios.filter((u) => u.id !== id));
+    setUserToDelete(user);
+    setDeleteUserDialogOpen(true);
+    setDeleteUserMsg("");
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    setDeletingUser(true);
+    setDeleteUserMsg("");
+    try {
+      await eliminarUsuario({
+        id: userToDelete.id,
+        email: userToDelete.email || userToDelete.usuario,
+      });
+      setUsuarios(usuarios.filter((u) => u.id !== userToDelete.id));
+      setDeleteUserMsg("Usuario eliminado correctamente.");
+      // Si el usuario eliminado es el actual, cerrar sesión y redirigir
+      if (
+        auth.currentUser &&
+        (auth.currentUser.email === userToDelete.email ||
+          auth.currentUser.email === userToDelete.usuario)
+      ) {
+        setTimeout(async () => {
+          await auth.signOut();
+          window.location.href = "/accesodenegado";
+        }, 800);
+      } else {
+        setTimeout(() => {
+          setDeleteUserDialogOpen(false);
+          setUserToDelete(null);
+          setDeleteUserMsg("");
+        }, 1000);
+      }
+    } catch (err) {
+      setDeleteUserMsg("Error al eliminar usuario: " + (err.message || ""));
+    }
+    setDeletingUser(false);
   };
 
   return (
@@ -140,76 +198,240 @@ export default function Configuracion({ usuario, isAdmin }) {
       </Typography>
       {isAdmin && (
         <Box>
-          {/* Gestión de usuarios */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <GroupIcon fontSize="small" sx={{ mb: '2px' }} />
+          {/* Gestión de usuarios solo editable por owner */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <GroupIcon fontSize="small" sx={{ mb: "2px" }} />
               Gestión de usuarios
             </Typography>
             <Button
               variant="outlined"
               size="small"
               startIcon={<AddIcon />}
-              onClick={() => handleOpen(null)}
+              onClick={() => isOwner && handleOpen(null)}
+              disabled={!isOwner}
             >
               Crear usuario
             </Button>
           </Box>
-          <Accordion elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0, py: 0, minHeight: 36 }}>
-              <Typography variant="subtitle2">Mostrar usuarios registrados</Typography>
+          <Accordion
+            elevation={0}
+            sx={{
+              boxShadow: "none",
+              border: "none",
+              background: "transparent",
+              mt: 1,
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ px: 0, py: 0, minHeight: 36 }}
+            >
+              <Typography variant="subtitle2">
+                Mostrar usuarios registrados
+              </Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ px: 0, py: 0 }}>
-              <Table sx={{ border: 'none', minWidth: 0 }} size="small">
+              <Table sx={{ border: "none", minWidth: 0 }} size="small">
                 <TableHead>
-                  <TableRow sx={{ height: 28, display: 'flex', justifyContent: 'space-between' }}>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>Usuario</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1, textAlign: 'center' }}>Admin</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1, textAlign: 'center' }}>Owner</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1, textAlign: 'right' }}>Acciones</TableCell>
+                  <TableRow
+                    sx={{
+                      height: 28,
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>
+                      Usuario
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        py: 0.5,
+                        px: 1,
+                        fontSize: 12,
+                        flex: 1,
+                        textAlign: "center",
+                      }}
+                    >
+                      Admin
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        py: 0.5,
+                        px: 1,
+                        fontSize: 12,
+                        flex: 1,
+                        textAlign: "center",
+                      }}
+                    >
+                      Owner
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        py: 0.5,
+                        px: 1,
+                        fontSize: 12,
+                        flex: 1,
+                        textAlign: "right",
+                      }}
+                    >
+                      Acciones
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {usuarios.map((u) => (
-                    <TableRow key={u.id} sx={{ border: 'none', background: 'transparent', height: 28, display: 'flex', justifyContent: 'space-between' }}>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>{u.email || u.usuario}</TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, flex: 1, textAlign: 'center' }}>
-                        <Checkbox
-                          checked={u.admin}
-                          onChange={() => handleAdminChange(u)}
-                          color="primary"
-                          sx={{ p: 0.5 }}
-                        />
+                    <TableRow
+                      key={u.id}
+                      sx={{
+                        border: "none",
+                        background: "transparent",
+                        height: 28,
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, flex: 1 }}>
+                        {u.email || u.usuario}
                       </TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, flex: 1, textAlign: 'center' }}>
-                        <Checkbox
-                          checked={u.owner}
-                          onChange={() => {
-                            // Permitir a cualquier admin cambiar el owner
-                            actualizarUsuario(u.id, { owner: !u.owner }).then(async () => {
-                              const nuevosUsuarios = await obtenerUsuarios();
-                              setUsuarios(nuevosUsuarios);
-                            });
+                      <TableCell
+                        sx={{ py: 0.5, px: 1, flex: 1, textAlign: "center" }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            height: "100%",
                           }}
-                          color="secondary"
-                          sx={{ p: 0.5 }}
-                        />
+                        >
+                          <Checkbox
+                            checked={u.admin}
+                            onChange={() => isOwner && handleAdminChange(u)}
+                            color="primary"
+                            sx={{ p: 0.5 }}
+                            disabled={!isOwner}
+                          />
+                        </Box>
                       </TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, flex: 1, textAlign: 'right' }}>
+                      <TableCell
+                        sx={{ py: 0.5, px: 1, flex: 1, textAlign: "center" }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            height: "100%",
+                          }}
+                        >
+                          <Checkbox
+                            checked={u.owner}
+                            onChange={() => {
+                              if (isOwner) {
+                                actualizarUsuario(u.id, {
+                                  owner: !u.owner,
+                                }).then(async () => {
+                                  const nuevosUsuarios =
+                                    await obtenerUsuarios();
+                                  setUsuarios(nuevosUsuarios);
+                                });
+                              }
+                            }}
+                            color="secondary"
+                            sx={{ p: 0.5 }}
+                            disabled={!isOwner}
+                          />
+                        </Box>
+                      </TableCell>
+                      <TableCell
+                        sx={{ py: 0.5, px: 1, flex: 1, textAlign: "right" }}
+                      >
                         <Tooltip title="Eliminar">
-                          <IconButton
-                            onClick={() => handleDelete(u.id)}
-                            size="small"
-                            sx={{ p: 0.5, color: 'error.main' }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                          <span>
+                            <IconButton
+                              onClick={() => isOwner && handleDelete(u.id)}
+                              size="small"
+                              sx={{ p: 0.5, color: "error.main" }}
+                              disabled={!isOwner}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       </TableCell>
+                      {/* Modal de confirmación de borrado de usuario (fuera del mapeo de filas) */}
+                      <Dialog
+                        open={deleteUserDialogOpen}
+                        onClose={() => setDeleteUserDialogOpen(false)}
+                      >
+                        <DialogTitle>Confirmar eliminación</DialogTitle>
+                        <DialogContent>
+                          <Typography>
+                            ¿Seguro que deseas eliminar al usuario{" "}
+                            <b>
+                              {userToDelete?.email || userToDelete?.usuario}
+                            </b>
+                            ?
+                          </Typography>
+                          {deletingUser && (
+                            <Box sx={{ mt: 2 }}>
+                              <CircularProgress size={24} />
+                            </Box>
+                          )}
+                          {deleteUserMsg && (
+                            <Typography
+                              sx={{ mt: 2 }}
+                              color={
+                                deleteUserMsg.startsWith("Usuario eliminado")
+                                  ? "success.main"
+                                  : "error"
+                              }
+                            >
+                              {deleteUserMsg}
+                            </Typography>
+                          )}
+                        </DialogContent>
+                        <DialogActions>
+                          <Button
+                            onClick={() => setDeleteUserDialogOpen(false)}
+                            color="primary"
+                            disabled={deletingUser}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={confirmDeleteUser}
+                            color="error"
+                            variant="contained"
+                            disabled={deletingUser}
+                          >
+                            Eliminar
+                          </Button>
+                        </DialogActions>
+                      </Dialog>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              {!isOwner && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography color="error" fontWeight={500}>
+                    Solo el usuario Owner puede modificar la gestión de
+                    usuarios.
+                  </Typography>
+                </Box>
+              )}
             </AccordionDetails>
           </Accordion>
           <Dialog open={open} onClose={() => setOpen(false)}>
@@ -222,6 +444,7 @@ export default function Configuracion({ usuario, isAdmin }) {
                 fullWidth
                 value={form.usuario}
                 onChange={(e) => setForm({ ...form, usuario: e.target.value })}
+                disabled={!isOwner}
               />
               <TextField
                 margin="dense"
@@ -231,6 +454,7 @@ export default function Configuracion({ usuario, isAdmin }) {
                 fullWidth
                 value={form.clave}
                 onChange={(e) => setForm({ ...form, clave: e.target.value })}
+                disabled={!isOwner}
               />
               <TextField
                 margin="dense"
@@ -242,29 +466,50 @@ export default function Configuracion({ usuario, isAdmin }) {
                 onChange={(e) => setRepeatClave(e.target.value)}
                 error={!!claveError}
                 helperText={claveError}
+                disabled={!isOwner}
               />
               <Box sx={{ display: "flex", alignItems: "center", mt: 2 }}>
-                <Checkbox
-                  checked={form.admin}
-                  onChange={(e) => setForm({ ...form, admin: e.target.checked })}
-                />
-                <Typography>Administrador</Typography>
-                <Checkbox
-                  checked={form.owner}
-                  onChange={(e) => setForm({ ...form, owner: e.target.checked })}
-                  sx={{ ml: 2 }}
-                />
-                <Typography>Owner</Typography>
+                <Box
+                  sx={{ display: "flex", alignItems: "center", height: "100%" }}
+                >
+                  <Checkbox
+                    checked={form.admin}
+                    onChange={(e) =>
+                      isOwner && setForm({ ...form, admin: e.target.checked })
+                    }
+                    disabled={!isOwner}
+                  />
+                  <Typography>Administrador</Typography>
+                  <Checkbox
+                    checked={form.owner}
+                    onChange={(e) =>
+                      isOwner && setForm({ ...form, owner: e.target.checked })
+                    }
+                    sx={{ ml: 2 }}
+                    disabled={!isOwner}
+                  />
+                  <Typography>Owner</Typography>
+                </Box>
               </Box>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setOpen(false)} color="error" disabled={loading}>
+              <Button
+                onClick={() => setOpen(false)}
+                color="error"
+                disabled={loading || !isOwner}
+              >
                 Cancelar
               </Button>
               <Button
                 onClick={handleSave}
                 variant="contained"
-                disabled={form.clave === "" || repeatClave === "" || form.clave !== repeatClave || loading}
+                disabled={
+                  form.clave === "" ||
+                  repeatClave === "" ||
+                  form.clave !== repeatClave ||
+                  loading ||
+                  !isOwner
+                }
               >
                 {loading ? "Guardando..." : "Guardar"}
               </Button>
@@ -274,12 +519,26 @@ export default function Configuracion({ usuario, isAdmin }) {
             <DialogTitle>Confirmar cambio de rol</DialogTitle>
             <DialogContent>
               <Typography>
-                ¿Seguro que deseas {selectedUser?.admin ? 'quitar' : 'asignar'} permisos de administrador al usuario <b>{selectedUser?.usuario}</b>?
+                ¿Seguro que deseas {selectedUser?.admin ? "quitar" : "asignar"}{" "}
+                permisos de administrador al usuario{" "}
+                <b>{selectedUser?.usuario}</b>?
               </Typography>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setConfirmOpen(false)} color="error">Cancelar</Button>
-              <Button onClick={handleConfirmAdmin} variant="contained">Confirmar</Button>
+              <Button
+                onClick={() => setConfirmOpen(false)}
+                color="error"
+                disabled={!isOwner}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmAdmin}
+                variant="contained"
+                disabled={!isOwner}
+              >
+                Confirmar
+              </Button>
             </DialogActions>
           </Dialog>
           {/* Módulo de estados de servicios */}
@@ -287,7 +546,15 @@ export default function Configuracion({ usuario, isAdmin }) {
           <EstadosServicios />
           <Divider sx={{ my: 4 }} />
           {/* Detectar si el usuario actual es owner */}
-          <ConfiguracionCajaChica isOwner={!!usuarios.find(u => (u.email || u.usuario) === (usuario?.email || usuario?.usuario) && u.owner)} />
+          <ConfiguracionCajaChica
+            isOwner={
+              !!usuarios.find(
+                (u) =>
+                  (u.email || u.usuario) ===
+                    (usuario?.email || usuario?.usuario) && u.owner
+              )
+            }
+          />
           {/* Botón para borrar todos los datos al final */}
           <Divider sx={{ my: 4 }} />
           {/* <Box sx={{ mt: 3, display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>
@@ -295,21 +562,50 @@ export default function Configuracion({ usuario, isAdmin }) {
               Borrar todos los datos
             </Button>
           </Box> */}
-          <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullWidth maxWidth="xs">
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={() => setDeleteDialogOpen(false)}
+            fullWidth
+            maxWidth="xs"
+          >
             <DialogTitle>Advertencia</DialogTitle>
             <DialogContent>
               <Typography color="error" fontWeight={600} mb={2}>
-                ¿Seguro que deseas borrar <u>todos los datos</u> de movimientos y vehículos?
+                ¿Seguro que deseas borrar <u>todos los datos</u> de movimientos
+                y vehículos?
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Esta acción eliminará todos los registros y no se puede deshacer. Los esquemas y configuraciones se mantendrán.
+                Esta acción eliminará todos los registros y no se puede
+                deshacer. Los esquemas y configuraciones se mantendrán.
               </Typography>
-              {deleting && <Box sx={{ mt: 2 }}><CircularProgress size={24} /></Box>}
-              {deleteMsg && <Typography sx={{ mt: 2 }} color={deleteMsg.startsWith('¡') ? 'success.main' : 'error'}>{deleteMsg}</Typography>}
+              {deleting && (
+                <Box sx={{ mt: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              )}
+              {deleteMsg && (
+                <Typography
+                  sx={{ mt: 2 }}
+                  color={deleteMsg.startsWith("¡") ? "success.main" : "error"}
+                >
+                  {deleteMsg}
+                </Typography>
+              )}
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setDeleteDialogOpen(false)} color="primary" disabled={deleting}>Cancelar</Button>
-              <Button onClick={handleDeleteAllData} color="error" variant="contained" disabled={deleting}>
+              <Button
+                onClick={() => setDeleteDialogOpen(false)}
+                color="primary"
+                disabled={deleting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDeleteAllData}
+                color="error"
+                variant="contained"
+                disabled={deleting}
+              >
                 Borrar datos
               </Button>
             </DialogActions>
@@ -317,14 +613,22 @@ export default function Configuracion({ usuario, isAdmin }) {
         </Box>
       )}
       {!isAdmin && (
-        <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box
+          sx={{
+            mt: 4,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <img
             src="/animaciones/User%20Authentication.gif"
             alt="Sin permisos de administrador"
             style={{ maxWidth: 220, marginBottom: 16 }}
           />
           <Typography variant="body1" align="center" px={15}>
-            No tienes permisos de administrador para acceder a la configuración, contacta a un administrador o solicita acceso.
+            No tienes permisos de administrador para acceder a la configuración,
+            contacta a un administrador o solicita acceso.
           </Typography>
         </Box>
       )}
