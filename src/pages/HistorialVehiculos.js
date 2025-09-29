@@ -32,7 +32,7 @@ export default function HistorialVehiculos({ isOwner }) {
 
   if (!isOwner) {
     return (
-      <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: 6 }}>
+      <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: { xs: 1, md: 6 } }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
           <Button
             variant="text"
@@ -72,7 +72,7 @@ export default function HistorialVehiculos({ isOwner }) {
     );
   }
   return (
-    <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: 6 }}>
+  <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: { xs: 1, md: 6 } }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
         <Button
           variant="text"

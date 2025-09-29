@@ -38,8 +38,23 @@ export default function ConfiguracionCajaChica({ isOwner }) {
           <Typography variant="subtitle2">Mostrar configuraciones de caja chica</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ px: 0, py: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <Typography color="text.secondary" sx={{ minWidth: 180 }}>
+          <Box
+            sx={{
+              display: { xs: 'block', sm: 'flex' },
+              alignItems: { sm: 'center' },
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            <Typography
+              color="text.secondary"
+              sx={{
+                minWidth: { xs: 0, sm: 180 },
+                width: { xs: '100%', sm: 'auto' },
+                display: { xs: 'block', sm: 'inline-block' },
+                mb: { xs: 1, sm: 0 },
+              }}
+            >
               Fondo en caja chica (USD):
             </Typography>
             <TextField
@@ -60,7 +75,7 @@ export default function ConfiguracionCajaChica({ isOwner }) {
             <Button
               variant="contained"
               size="small"
-              sx={{ ml: 2 }}
+              sx={{ ml: 2, mt: { xs: 1, sm: 0 } }}
               disabled={
                 loading || guardando || inputValue === '' || Number(Number(inputValue).toFixed(2)) === Number(Number(valorGuardado).toFixed(2)) || !isOwner
               }

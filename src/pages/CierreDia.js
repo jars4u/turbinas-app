@@ -177,7 +177,7 @@ export default function CierreDia({ usuario, isAdmin, isOwner }) {
 
   if (!isAdmin && !isOwner) {
     return (
-      <Container maxWidth="xl" sx={{ mt: 4, px: 6 }}>
+      <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
         <Button
           variant="text"
           startIcon={<ArrowBackIcon />}
@@ -208,7 +208,7 @@ export default function CierreDia({ usuario, isAdmin, isOwner }) {
     );
   }
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, px: 6 }}>
+  <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
       <Button
         variant="text"
         startIcon={<ArrowBackIcon />}
@@ -334,68 +334,70 @@ export default function CierreDia({ usuario, isAdmin, isOwner }) {
                 <Typography variant="subtitle1" fontWeight={600}>Totales por estado</Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Table component={Paper} size="small" sx={{ mb: 2 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Estado</TableCell>
-                      <TableCell align="right">Total $</TableCell>
-                      <TableCell align="right">Total Bs</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {totalesPorEstado.map((estado) => (
-                      <TableRow key={estado.nombre}>
-                        <TableCell>
-                          <Chip
-                            label={estado.label}
-                            color={estado.color || "default"}
-                            size="small"
-                            sx={{ fontWeight: 500, fontSize: "0.95rem", height: 24 }}
-                          />
+                <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                  <Table component={Paper} size="small" sx={{ mb: 2, minWidth: 400 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Estado</TableCell>
+                        <TableCell align="right">Total $</TableCell>
+                        <TableCell align="right">Total Bs</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {totalesPorEstado.map((estado) => (
+                        <TableRow key={estado.nombre}>
+                          <TableCell>
+                            <Chip
+                              label={estado.label}
+                              color={estado.color || "default"}
+                              size="small"
+                              sx={{ fontWeight: 500, fontSize: "0.95rem", height: 24 }}
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            {estado.total.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </TableCell>
+                          <TableCell align="right">
+                            {tasaBCV
+                              ? (estado.total * tasaBCV).toLocaleString("de-DE", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {/* Fila de total */}
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>
+                          {totalesPorEstado
+                            .reduce((acc, estado) => acc + estado.total, 0)
+                            .toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                         </TableCell>
-                        <TableCell align="right">
-                          {estado.total.toLocaleString("en-US", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>
                           {tasaBCV
-                            ? (estado.total * tasaBCV).toLocaleString("de-DE", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
+                            ? totalesPorEstado
+                                .reduce(
+                                  (acc, estado) => acc + estado.total * tasaBCV,
+                                  0
+                                )
+                                .toLocaleString("de-DE", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })
                             : "-"}
                         </TableCell>
                       </TableRow>
-                    ))}
-                    {/* Fila de total */}
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>
-                        {totalesPorEstado
-                          .reduce((acc, estado) => acc + estado.total, 0)
-                          .toLocaleString("en-US", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>
-                        {tasaBCV
-                          ? totalesPorEstado
-                              .reduce(
-                                (acc, estado) => acc + estado.total * tasaBCV,
-                                0
-                              )
-                              .toLocaleString("de-DE", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                          : "-"}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+                    </TableBody>
+                  </Table>
+                </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                   El total de entregados corresponde al monto cobrado hoy y se reflejará en los egresos. El total
                   en proceso y notificado muestra los montos aún no cobrados.

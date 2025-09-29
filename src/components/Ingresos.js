@@ -391,9 +391,12 @@ export default function Ingresos({ tasaBCV }) {
                 <TableCell>
                   {Array.isArray(ing.formasPago) && ing.formasPago.length > 0
                     ? ing.formasPago.map(fp => {
-                        // Abreviaciones comunes
-                        if (!fp) return '-';
-                        const lower = fp.toLowerCase();
+                        let metodo = fp;
+                        if (fp && typeof fp === 'object' && fp.metodo) {
+                          metodo = fp.metodo;
+                        }
+                        if (!metodo || typeof metodo !== 'string') return '-';
+                        const lower = metodo.toLowerCase();
                         if (lower.includes('efect')) return 'Efe.';
                         if (lower.includes('zelle')) return 'Zel.';
                         if (lower.includes('pago mov') || lower.includes('pago móvil')) return 'PM.';
@@ -401,11 +404,12 @@ export default function Ingresos({ tasaBCV }) {
                         if (lower.includes('bs')) return 'Bs.';
                         if (lower.includes('tarjeta')) return 'Tj.';
                         if (lower.includes('transfer')) return 'Trf.';
-                        return fp.length > 6 ? fp.slice(0, 6) + '.' : fp;
+                        return metodo.length > 6 ? metodo.slice(0, 6) + '.' : metodo;
                       }).join(' + ')
                     : (ing.formaPago
                         ? (() => {
                             const fp = ing.formaPago;
+                            if (!fp || typeof fp !== 'string') return '-';
                             const lower = fp.toLowerCase();
                             if (lower.includes('efect')) return 'Efe.';
                             if (lower.includes('zelle')) return 'Zel.';

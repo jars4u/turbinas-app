@@ -18,7 +18,8 @@ import {
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+// import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { DatePicker } from '@mui/x-date-pickers';
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
@@ -54,6 +55,8 @@ export default function ResumenContable({ tasaBCV }) {
   const [cierresPorDia, setCierresPorDia] = useState({});
   const [loading, setLoading] = useState(true);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  const [fechaInicio, setFechaInicio] = useState(null);
+  const [fechaFin, setFechaFin] = useState(null);
 
   useEffect(() => {
     // Consultar ingresos, egresos y cierres diarios
@@ -159,43 +162,11 @@ export default function ResumenContable({ tasaBCV }) {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'center', sm: 'flex-start' } }}>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
-              label="Día"
-              value={(() => {
-                const hoy = dayjs().startOf("day");
-                const hoyStr = `${hoy.date().toString().padStart(2, "0")}/${(
-                  hoy.month() + 1
-                )
-                  .toString()
-                  .padStart(2, "0")}/${hoy.year()}`;
-                if (
-                  !fechaSeleccionada &&
-                  Object.keys(datosPorDia).includes(hoyStr)
-                ) {
-                  setFechaSeleccionada(hoyStr);
-                  return hoy;
-                }
-                if (fechaSeleccionada) {
-                  const partes = fechaSeleccionada.split("/");
-                  return dayjs(`${partes[2]}-${partes[1]}-${partes[0]}`);
-                }
-                return null;
-              })()}
-              onChange={(date) => {
-                if (date && dayjs(date).isValid()) {
-                  const d = String(dayjs(date).date()).padStart(2, "0");
-                  const m = String(dayjs(date).month() + 1).padStart(2, "0");
-                  const y = dayjs(date).year();
-                  const fechaStr = `${d}/${m}/${y}`;
-                  if (Object.keys(datosPorDia).includes(fechaStr)) {
-                    setFechaSeleccionada(fechaStr);
-                  }
-                }
-              }}
-              renderInput={(params) => (
-                <TextField {...params} size="small" sx={{ minWidth: 120 }} />
-              )}
+              label="Desde"
+              value={fechaInicio}
+              onChange={setFechaInicio}
+              renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
               disableFuture
-              views={["year", "month", "day"]}
               minDate={
                 Object.keys(datosPorDia).length > 0
                   ? dayjs(
@@ -215,15 +186,33 @@ export default function ResumenContable({ tasaBCV }) {
                     )
                   : undefined
               }
+              maxDate={fechaFin || dayjs().startOf("day")}
+            />
+            <Box sx={{ mx: 1 }}>a</Box>
+            <DatePicker
+              label="Hasta"
+              value={fechaFin}
+              onChange={setFechaFin}
+              renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
+              disableFuture
+              minDate={fechaInicio || (Object.keys(datosPorDia).length > 0
+                  ? dayjs(
+                      Object.keys(datosPorDia)
+                        .sort((a, b) => {
+                          const fa = Date.parse(
+                            a.split("/").reverse().join("-")
+                          );
+                          const fb = Date.parse(
+                            b.split("/").reverse().join("-")
+                          );
+                          return fa - fb;
+                        })[0]
+                        .split("/")
+                        .reverse()
+                        .join("-")
+                    )
+                  : undefined)}
               maxDate={dayjs().startOf("day")}
-              shouldDisableDate={(date) => {
-                if (!dayjs(date).isValid()) return true;
-                const d = String(dayjs(date).date()).padStart(2, "0");
-                const m = String(dayjs(date).month() + 1).padStart(2, "0");
-                const y = dayjs(date).year();
-                const fechaStr = `${d}/${m}/${y}`;
-                return !Object.keys(datosPorDia).includes(fechaStr);
-              }}
             />
           </LocalizationProvider>
         </Box>
@@ -235,57 +224,79 @@ export default function ResumenContable({ tasaBCV }) {
         </Typography>
       ) : (
         <>
-          {fechaSeleccionada &&
-            Object.keys(datosPorDia).includes(fechaSeleccionada) &&
-            datosPorDia[fechaSeleccionada] &&
-            (() => {
-              const { ingresos, egresos } = datosPorDia[fechaSeleccionada];
-              const cierre = cierresPorDia[fechaSeleccionada];
-
-              // Usar la tasa histórica del cierre del día para todos los cálculos y visualización
-              const tasaHistorica = cierre?.tasa ?? tasaBCV;
-              let totalIngresosUSD = cierre?.totalIngresosUSD ?? ingresos.reduce(
-                (acc, i) => acc + Number(i.montoUSD || i.monto || 0),
-                0
-              );
-              let totalIngresosBs = cierre?.totalIngresosBs ?? (
-                tasaHistorica
-                  ? totalIngresosUSD * tasaHistorica
-                  : ingresos.reduce((acc, i) => acc + (Number(i.montoBs) || 0), 0)
-              );
-              let totalEgresosUSD = cierre?.totalEgresosUSD ?? egresos.reduce(
-                (acc, e) => acc + (Number(e.montoUSD) || 0),
-                0
-              );
-              let totalEgresosBs = cierre?.totalEgresosBs ?? (
-                tasaHistorica
-                  ? totalEgresosUSD * tasaHistorica
-                  : egresos.reduce((acc, e) => acc + (Number(e.montoBs) || 0), 0)
-              );
-              let utilidadUSD = cierre?.utilidadUSD ?? totalIngresosUSD - totalEgresosUSD;
-              let utilidadBs = cierre?.utilidadBs ?? (
-                tasaHistorica
-                  ? utilidadUSD * tasaHistorica
-                  : totalIngresosBs - totalEgresosBs
-              );
-
-              // Agrupar ingresos por forma de pago
-              const pagosPorForma = ingresos.reduce((acc, i) => {
-                const forma = i.formaPago || "Sin especificar";
-                if (!acc[forma]) acc[forma] = 0;
-                acc[forma] += Number(i.montoUSD || i.monto || 0);
-                return acc;
-              }, {});
-
-              return (
-                <Box key={fechaSeleccionada} sx={{ mb: 4 }}>
-                  <Typography
+          {(() => {
+            // Si hay rango de fechas seleccionado, filtrar y acumular
+            let fechasFiltradas = [];
+            if (fechaInicio && fechaFin) {
+              // Normalizar fechas a formato DD/MM/YYYY para comparar correctamente
+              const start = fechaInicio.startOf('day');
+              const end = fechaFin.startOf('day');
+              fechasFiltradas = Object.keys(datosPorDia).filter(f => {
+                // f ya está en formato DD/MM/YYYY
+                const [d, m, y] = f.split('/');
+                // Comparar usando dayjs para evitar problemas de zona horaria
+                const fecha = dayjs(`${y}-${m}-${d}`);
+                // Incluir la fecha de inicio y fin
+                return fecha.isValid() && (fecha.isAfter(start) || fecha.isSame(start, 'day')) && (fecha.isBefore(end) || fecha.isSame(end, 'day'));
+              }).sort((a, b) => {
+                const fa = Date.parse(a.split("/").reverse().join("-"));
+                const fb = Date.parse(b.split("/").reverse().join("-"));
+                return fa - fb;
+              });
+            } else if (fechaSeleccionada) {
+              fechasFiltradas = [fechaSeleccionada];
+            }
+            if (fechasFiltradas.length === 0) {
+              return <Typography color="text.secondary">No hay datos en el rango seleccionado.</Typography>;
+            }
+            // Acumular ingresos y egresos de todas las fechas seleccionadas
+            let ingresos = [];
+            let egresos = [];
+            let cierres = [];
+            fechasFiltradas.forEach(f => {
+              if (datosPorDia[f]) {
+                ingresos = ingresos.concat(datosPorDia[f].ingresos);
+                egresos = egresos.concat(datosPorDia[f].egresos);
+              }
+              if (cierresPorDia[f]) {
+                cierres.push(cierresPorDia[f]);
+              }
+            });
+            // Usar la tasa histórica del último cierre del rango, si existe
+            const cierre = cierres.length > 0 ? cierres[cierres.length - 1] : undefined;
+            const tasaHistorica = cierre?.tasa ?? tasaBCV;
+            let totalIngresosUSD = ingresos.reduce((acc, i) => acc + Number(i.montoUSD || i.monto || 0), 0);
+            let totalIngresosBs = tasaHistorica ? totalIngresosUSD * tasaHistorica : ingresos.reduce((acc, i) => acc + (Number(i.montoBs) || 0), 0);
+            let totalEgresosUSD = egresos.reduce((acc, e) => acc + (Number(e.montoUSD) || 0), 0);
+            let totalEgresosBs = tasaHistorica ? totalEgresosUSD * tasaHistorica : egresos.reduce((acc, e) => acc + (Number(e.montoBs) || 0), 0);
+            let utilidadUSD = totalIngresosUSD - totalEgresosUSD;
+            let utilidadBs = tasaHistorica ? utilidadUSD * tasaHistorica : totalIngresosBs - totalEgresosBs;
+            // Agrupar ingresos por forma de pago
+            const pagosPorForma = ingresos.reduce((acc, i) => {
+              const forma = i.formaPago || "Sin especificar";
+              if (!acc[forma]) acc[forma] = 0;
+              acc[forma] += Number(i.montoUSD || i.monto || 0);
+              return acc;
+            }, {});
+            return (
+              <Box key={fechasFiltradas.join('-')} sx={{ mb: 4 }}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight={600}
+                  sx={{ mb: 1 }}
+                >
+                  {fechaInicio && fechaFin
+                    ? `Rango: ${fechaInicio.format('DD/MM/YYYY')} a ${fechaFin.format('DD/MM/YYYY')}`
+                    : `Fecha: ${fechasFiltradas[0]}`}
+                </Typography>
+                {/* ...el resto del renderizado permanece igual... */}
+                  {/* <Typography
                     variant="subtitle1"
                     fontWeight={600}
                     sx={{ mb: 1 }}
                   >
                     Fecha: {fechaSeleccionada}
-                  </Typography>
+                  </Typography> */}
                   <Paper sx={{ p: 2, mb: 2, bgcolor: "#f5f5f5" }}>
                   {/* Tasa BCV en bloque al inicio para móviles */}
                   <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 1 }}>
