@@ -1,11 +1,25 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton } from "@mui/material";
+import { obtenerTasaBCV } from "../lib/tasaBCVFirebase";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HistoryIcon from "@mui/icons-material/History";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonIcon from "@mui/icons-material/Person";
 
 export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
+  const [tasaBCV, setTasaBCV] = useState(null);
+  const [loadingTasa, setLoadingTasa] = useState(true);
+
+  useEffect(() => {
+    async function fetchTasa() {
+      setLoadingTasa(true);
+      const tasa = await obtenerTasaBCV();
+      setTasaBCV(tasa);
+      setLoadingTasa(false);
+    }
+    fetchTasa();
+  }, []);
+
   return (
     <AppBar
       position="static"
@@ -13,7 +27,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
       elevation={0}
       sx={{ background: "none", boxShadow: "none", m: 0, p: 0 }}
     >
-      <Toolbar
+  <Toolbar
         sx={{
           display: "flex",
           flexDirection: { xs: "column", sm: "row" },
@@ -42,7 +56,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
             flexDirection: { xs: "column", sm: "row" },
             alignItems: { xs: "center", sm: "center" },
             justifyContent: { xs: "center", sm: "flex-end" },
-            gap: { xs: 1.5, sm: 2 },
+            gap: { xs: 1.5, sm: 0 },
             width: { xs: "100%", sm: "auto" },
           }}
         >
@@ -86,6 +100,11 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
                 </IconButton>
               </span>
             </Tooltip>
+            {/* <Box>
+            <Typography variant="caption" color="text.secondary">
+              {loadingTasa ? "Tasa BCV: ..." : `$: ${tasaBCV ?? "-"} Bs`}
+            </Typography>
+          </Box> */}
           </Box>
           <Divider orientation="horizontal" flexItem sx={{ my: { xs: 1, sm: 0 }, mx: { xs: 0, sm: 2 }, width: { xs: "100%", sm: 0 }, height: { xs: 2, sm: 28 } }} />
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "center", sm: "flex-end" }, gap: 1, width: { xs: "100%", sm: "auto" } }}>

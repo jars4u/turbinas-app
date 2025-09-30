@@ -36,6 +36,7 @@ import {
   actualizarVehiculo,
   eliminarVehiculo,
 } from "../lib/vehiculosFirebase";
+import PrecioConvertido from "../components/PrecioConvertido";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
 
@@ -878,7 +879,7 @@ export default function Dashboard() {
               gap: 0.5,
               alignItems: { xs: "center", sm: "flex-start" },
               width: { xs: "100%", sm: "auto" },
-              pl: { xs: 1, sm: 0 }
+              pl: { xs: 1, sm: 0 },
             }}
           >
             {editSection === "vehiculo" || isRegistering ? (
@@ -961,7 +962,7 @@ export default function Dashboard() {
               gap: 0.5,
               alignItems: { xs: "center", sm: "flex-start" },
               width: { xs: "100%", sm: "auto" },
-              pl: { xs: 1, sm: 0 }
+              pl: { xs: 1, sm: 0 },
             }}
           >
             {editSection === "servicio" || isRegistering ? (
@@ -1000,6 +1001,8 @@ export default function Dashboard() {
                   sx={{ mb: 1.5 }}
                   InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                 />
+                {/* Resultado de conversión */}
+                <PrecioConvertido precio={form.precio} />
               </>
             ) : (
               <>
@@ -1107,6 +1110,8 @@ export default function Dashboard() {
                   >
                     ${form.precio}
                   </Typography>
+                  {/* Resultado de conversión */}
+                  <PrecioConvertido precio={form.precio} />
                 </Box>
               </>
             )}
@@ -1147,7 +1152,7 @@ export default function Dashboard() {
               gap: 0.5,
               alignItems: { xs: "center", sm: "flex-start" },
               width: { xs: "100%", sm: "auto" },
-              pl: { xs: 1, sm: 0 }
+              pl: { xs: 1, sm: 0 },
             }}
           >
             {editSection === "cliente" || isRegistering ? (

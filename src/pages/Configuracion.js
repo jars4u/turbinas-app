@@ -32,6 +32,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EstadosServicios from "./EstadosServicios";
+import FactorConversionPrecios from "../components/FactorConversionPrecios";
 import ConfiguracionCajaChica from "../components/ConfiguracionCajaChica";
 import {
   getFirestore,
@@ -577,6 +578,8 @@ export default function Configuracion() {
           {/* Módulo de estados de servicios */}
           <Divider sx={{ my: { xs: 2, sm: 4 } }} />
           <EstadosServicios />
+          <Divider sx={{ my: 4 }} />
+          <FactorConversionPrecios />
           <Divider sx={{ my: 4 }} />
           {/* Detectar si el usuario actual es owner */}
           <ConfiguracionCajaChica
