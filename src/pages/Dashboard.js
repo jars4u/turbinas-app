@@ -234,7 +234,12 @@ export default function Dashboard() {
   return (
     <Container
       maxWidth="xl"
-      sx={{ py: 4, maxWidth: "100%", width: "100%", px: 4 }}
+      sx={{
+        py: 4,
+        maxWidth: "100%",
+        width: "100%",
+        px: { xs: 2, sm: 4 }
+      }}
     >
       <AppHeader
         usuarioActivo={usuarioActivo}
@@ -444,6 +449,15 @@ export default function Dashboard() {
                       whiteSpace: "nowrap",
                     }}
                   >
+                    Fecha
+                  </th>
+                  <th
+                    style={{
+                      padding: "8px",
+                      border: "1px solid #ddd",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     Modelo
                   </th>
                   <th
@@ -514,6 +528,20 @@ export default function Dashboard() {
                       style={{ cursor: "pointer", whiteSpace: "nowrap" }}
                       onClick={() => handleOpen(v)}
                     >
+                      <td
+                        style={{
+                          padding: "8px",
+                          border: "1px solid #ddd",
+                          textAlign: "center",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {new Date(
+                          typeof v.arrivalTime === "string"
+                            ? Number(v.arrivalTime)
+                            : v.arrivalTime
+                        ).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                      </td>
                       <td
                         style={{
                           padding: "8px",

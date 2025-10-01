@@ -111,10 +111,10 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
     <Card
       variant="outlined"
       sx={{
-        width: 210,
-        minWidth: 210,
-        maxWidth: 210,
-        height: "100%",
+  width: 210,
+  minWidth: 210,
+  maxWidth: 210,
+  minHeight: 180,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
@@ -143,17 +143,22 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
         <div
           style={{
             display: "flex",
+            flexDirection: "row",
+            alignItems: "flex-start",
             justifyContent: "space-between",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "nowrap",
             width: "100%",
             overflow: "hidden",
+            gap: 4
           }}
         >
-          <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 80 }}>
-            {new Date(arrivalTimeNum).toLocaleTimeString()}
-          </Typography>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", minWidth: 60 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 400, letterSpacing: 0.1, lineHeight: 1 }}>
+              {new Date(arrivalTimeNum).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 400, letterSpacing: 0.1, lineHeight: 2 }}>
+              {new Date(arrivalTimeNum).toLocaleTimeString()}
+            </Typography>
+          </div>
           <Chip
             label={
               estadosServicio.find(e => e.nombre === currentStatus)?.label || "Sin estado"
