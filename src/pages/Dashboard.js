@@ -36,6 +36,7 @@ import {
   crearVehiculo,
   actualizarVehiculo,
   eliminarVehiculo,
+  escucharVehiculos,
 } from "../lib/vehiculosFirebase";
 import PrecioConvertido from "../components/PrecioConvertido";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
@@ -68,7 +69,7 @@ export default function Dashboard() {
   // Clientes base: extraer de vehículos
   const [clientes, setClientes] = useState([]);
   useEffect(() => {
-    obtenerVehiculos().then((data) => {
+    const unsubscribe = escucharVehiculos((data) => {
       // Extraer clientes únicos por nombre y teléfono
       const clientesUnicos = [];
       const seen = new Set();
@@ -85,6 +86,7 @@ export default function Dashboard() {
       });
       setClientes(clientesUnicos);
     });
+    return () => unsubscribe();
   }, []);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
@@ -104,9 +106,8 @@ export default function Dashboard() {
     Object.keys(data).forEach(k => {
       if (data[k] === undefined) data[k] = null;
     });
-    await actualizarVehiculo(id, data);
-    const actualizados = await obtenerVehiculos();
-    setVehiculos(actualizados);
+  await actualizarVehiculo(id, data);
+  // Ya no es necesario recargar manualmente, el listener en tiempo real lo hará
   };
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
