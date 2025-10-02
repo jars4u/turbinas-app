@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
 import {
   Dialog,
   DialogTitle,
@@ -14,6 +15,7 @@ import {
 } from "@mui/material";
 import ReceiptOutlinedIcon from '@mui/icons-material/ReceiptOutlined';
 
+
 export default function PaymentModal({ open, onClose, form, onRegister }) {
   const [loading, setLoading] = useState(false);
   const [facturaForm, setFacturaForm] = useState({
@@ -27,24 +29,69 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
   });
   const [agregarFormaPago, setAgregarFormaPago] = useState(false);
   const [facturaIntento, setFacturaIntento] = useState(false);
+  const [precioBs, setPrecioBs] = useState(null);
+  const [precioUsdConvertido, setPrecioUsdConvertido] = useState(null);
+  
+  useEffect(() => {
+    async function fetchConversion() {
+      if (form.precio) {
+        const factor = await obtenerFactorConversion();
+        // Obtener tasa BCV
+        let tasa = 1;
+        try {
+          const mod = await import('../lib/tasaBCVFirebase');
+          tasa = await mod.obtenerTasaBCV();
+        } catch (e) {}
+        const precioNum = parseFloat(form.precio);
+        if (!isNaN(precioNum) && factor && tasa) {
+          setPrecioBs((precioNum * factor).toFixed(2));
+          setPrecioUsdConvertido((precioNum * factor / tasa).toFixed(2));
+        } else {
+          setPrecioBs(null);
+          setPrecioUsdConvertido(null);
+        }
+      } else {
+        setPrecioBs(null);
+        setPrecioUsdConvertido(null);
+      }
+    }
+    fetchConversion();
+  }, [form.precio]);
+  useEffect(() => {
+    async function fetchConversion() {
+      if (form.precio && (facturaForm.formaPago === "pago movil" || facturaForm.formaPago2 === "pago movil")) {
+        const factor = await obtenerFactorConversion();
+        const precioNum = parseFloat(form.precio);
+        if (!isNaN(precioNum) && factor) {
+          setPrecioBs((precioNum * factor).toFixed(2));
+        }
+      } else {
+        setPrecioBs(null);
+      }
+    }
+    fetchConversion();
+  }, [form.precio, facturaForm.formaPago, facturaForm.formaPago2]);
+  useEffect(() => {
+    async function fetchConversion() {
+      if (form.precio && (facturaForm.formaPago === "pago movil" || facturaForm.formaPago2 === "pago movil")) {
+        const factor = await obtenerFactorConversion();
+        const precioNum = parseFloat(form.precio);
+        if (!isNaN(precioNum) && factor) {
+          setPrecioBs((precioNum * factor).toFixed(2));
+        }
+      } else {
+        setPrecioBs(null);
+      }
+    }
+    fetchConversion();
+  }, [form.precio, facturaForm.formaPago, facturaForm.formaPago2]);
 
   const handleRegister = async () => {
     setFacturaIntento(true);
-    const precio = Number(form.precio);
-    const monto1 = Number(facturaForm.monto);
-    const monto2 = Number(facturaForm.monto2);
+    // Validación mínima: campos obligatorios
     if (!facturaForm.numeroFactura || !facturaForm.formaPago || !facturaForm.monto) return;
     if (agregarFormaPago) {
       if (!facturaForm.formaPago2 || !facturaForm.monto2) return;
-      if (monto1 + monto2 !== precio) {
-        alert('La suma de los montos debe coincidir con el precio.');
-        return;
-      }
-    } else {
-      if (monto1 !== precio) {
-        alert('El monto debe coincidir con el precio.');
-        return;
-      }
     }
     setLoading(true);
     const payload = {
@@ -93,7 +140,21 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
           <Typography variant="body1" sx={{ mb: 1 }}>{form.servicio}</Typography>
           <Typography variant="subtitle2" color="primary" fontWeight={600}>Precio</Typography>
           <Typography variant="body1" sx={{ mb: form.precio ? 0.5 : 0 }}>
-            {form.precio ? `$${form.precio}` : '—'}
+            {form.precio ? (
+              <>
+                <span>
+                  {facturaForm.formaPago === "pago movil"
+                    ? `$ ${precioUsdConvertido ? Number(precioUsdConvertido).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '—'}`
+                    : `$ ${Number(form.precio).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                  }
+                </span>
+                {facturaForm.formaPago === "pago movil" && precioBs && (
+                  <span style={{ marginLeft: 12 }}>
+                    | Bs {Number(precioBs).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                  </span>
+                )}
+              </>
+            ) : '—'}
           </Typography>
           {!form.precio && (
             <Typography variant="subtitle2" color="warning.main" fontSize={13} sx={{ mb: 1 }}>

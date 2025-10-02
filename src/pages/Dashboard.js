@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -40,6 +41,25 @@ import PrecioConvertido from "../components/PrecioConvertido";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
 
+// Sanitiza cualquier undefined en null, recursivamente
+function sanitizeDeep(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeDeep);
+  } else if (obj && typeof obj === 'object') {
+    const newObj = {};
+    Object.keys(obj).forEach(k => {
+      const val = obj[k];
+      if (val === undefined) {
+        newObj[k] = null;
+      } else {
+        newObj[k] = sanitizeDeep(val);
+      }
+    });
+    return newObj;
+  }
+  return obj;
+}
+
 export default function Dashboard() {
   const { usuario, handleLogout } = useAuth();
   // Estado para modal de cambio de estado
@@ -79,7 +99,12 @@ export default function Dashboard() {
   const handleStatusChange = async (id, newStatus) => {
     const vehiculo = vehiculos.find((v) => v.id === id);
     if (!vehiculo) return;
-    await actualizarVehiculo(id, { ...vehiculo, status: newStatus });
+    // Limpiar campos undefined
+    const data = { ...vehiculo, status: newStatus };
+    Object.keys(data).forEach(k => {
+      if (data[k] === undefined) data[k] = null;
+    });
+    await actualizarVehiculo(id, data);
     const actualizados = await obtenerVehiculos();
     setVehiculos(actualizados);
   };
@@ -108,6 +133,7 @@ export default function Dashboard() {
     customerPhone: "",
     observaciones: "",
   });
+  const [formOriginal, setFormOriginal] = useState(null);
   const [editSection, setEditSection] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -116,7 +142,7 @@ export default function Dashboard() {
 
   const handleOpen = (vehiculo) => {
     if (vehiculo) {
-      setForm({
+      const nuevoForm = {
         vehiculo: vehiculo.vehiculo || "",
         placa: vehiculo.placa || "",
         servicio: vehiculo.servicio || "",
@@ -124,12 +150,14 @@ export default function Dashboard() {
         customerName: vehiculo.customerName || "",
         customerPhone: vehiculo.customerPhone || "",
         observaciones: vehiculo.observaciones || "",
-      });
+      };
+      setForm(nuevoForm);
+      setFormOriginal(nuevoForm); // Guardar original
       setEditId(vehiculo.id);
       setEditSection(null);
       setIsEditing(false);
     } else {
-      setForm({
+      const nuevoForm = {
         vehiculo: "",
         placa: "",
         servicio: "",
@@ -137,7 +165,9 @@ export default function Dashboard() {
         customerName: "",
         customerPhone: "",
         observaciones: "",
-      });
+      };
+      setForm(nuevoForm);
+      setFormOriginal(nuevoForm);
       setEditId(null);
       setEditSection("vehiculo"); // Abrir directamente en modo edición
       setIsEditing(true);
@@ -156,6 +186,7 @@ export default function Dashboard() {
       customerPhone: "",
       observaciones: "",
     });
+    setFormOriginal(null);
     setEditId(null);
   };
 
@@ -194,6 +225,10 @@ export default function Dashboard() {
         : null,
     };
     setActionLoading(true);
+    // Limpiar campos undefined
+    Object.keys(vehiculoData).forEach(k => {
+      if (vehiculoData[k] === undefined) vehiculoData[k] = null;
+    });
     if (editId) {
       await actualizarVehiculo(editId, vehiculoData);
       const actualizados = await obtenerVehiculos();
@@ -556,7 +591,7 @@ export default function Dashboard() {
                         style={{
                           padding: "8px",
                           border: "1px solid #ddd",
-                          textAlign: "center",
+                          textAlign: "left",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -824,10 +859,8 @@ export default function Dashboard() {
                       onClick={async () => {
                         setOpenEstadoModal(false);
                         if (!vehiculoEstadoModal) return;
-                        await actualizarVehiculo(vehiculoEstadoModal.id, {
-                          ...vehiculoEstadoModal,
-                          status: estado.nombre,
-                        });
+                        const data = sanitizeDeep({ ...vehiculoEstadoModal, status: estado.nombre });
+                        await actualizarVehiculo(vehiculoEstadoModal.id, data);
                         const actualizados = await obtenerVehiculos();
                         setVehiculos(actualizados);
                       }}
@@ -1388,6 +1421,9 @@ export default function Dashboard() {
                 <>
                   <Button
                     onClick={() => {
+                      if (formOriginal) {
+                        setForm(formOriginal);
+                      }
                       setEditSection(null);
                       setIsEditing(false);
                     }}
@@ -1536,7 +1572,7 @@ export default function Dashboard() {
               const statusFacturar = estadoFacturar
                 ? estadoFacturar.nombre
                 : "entregado";
-              await actualizarVehiculo(editId, {
+              const vehiculoUpdate = {
                 ...form,
                 status: statusFacturar,
                 entregadoPor: usuarioActivo,
@@ -1545,7 +1581,11 @@ export default function Dashboard() {
                   vehiculos.find((v) => v.id === editId)?.registradoPor ||
                   vehiculos.find((v) => v.id === editId)?.usuario ||
                   null,
+              };
+              Object.keys(vehiculoUpdate).forEach(k => {
+                if (vehiculoUpdate[k] === undefined) vehiculoUpdate[k] = null;
               });
+              await actualizarVehiculo(editId, vehiculoUpdate);
               const actualizados = await obtenerVehiculos();
               setVehiculos(actualizados);
             }

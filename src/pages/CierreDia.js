@@ -357,13 +357,15 @@ export default function CierreDia() {
                             />
                           </TableCell>
                           <TableCell align="right">
-                            {estado.total.toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
+                            {typeof estado.total === 'number' && !isNaN(estado.total)
+                              ? estado.total.toLocaleString("en-US", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })
+                              : "-"}
                           </TableCell>
                           <TableCell align="right">
-                            {tasaBCV
+                            {tasaBCV && typeof estado.total === 'number' && !isNaN(estado.total)
                               ? (estado.total * tasaBCV).toLocaleString("de-DE", {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
@@ -376,25 +378,27 @@ export default function CierreDia() {
                       <TableRow>
                         <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700 }}>
-                          {totalesPorEstado
-                            .reduce((acc, estado) => acc + estado.total, 0)
-                            .toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>
-                          {tasaBCV
-                            ? totalesPorEstado
-                                .reduce(
-                                  (acc, estado) => acc + estado.total * tasaBCV,
-                                  0
-                                )
-                                .toLocaleString("de-DE", {
+                          {(() => {
+                            const total = totalesPorEstado.reduce((acc, estado) => acc + (typeof estado.total === 'number' && !isNaN(estado.total) ? estado.total : 0), 0);
+                            return typeof total === 'number' && !isNaN(total)
+                              ? total.toLocaleString("en-US", {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
                                 })
-                            : "-"}
+                              : "-";
+                          })()}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>
+                          {(() => {
+                            if (!tasaBCV) return "-";
+                            const totalBs = totalesPorEstado.reduce((acc, estado) => acc + (typeof estado.total === 'number' && !isNaN(estado.total) ? estado.total * tasaBCV : 0), 0);
+                            return typeof totalBs === 'number' && !isNaN(totalBs)
+                              ? totalBs.toLocaleString("de-DE", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })
+                              : "-";
+                          })()}
                         </TableCell>
                       </TableRow>
                     </TableBody>

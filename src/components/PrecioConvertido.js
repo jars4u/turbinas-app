@@ -22,16 +22,18 @@ export default function PrecioConvertido({ precio }) {
 
   let resultado = null;
   const precioNum = parseFloat(precio);
+  let resultadoBs = null;
   if (!loading && factor && tasa && !isNaN(precioNum)) {
     resultado = (precioNum * factor / tasa).toFixed(2);
+    resultadoBs = (precioNum * factor).toFixed(2);
   }
 
   return (
     <Typography variant="caption" color="warning.main" sx={{ mt: 0, mb: 1, fontSize: '0.7rem' }}>
       {loading
         ? "Calculando conversión..."
-        : (resultado !== null
-            ? `Si paga en Bs el precio será de $${resultado} a tasa BCV`
+        : (resultado !== null && resultadoBs !== null
+            ? `Si paga en Bs el precio será de $${Number(resultado).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} a tasa BCV | Bs ${Number(resultadoBs).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             : "")}
     </Typography>
   );

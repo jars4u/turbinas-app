@@ -265,17 +265,31 @@ export default function ResumenContable({ tasaBCV }) {
             // Usar la tasa histórica del último cierre del rango, si existe
             const cierre = cierres.length > 0 ? cierres[cierres.length - 1] : undefined;
             const tasaHistorica = cierre?.tasa ?? tasaBCV;
-            let totalIngresosUSD = ingresos.reduce((acc, i) => acc + Number(i.montoUSD || i.monto || 0), 0);
+            // Sumar todos los montos de formasPago en los ingresos
+            let totalIngresosUSD = ingresos.reduce((acc, i) => {
+              if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                return acc + i.formasPago.reduce((sum, fp) => sum + (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0), 0);
+              }
+              return acc + Number(i.montoUSD || i.monto || 0);
+            }, 0);
             let totalIngresosBs = tasaHistorica ? totalIngresosUSD * tasaHistorica : ingresos.reduce((acc, i) => acc + (Number(i.montoBs) || 0), 0);
             let totalEgresosUSD = egresos.reduce((acc, e) => acc + (Number(e.montoUSD) || 0), 0);
             let totalEgresosBs = tasaHistorica ? totalEgresosUSD * tasaHistorica : egresos.reduce((acc, e) => acc + (Number(e.montoBs) || 0), 0);
             let utilidadUSD = totalIngresosUSD - totalEgresosUSD;
             let utilidadBs = tasaHistorica ? utilidadUSD * tasaHistorica : totalIngresosBs - totalEgresosBs;
-            // Agrupar ingresos por forma de pago
+            // Agrupar ingresos por forma de pago, sumando todos los montos de formasPago
             const pagosPorForma = ingresos.reduce((acc, i) => {
-              const forma = i.formaPago || "Sin especificar";
-              if (!acc[forma]) acc[forma] = 0;
-              acc[forma] += Number(i.montoUSD || i.monto || 0);
+              if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                i.formasPago.forEach(fp => {
+                  const forma = (fp.formaPago || "Sin especificar").toUpperCase();
+                  if (!acc[forma]) acc[forma] = 0;
+                  acc[forma] += fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0;
+                });
+              } else {
+                const forma = (i.formaPago || "Sin especificar").toUpperCase();
+                if (!acc[forma]) acc[forma] = 0;
+                acc[forma] += Number(i.montoUSD || i.monto || 0);
+              }
               return acc;
             }, {});
             return (
@@ -503,21 +517,37 @@ export default function ResumenContable({ tasaBCV }) {
                                     align="right"
                                     sx={{ py: 0.5, fontSize: 13 }}
                                   >
-                                    {(i.monto || i.montoUSD).toLocaleString(
-                                      "en-US",
-                                      { minimumFractionDigits: 2 }
-                                    )}
+                                    {(() => {
+                                      // Si hay formasPago, sumar todos los montos
+                                      if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                                        const sumaUSD = i.formasPago.reduce((acc, fp) => acc + (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0), 0);
+                                        return sumaUSD.toLocaleString("en-US", { minimumFractionDigits: 2 });
+                                      }
+                                      // Si existe montoUSD
+                                      if (typeof i.montoUSD === 'number' && !isNaN(i.montoUSD)) {
+                                        return i.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 });
+                                      }
+                                      // Si existe monto
+                                      if (typeof i.monto === 'number' && !isNaN(i.monto)) {
+                                        return i.monto.toLocaleString("en-US", { minimumFractionDigits: 2 });
+                                      }
+                                      return "-";
+                                    })()}
                                   </TableCell>
                                   <TableCell
                                     align="right"
                                     sx={{ py: 0.5, fontSize: 13 }}
                                   >
-                                    {(i.montoBs && i.montoBs > 0
-                                      ? i.montoBs
-                                      : (i.montoUSD || i.monto || 0) * tasaHistorica
-                                    ).toLocaleString("de-DE", {
-                                      minimumFractionDigits: 2,
-                                    })}
+                                    {(() => {
+                                      const valor = (i.montoBs && i.montoBs > 0
+                                        ? i.montoBs
+                                        : (i.montoUSD || i.monto || 0) * tasaHistorica);
+                                      return typeof valor === 'number' && !isNaN(valor)
+                                        ? valor.toLocaleString("de-DE", {
+                                            minimumFractionDigits: 2,
+                                          })
+                                        : "-";
+                                    })()}
                                   </TableCell>
                                 </TableRow>
                               ))

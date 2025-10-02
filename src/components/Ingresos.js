@@ -31,7 +31,11 @@ export default function Ingresos({ tasaBCV }) {
   const [ingresos, setIngresos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
-
+  // Depuración: mostrar ingresos en consola
+  useEffect(() => {
+    console.log('Ingresos:', ingresos);
+  }, [ingresos]);
+  
   useEffect(() => {
     setLoading(true);
     obtenerIngresos().then(data => {
@@ -383,47 +387,57 @@ export default function Ingresos({ tasaBCV }) {
                 }</TableCell>
                 <TableCell>{ing.factura || ing.descripcion || '-'}</TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {Math.abs(ing.monto).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  {(() => {
+                    // Si el campo monto existe y es válido, mostrarlo
+                    if (typeof ing.monto === 'number' && !isNaN(ing.monto)) {
+                      return ing.monto.toLocaleString("en-US", { minimumFractionDigits: 2 });
+                    }
+                    // Si formasPago tiene monto válido, mostrar el primero
+                    if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0 && ing.formasPago[0].monto !== undefined && ing.formasPago[0].monto !== null && !isNaN(Number(ing.formasPago[0].monto))) {
+                      return Number(ing.formasPago[0].monto).toLocaleString("en-US", { minimumFractionDigits: 2 });
+                    }
+                    // Si el campo monto es string convertible a número
+                    if (ing.monto !== undefined && ing.monto !== null && !isNaN(Number(ing.monto))) {
+                      return Number(ing.monto).toLocaleString("en-US", { minimumFractionDigits: 2 });
+                    }
+                    return "-";
+                  })()}
                 </TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  {Math.abs(ing.montoBs || ing.monto * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                  {(() => {
+                    // Si montoBs existe y es válido, mostrarlo
+                    if (typeof ing.montoBs === 'number' && !isNaN(ing.montoBs)) {
+                      return ing.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 });
+                    }
+                    if (ing.montoBs !== undefined && ing.montoBs !== null && !isNaN(Number(ing.montoBs))) {
+                      return Number(ing.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 });
+                    }
+                    // Si hay formasPago, sumar todos los montos y convertir
+                    if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0 && typeof tasaBCV === 'number' && !isNaN(tasaBCV)) {
+                      const sumaUSD = ing.formasPago.reduce((acc, fp) => acc + (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0), 0);
+                      return (sumaUSD * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2 });
+                    }
+                    // Si monto existe, convertirlo
+                    if (ing.monto !== undefined && ing.monto !== null && !isNaN(Number(ing.monto)) && typeof tasaBCV === 'number' && !isNaN(tasaBCV)) {
+                      return (Number(ing.monto) * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2 });
+                    }
+                    return "-";
+                  })()}
                 </TableCell>
                 <TableCell>
                   {Array.isArray(ing.formasPago) && ing.formasPago.length > 0
                     ? ing.formasPago.map(fp => {
-                        let metodo = fp;
-                        if (fp && typeof fp === 'object' && fp.metodo) {
-                          metodo = fp.metodo;
-                        }
-                        if (!metodo || typeof metodo !== 'string') return '-';
-                        const lower = metodo.toLowerCase();
-                        if (lower.includes('efect')) return 'Efe.';
-                        if (lower.includes('zelle')) return 'Zel.';
-                        if (lower.includes('pago mov') || lower.includes('pago móvil')) return 'PM.';
-                        if (lower.includes('divisa')) return 'Div.';
-                        if (lower.includes('bs')) return 'Bs.';
-                        if (lower.includes('tarjeta')) return 'Tj.';
-                        if (lower.includes('transfer')) return 'Trf.';
-                        return metodo.length > 6 ? metodo.slice(0, 6) + '.' : metodo;
+                        if (fp.formaPago) return fp.formaPago.toUpperCase();
+                        if (fp.metodo) return fp.metodo.toUpperCase();
+                        return '-';
                       }).join(' + ')
-                    : (ing.formaPago
-                        ? (() => {
-                            const fp = ing.formaPago;
-                            if (!fp || typeof fp !== 'string') return '-';
-                            const lower = fp.toLowerCase();
-                            if (lower.includes('efect')) return 'Efe.';
-                            if (lower.includes('zelle')) return 'Zel.';
-                            if (lower.includes('pago mov') || lower.includes('pago móvil')) return 'PM.';
-                            if (lower.includes('divisa')) return 'Div.';
-                            if (lower.includes('bs')) return 'Bs.';
-                            if (lower.includes('tarjeta')) return 'Tj.';
-                            if (lower.includes('transfer')) return 'Trf.';
-                            return fp.length > 6 ? fp.slice(0, 6) + '.' : fp;
-                          })()
-                        : '-')
-                  }
+                    : (ing.formaPago ? ing.formaPago.toUpperCase() : '-')}
                 </TableCell>
-                <TableCell>{ing.referencia || '-'}</TableCell>
+                <TableCell>
+                  {Array.isArray(ing.formasPago) && ing.formasPago.length > 0
+                    ? ing.formasPago.map(fp => fp.referencia || '-').join(' + ')
+                    : (ing.referencia || '-')}
+                </TableCell>
               </TableRow>
             ))
           )}

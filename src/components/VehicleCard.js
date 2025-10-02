@@ -1,8 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import { actualizarVehiculo } from "../lib/vehiculosFirebase";
-import Divider from '@mui/material/Divider';
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 import {
   Card,
@@ -13,6 +12,27 @@ import {
   MenuItem,
   Box,
 } from "@mui/material";
+import Divider from '@mui/material/Divider';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+
+// Sanitiza cualquier undefined en null, recursivamente
+function sanitizeDeep(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeDeep);
+  } else if (obj && typeof obj === 'object') {
+    const newObj = {};
+    Object.keys(obj).forEach(k => {
+      const val = obj[k];
+      if (val === undefined) {
+        newObj[k] = null;
+      } else {
+        newObj[k] = sanitizeDeep(val);
+      }
+    });
+    return newObj;
+  }
+  return obj;
+}
 
 
 
@@ -101,7 +121,9 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
     setAnchorEl(null);
     // Actualizar en Firestore
     if (vehiculo.id) {
-      await actualizarVehiculo(vehiculo.id, { ...vehiculo, status: newStatus });
+      // Sanitización profunda para evitar undefined en cualquier campo
+      const data = sanitizeDeep({ ...vehiculo, status: newStatus });
+      await actualizarVehiculo(vehiculo.id, data);
     }
     if (typeof onStatusChange === "function") {
       onStatusChange(newStatus);

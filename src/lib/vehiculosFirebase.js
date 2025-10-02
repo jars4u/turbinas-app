@@ -1,5 +1,25 @@
+
 import { db } from "../firebase";
 import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore";
+
+// Sanitiza cualquier undefined en null, recursivamente
+function sanitizeDeep(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeDeep);
+  } else if (obj && typeof obj === 'object') {
+    const newObj = {};
+    Object.keys(obj).forEach(k => {
+      const val = obj[k];
+      if (val === undefined) {
+        newObj[k] = null;
+      } else {
+        newObj[k] = sanitizeDeep(val);
+      }
+    });
+    return newObj;
+  }
+  return obj;
+}
 
 // Crear vehículo
 export async function crearVehiculo(data) {
@@ -48,7 +68,8 @@ export async function actualizarVehiculo(id, data, usuario = "") {
     nuevoHistorial = [...historial, ...cambios];
   }
   // Actualizar el documento con los nuevos datos y el historial
-  return await updateDoc(ref, { ...data, historial: nuevoHistorial });
+  const sanitized = sanitizeDeep({ ...data, historial: nuevoHistorial });
+  return await updateDoc(ref, sanitized);
 }
 
 // Eliminar vehículo

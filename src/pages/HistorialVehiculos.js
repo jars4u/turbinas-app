@@ -18,8 +18,10 @@ import {
   DialogActions,
   TableContainer,
 } from "@mui/material";
+
 import ServicioTimeline from "../components/ServicioTimeline";
 import HistoryIcon from "@mui/icons-material/History";
+import { obtenerIngresos } from "../lib/ingresosFirebase";
 
 function ServicioHistorialModal({ open, onClose, servicio }) {
   const eventos = React.useMemo(() => {
@@ -94,14 +96,42 @@ export default function HistorialVehiculos() {
   const [openHistorial, setOpenHistorial] = React.useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = React.useState(null);
 
-  // Cargar datos reales de Firestore
+  // Cargar datos reales de Firestore y asociar factura
   React.useEffect(() => {
     setLoading(true);
-    import('../lib/vehiculosFirebase').then(({ obtenerVehiculos }) => {
-      obtenerVehiculos().then((data) => {
-        setVehiculos(data);
-        setLoading(false);
+    Promise.all([
+      import('../lib/vehiculosFirebase').then(({ obtenerVehiculos }) => obtenerVehiculos()),
+      obtenerIngresos()
+    ]).then(([vehiculosObtenidos, ingresos]) => {
+      // Relacionar factura por id de vehículo o referencia
+      const vehiculosConFactura = vehiculosObtenidos.map(v => {
+        // Buscar ingreso relacionado por el campo 'factura', referencia o descripción
+        let ingresoRelacionado = null;
+        if (v.factura) {
+          ingresoRelacionado = ingresos.find(i => i.factura === v.factura);
+        }
+        if (!ingresoRelacionado && v.referencia) {
+          ingresoRelacionado = ingresos.find(i => i.referencia === v.referencia);
+        }
+        if (!ingresoRelacionado && v.descripcion) {
+          ingresoRelacionado = ingresos.find(i => i.descripcion === v.descripcion);
+        }
+        // Si no hay coincidencia, buscar si la descripción del vehículo está incluida en la descripción del ingreso
+        if (!ingresoRelacionado && v.descripcion) {
+          ingresoRelacionado = ingresos.find(i => i.descripcion && i.descripcion.includes(v.descripcion));
+        }
+        // Si no hay coincidencia, buscar si el ingreso tiene el campo factura y la descripción del vehículo está incluida en la descripción del ingreso
+        if (!ingresoRelacionado && v.descripcion) {
+          ingresoRelacionado = ingresos.find(i => i.factura && i.descripcion && i.descripcion.includes(v.descripcion));
+        }
+        let facturaValor = "-";
+        if (ingresoRelacionado && ingresoRelacionado.factura) {
+          facturaValor = ingresoRelacionado.factura;
+        }
+        return { ...v, factura: facturaValor };
       });
+      setVehiculos(vehiculosConFactura);
+      setLoading(false);
     });
   }, []);
 
@@ -234,6 +264,15 @@ export default function HistorialVehiculos() {
               </TableCell>
               <TableCell
                 onClick={() =>
+                  setOrdenCol("factura") ||
+                  setOrdenAsc(ordenCol === "factura" ? !ordenAsc : false)
+                }
+                style={{ cursor: "pointer" }}
+              >
+                Factura
+              </TableCell>
+              <TableCell
+                onClick={() =>
                   setOrdenCol("status") ||
                   setOrdenAsc(ordenCol === "status" ? !ordenAsc : false)
                 }
@@ -335,6 +374,9 @@ export default function HistorialVehiculos() {
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.precio ? `$${v.precio}` : "-"}
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {v.factura || "-"}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.status || "-"}
