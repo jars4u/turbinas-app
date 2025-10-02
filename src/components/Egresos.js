@@ -68,6 +68,15 @@ export default function Egresos({ tasaBCV, isOwner }) {
             fechaStr = e.fecha;
             fechaDate = Date.parse(e.fecha) ? new Date(e.fecha) : null;
           }
+        } else if (e.fecha && e.fecha.seconds) {
+          fechaDate = new Date(e.fecha.seconds * 1000);
+          const dd = String(fechaDate.getDate()).padStart(2, '0');
+          const mm = String(fechaDate.getMonth() + 1).padStart(2, '0');
+          const yy = fechaDate.getFullYear();
+          fechaStr = `${dd}/${mm}/${yy}`;
+        } else {
+          fechaStr = '';
+          fechaDate = null;
         }
         return { ...e, _fechaDate: fechaDate, _fechaStr: fechaStr };
       });
@@ -131,6 +140,9 @@ export default function Egresos({ tasaBCV, isOwner }) {
         const mm = String(fechaDate.getMonth() + 1).padStart(2, '0');
         const yy = fechaDate.getFullYear();
         fechaStr = `${dd}/${mm}/${yy}`;
+      } else {
+        fechaStr = '';
+        fechaDate = null;
       }
       return { ...e, _fechaDate: fechaDate, _fechaStr: fechaStr };
     });
@@ -159,18 +171,8 @@ export default function Egresos({ tasaBCV, isOwner }) {
       const { getFirestore, doc, deleteDoc } = await import("firebase/firestore");
       const firestore = getFirestore();
       await deleteDoc(doc(firestore, "egresos", deleteId));
-      const actualizados = await obtenerEgresos();
-      const egresosConFecha = actualizados.map(e => ({
-        ...e,
-        _fechaDate: e.fecha && e.fecha.toDate ? e.fecha.toDate() : (e.fecha && e.fecha.seconds ? new Date(e.fecha.seconds * 1000) : null)
-      }));
-      setEgresos(
-        egresosConFecha.sort((a, b) => {
-          const fechaA = a._fechaDate ? a._fechaDate.getTime() : 0;
-          const fechaB = b._fechaDate ? b._fechaDate.getTime() : 0;
-          return fechaB - fechaA;
-        })
-      );
+      // Filtrar el egreso eliminado localmente en vez de recargar todos
+      setEgresos(prev => prev.filter(e => e.id !== deleteId));
       setConfirmOpen(false);
       setDeleteId(null);
     }
@@ -273,6 +275,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
             pt: 1,
             flexWrap: "nowrap",
             overflowX: "auto",
+            width: '100%',
           }}
         >
           <TextField
@@ -313,7 +316,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
               }
             }}
             size="small"
-            sx={{ maxWidth: 120 }}
+            sx={{ maxWidth: 180, minWidth: 140 }}
           />
           <TextField
             label="Monto (Bs)"
@@ -329,7 +332,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
               }
             }}
             size="small"
-            sx={{ maxWidth: 120 }}
+            sx={{ maxWidth: 180, minWidth: 140 }}
           />
           <Button
             variant="contained"
@@ -435,7 +438,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
     <DatePicker
       label="Día"
       views={["year", "month", "day"]}
-      value={fechaSeleccionada ? dayjs(fechaSeleccionada.split('/').reverse().join('-')) : null}
+      value={fechaSeleccionada && typeof fechaSeleccionada === 'string' ? dayjs(fechaSeleccionada.split('/').reverse().join('-')) : null}
       onChange={date => {
         if (date && dayjs(date).isValid()) {
           const d = String(dayjs(date).date()).padStart(2, '0');
@@ -449,11 +452,11 @@ export default function Egresos({ tasaBCV, isOwner }) {
       minDate={egresos.length > 0 ? (() => {
         const fechas = egresos.map(e => e._fechaStr).filter(Boolean);
         const min = fechas.sort((a, b) => {
-          const fa = Date.parse(a.split("/").reverse().join("-"));
-          const fb = Date.parse(b.split("/").reverse().join("-"));
+          const fa = typeof a === 'string' ? Date.parse(a.split("/").reverse().join("-")) : 0;
+          const fb = typeof b === 'string' ? Date.parse(b.split("/").reverse().join("-")) : 0;
           return fa - fb;
         })[0];
-        return dayjs(min.split('/').reverse().join('-'));
+        return typeof min === 'string' ? dayjs(min.split('/').reverse().join('-')) : undefined;
       })() : undefined}
       maxDate={dayjs().startOf('day')}
       shouldDisableDate={date => {
