@@ -114,7 +114,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
     const m = String(hoy.getMonth() + 1).padStart(2, '0');
     const y = hoy.getFullYear();
     const egreso = {
-      descripcion,
+      descripcion: descripcion ? descripcion.toUpperCase() : '',
       montoUSD: Number(usd),
       montoBs: Number(bs),
       tasa: Number(tasa),

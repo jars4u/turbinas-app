@@ -48,10 +48,10 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
     }
     setLoading(true);
     const payload = {
-      numeroFactura: facturaForm.numeroFactura,
-      formaPago: facturaForm.formaPago,
+      numeroFactura: facturaForm.numeroFactura ? facturaForm.numeroFactura.toUpperCase() : '',
+      formaPago: facturaForm.formaPago ? facturaForm.formaPago.toUpperCase() : '',
       monto: facturaForm.monto,
-      referencia: facturaForm.referencia
+      referencia: facturaForm.referencia ? facturaForm.referencia.toUpperCase() : ''
     };
     if (
       agregarFormaPago &&
@@ -59,12 +59,12 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
       facturaForm.monto2 &&
       facturaForm.referencia2 !== undefined
     ) {
-      payload.formaPago2 = facturaForm.formaPago2;
+      payload.formaPago2 = facturaForm.formaPago2 ? facturaForm.formaPago2.toUpperCase() : '';
       payload.monto2 = facturaForm.monto2;
-      payload.referencia2 = facturaForm.referencia2;
+      payload.referencia2 = facturaForm.referencia2 ? facturaForm.referencia2.toUpperCase() : '';
     }
-  console.log('Payload registro pago:', payload);
-  await onRegister(payload);
+    console.log('Payload registro pago:', payload);
+    await onRegister(payload);
     setLoading(false);
     setFacturaForm({ numeroFactura: "", formaPago: "", monto: "", referencia: "", formaPago2: "", monto2: "", referencia2: "" });
     setFacturaIntento(false);

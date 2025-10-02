@@ -171,15 +171,15 @@ export default function Dashboard() {
 
   const handleSave = async () => {
     const vehiculoData = {
-      vehiculo: form.vehiculo,
-      placa: form.placa,
-      servicio: form.servicio,
+      vehiculo: form.vehiculo ? form.vehiculo.toUpperCase() : '',
+      placa: form.placa ? form.placa.toUpperCase() : '',
+      servicio: form.servicio ? form.servicio.toUpperCase() : '',
       arrivalTime: editId
         ? vehiculos.find((v) => v.id === editId)?.arrivalTime
         : Date.now(),
-      customerName: form.customerName,
+      customerName: form.customerName ? form.customerName.toUpperCase() : '',
       customerPhone: form.customerPhone,
-      observaciones: form.observaciones,
+      observaciones: form.observaciones ? form.observaciones.toUpperCase() : '',
       status: editId
         ? vehiculos.find((v) => v.id === editId)?.status || getDefaultStatus()
         : getDefaultStatus(),

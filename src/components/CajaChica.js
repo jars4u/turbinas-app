@@ -83,7 +83,7 @@ export default function CajaChica({ tasaBCV, isOwner }) {
     if (!egresoDesc || (!montoUSD && !montoBs)) return;
     const nuevoMov = {
       tipo: "Egreso",
-      descripcion: egresoDesc,
+      descripcion: egresoDesc ? egresoDesc.toUpperCase() : '',
       monto: -(montoUSD || montoBs / tasaBCV),
       montoBs: -(montoBs || montoUSD * tasaBCV),
       fecha: new Date().toLocaleDateString("es-VE"),

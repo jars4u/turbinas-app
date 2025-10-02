@@ -11,6 +11,7 @@ import {
   Chip,
   Menu,
   MenuItem,
+  Box,
 } from "@mui/material";
 
 
@@ -198,6 +199,14 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
           {`Tiempo: ${formatElapsed(currentStatus === "servicio" ? elapsed : stoppedElapsed ?? elapsed)}`}
         </Typography>
         <Divider sx={{ my: 1 }} />
+      {/* Cliente y teléfono en una sola línea, abajo antes del precio */}
+      {vehiculo.customerName && vehiculo.customerPhone && (
+        <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', mt: 1, mb: 0.2 }}>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
+            {vehiculo.customerName}
+          </Typography>
+        </Box>
+      )}
         <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
           Datos de la turbina
         </Typography>

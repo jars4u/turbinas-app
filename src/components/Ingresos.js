@@ -73,7 +73,7 @@ export default function Ingresos({ tasaBCV }) {
     const m = String(hoy.getMonth() + 1).padStart(2, '0');
     const y = hoy.getFullYear();
     const nuevoIngreso = {
-  factura: ingresoFactura,
+      factura: ingresoFactura ? ingresoFactura.toUpperCase() : '',
       monto: montoUSD || (montoBs / tasaBCV),
       montoBs: montoBs || (montoUSD * tasaBCV),
       fecha: `${d}/${m}/${y}`,
