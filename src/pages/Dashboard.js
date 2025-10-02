@@ -1202,24 +1202,22 @@ export default function Dashboard() {
                   getOptionLabel={(opt) =>
                     opt.nombre + (opt.telefono ? ` (${opt.telefono})` : "")
                   }
-                  freeSolo
-                  value={
-                    clientes.find(
-                      (c) =>
-                        c.nombre === form.customerName &&
-                        c.telefono === form.customerPhone
-                    ) || {
-                      nombre: form.customerName,
-                      telefono: form.customerPhone,
+                  value={null}
+                  inputValue={form.customerName}
+                  onInputChange={(e, newInputValue, reason) => {
+                    if (reason === 'input') {
+                      setForm({ ...form, customerName: newInputValue });
+                      setIsEditing(true);
                     }
-                  }
+                  }}
                   onChange={(e, value) => {
-                    if (value) {
+                    if (value && value.nombre) {
                       setForm({
                         ...form,
                         customerName: value.nombre,
                         customerPhone: value.telefono,
                       });
+                      setIsEditing(true);
                     }
                   }}
                   sx={{ width: "100%" }}
@@ -1231,10 +1229,6 @@ export default function Dashboard() {
                       name="customerName"
                       fullWidth
                       size="small"
-                      value={form.customerName}
-                      onChange={(e) =>
-                        setForm({ ...form, customerName: e.target.value })
-                      }
                       sx={{ mb: 1.5, width: "100%" }}
                       InputProps={{
                         ...params.InputProps,
@@ -1265,6 +1259,7 @@ export default function Dashboard() {
                     const soloNumeros = value.slice(3).replace(/[^\d]/g, "");
                     value = "+58" + soloNumeros;
                     setForm({ ...form, customerPhone: value });
+                    setIsEditing(true);
                   }}
                   sx={{ mb: 1.5 }}
                   InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
