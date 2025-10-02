@@ -5,7 +5,13 @@ const INGRESOS_COLLECTION = "ingresosMovimientos";
 
 export async function guardarIngreso(ingreso) {
   const fechaStr = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const mov = { ...ingreso, fecha: fechaStr };
+  // Antes de guardar, eliminamos todos los campos con valor undefined para evitar que Firestore reciba datos innecesarios.
+  // Esto previene errores y mantiene la base de datos limpia, incluso si el frontend envía campos opcionales.
+  const mov = Object.fromEntries(
+    Object.entries({ ...ingreso, fecha: fechaStr })
+      .filter(([_, v]) => v !== undefined)
+  );
+  console.log('guardarIngreso llamado con:', mov);
   // Si hay segunda forma de pago, guardar ambas en un array con monto
   if (mov.formaPago2) {
     mov.formasPago = [

@@ -47,15 +47,24 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
       }
     }
     setLoading(true);
-    await onRegister({
+    const payload = {
       numeroFactura: facturaForm.numeroFactura,
       formaPago: facturaForm.formaPago,
       monto: facturaForm.monto,
-      referencia: facturaForm.referencia,
-      formaPago2: agregarFormaPago ? facturaForm.formaPago2 : undefined,
-      monto2: agregarFormaPago ? facturaForm.monto2 : undefined,
-      referencia2: agregarFormaPago ? facturaForm.referencia2 : undefined
-    });
+      referencia: facturaForm.referencia
+    };
+    if (
+      agregarFormaPago &&
+      facturaForm.formaPago2 &&
+      facturaForm.monto2 &&
+      facturaForm.referencia2 !== undefined
+    ) {
+      payload.formaPago2 = facturaForm.formaPago2;
+      payload.monto2 = facturaForm.monto2;
+      payload.referencia2 = facturaForm.referencia2;
+    }
+  console.log('Payload registro pago:', payload);
+  await onRegister(payload);
     setLoading(false);
     setFacturaForm({ numeroFactura: "", formaPago: "", monto: "", referencia: "", formaPago2: "", monto2: "", referencia2: "" });
     setFacturaIntento(false);
