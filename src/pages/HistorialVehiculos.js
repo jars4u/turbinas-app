@@ -67,7 +67,8 @@ function ServicioHistorialModal({ open, onClose, servicio }) {
         });
       });
     }
-    return arr.sort((a, b) => (a.fecha || 0) - (b.fecha || 0));
+  // Ordenar por fecha de registro (arrivalTime) descendente por defecto
+  return arr.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
   }, [servicio]);
 
   return (
@@ -88,7 +89,7 @@ export default function HistorialVehiculos() {
   const [busqueda, setBusqueda] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [vehiculos, setVehiculos] = React.useState([]);
-  const [ordenCol, setOrdenCol] = React.useState("fechaEntrega");
+  const [ordenCol, setOrdenCol] = React.useState("arrivalTime");
   const [ordenAsc, setOrdenAsc] = React.useState(false);
   const [openHistorial, setOpenHistorial] = React.useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = React.useState(null);
@@ -170,21 +171,21 @@ export default function HistorialVehiculos() {
               <TableCell>#</TableCell>
               <TableCell
                 onClick={() =>
-                  setOrdenCol("fechaEntrega") ||
-                  setOrdenAsc(ordenCol === "fechaEntrega" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Fecha de entrega {ordenCol === "fechaEntrega" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
                   setOrdenCol("arrivalTime") ||
                   setOrdenAsc(ordenCol === "arrivalTime" ? !ordenAsc : false)
                 }
                 style={{ cursor: "pointer" }}
               >
                 Fecha de registro {ordenCol === "arrivalTime" ? (ordenAsc ? "▲" : "▼") : ""}
+              </TableCell>
+              <TableCell
+                onClick={() =>
+                  setOrdenCol("fechaEntrega") ||
+                  setOrdenAsc(ordenCol === "fechaEntrega" ? !ordenAsc : false)
+                }
+                style={{ cursor: "pointer" }}
+              >
+                Fecha de entrega {ordenCol === "fechaEntrega" ? (ordenAsc ? "▲" : "▼") : ""}
               </TableCell>
               <TableCell
                 onClick={() =>
@@ -315,10 +316,10 @@ export default function HistorialVehiculos() {
                   >
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.fechaEntrega ? (() => { const d = new Date(v.fechaEntrega); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}
+                      {v.arrivalTime ? (() => { const d = new Date(v.arrivalTime); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.arrivalTime ? (() => { const d = new Date(v.arrivalTime); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}
+                      {v.fechaEntrega ? (() => { const d = new Date(v.fechaEntrega); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {v.vehiculo || "-"}
