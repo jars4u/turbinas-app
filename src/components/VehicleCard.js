@@ -15,7 +15,7 @@ import {
 
 
 
-const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
+const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
   const {
   // id,
     arrivalTime = Date.now(),
@@ -115,6 +115,8 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange }) => {
   minWidth: 210,
   maxWidth: 210,
   minHeight: 180,
+  height: height || 'auto',
+        mx: 1.5,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",

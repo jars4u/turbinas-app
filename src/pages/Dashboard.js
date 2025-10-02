@@ -619,54 +619,66 @@ export default function Dashboard() {
           {/* Vista cards en desktop/tablet */}
           <Grid
             container
-            spacing={2}
-            columns={12}
+            spacing={3}
+            columns={6}
             sx={{ display: { xs: "none", sm: "flex" } }}
+            mt={1}
           >
-            {[...vehiculos]
-              .filter(
-                (v) =>
-                  (v.status || v.estado) !== "entregado" &&
-                  (!ordenEstado || (v.status || v.estado) === ordenEstado)
-              )
-              .sort((a, b) => {
-                if (!ordenEstado)
-                  return ordenAsc
-                    ? a.arrivalTime - b.arrivalTime
-                    : b.arrivalTime - a.arrivalTime;
-                if (ordenAsc)
+            {(() => {
+              // Calcular el alto máximo de los VehicleCard
+              const heights = [...vehiculos]
+                .filter(
+                  (v) =>
+                    (v.status || v.estado) !== "entregado" &&
+                    (!ordenEstado || (v.status || v.estado) === ordenEstado)
+                )
+                .map((v) => {
+                  // Estimar el alto por cantidad de líneas de texto
+                  let base = 180;
+                  if (v.observaciones) base += 18;
+                  if (v.servicio) base += 18;
+                  if (v.vehiculo) base += 18;
+                  return base;
+                });
+              const maxHeight = Math.max(...heights, 180);
+              return [...vehiculos]
+                .filter(
+                  (v) =>
+                    (v.status || v.estado) !== "entregado" &&
+                    (!ordenEstado || (v.status || v.estado) === ordenEstado)
+                )
+                .sort((a, b) => {
+                  if (!ordenEstado)
+                    return ordenAsc
+                      ? a.arrivalTime - b.arrivalTime
+                      : b.arrivalTime - a.arrivalTime;
+                  if (ordenAsc)
+                    return (
+                      (a.status || a.estado).localeCompare(
+                        b.status || b.estado
+                      ) || a.arrivalTime - b.arrivalTime
+                    );
                   return (
-                    (a.status || a.estado).localeCompare(
-                      b.status || b.estado
-                    ) || a.arrivalTime - b.arrivalTime
+                    (b.status || b.estado).localeCompare(a.status || a.estado) ||
+                    b.arrivalTime - a.arrivalTime
                   );
-                return (
-                  (b.status || b.estado).localeCompare(a.status || a.estado) ||
-                  b.arrivalTime - a.arrivalTime
-                );
-              })
-              .map((v) => (
-                <Grid
-                  key={v.id}
-                  sx={{
-                    mb: 3,
-                    gridColumn: {
-                      sm: "span 6",
-                      md: "span 3",
-                      lg: "span 2",
-                      xl: "span 2",
-                    },
-                  }}
-                >
-                  <VehicleCard
-                    vehiculo={v}
-                    onEdit={() => handleOpen(v)}
-                    onStatusChange={(newStatus) =>
-                      handleStatusChange(v.id, newStatus)
-                    }
-                  />
-                </Grid>
-              ))}
+                })
+                .map((v) => (
+                  <Grid
+                    key={v.id}
+                    sx={{ mb: 3 }}
+                  >
+                    <VehicleCard
+                      vehiculo={v}
+                      onEdit={() => handleOpen(v)}
+                      onStatusChange={(newStatus) =>
+                        handleStatusChange(v.id, newStatus)
+                      }
+                      height={maxHeight}
+                    />
+                  </Grid>
+                ));
+            })()}
           </Grid>
         </>
       )}

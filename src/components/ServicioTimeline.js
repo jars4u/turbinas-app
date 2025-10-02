@@ -1,5 +1,30 @@
 import * as React from 'react';
-import { Typography, Box, Avatar, Divider } from '@mui/material';
+import { Typography } from '@mui/material';
+import {
+  VerticalTimeline,
+  VerticalTimelineElement,
+} from 'react-vertical-timeline-component';
+import 'react-vertical-timeline-component/style.min.css';
+
+// Función para normalizar el estado (minúsculas, sin acentos, sin espacios extra)
+function normalizarEstado(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Mapeo de estado a color único y consistente
+const estadoColor = {
+  'por retirar': '#FFA726', // naranja
+  'en proceso': '#42A5F5', // azul
+  'notificado': '#AB47BC', // morado
+  'en espera': '#FFD600', // amarillo
+  'entregado': '#66BB6A', // verde
+};
 
 export default function ServicioTimeline({ eventos = [] }) {
   // Formato de fecha dd/mm/yyyy HH:mm
@@ -14,46 +39,35 @@ export default function ServicioTimeline({ eventos = [] }) {
     const min = String(d.getMinutes()).padStart(2, '0');
     return `${day}/${month}/${year} ${hour}:${min}`;
   };
-  if (!eventos.length) return <Typography color="text.secondary">No hay historial de cambios.</Typography>;
+  if (!eventos.length)
+    return (
+      <Typography color="text.secondary">No hay historial de cambios.</Typography>
+    );
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, pl: 1 }}>
-      {eventos.map((evento, idx) => (
-        <Box key={idx} sx={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', minHeight: 44, position: 'relative' }}>
-          {/* Timeline punto y línea */}
-          <Box sx={{ width: 32, minWidth: 32, position: 'relative', display: 'flex', justifyContent: 'center' }}>
-            {/* Punto */}
-            <Box sx={{ position: 'absolute', left: '50%', top: 8, transform: 'translateX(-50%)', zIndex: 2 }}>
-              <Avatar sx={{ width: 16, height: 16, bgcolor: evento.color ? `${evento.color}.main` : 'primary.main', fontSize: 10 }} />
-            </Box>
-            {/* Línea */}
-            {idx < eventos.length - 1 && (
-              <Box sx={{ position: 'absolute', left: '50%', top: 24, transform: 'translateX(-50%)', width: 2, height: 'calc(100% - 24px)', bgcolor: 'grey.300', zIndex: 1 }} />
+    <VerticalTimeline lineColor="#b0b3b8">
+      {eventos.map((evento, idx) => {
+        // Determinar color según estado normalizado
+        const estado = normalizarEstado(evento.estado);
+        // Si el estado no está en el mapeo, asignar un color único por índice
+        const colorPunto = estadoColor[estado] || `hsl(${(idx * 60) % 360}, 70%, 60%)`;
+        return (
+          <VerticalTimelineElement
+            key={idx}
+            date={evento.fecha ? formatFecha(evento.fecha) : ''}
+            contentStyle={{ background: '#e0e3ea', color: '#333', borderRadius: 12, boxShadow: 'none' }}
+            icon={<span style={{ display: 'block', width: 16, height: 16, borderRadius: '50%', background: colorPunto, margin: 'auto', border: '2px solid #b0b3b8' }} />}
+            iconStyle={{ background: 'transparent', boxShadow: 'none' }}
+          >
+            <h3 className="vertical-timeline-element-title">{evento.titulo}</h3>
+            <p>{evento.descripcion}</p>
+            {evento.usuario && (
+              <span style={{ fontSize: 12, color: '#888' }}>
+                Usuario: {evento.usuario.split('@')[0]}
+              </span>
             )}
-          </Box>
-          {/* Fecha y contenido */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 1, pl: 0.5 }}>
-            <Typography
-              variant="caption"
-              sx={{ minWidth: 90, fontSize: 14, color: 'text.secondary', lineHeight: 1.1, pt: 0.5 }}
-            >
-              {evento.fecha ? formatFecha(evento.fecha) : ''}
-            </Typography>
-            <Box sx={{ flex: 1 }}>
-              <Typography fontWeight={600} sx={{ fontSize: { xs: 14, sm: 16, md: 18 } }}>
-                {evento.titulo}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14, md: 15 } }}>
-                {evento.descripcion}
-              </Typography>
-              {evento.usuario && (
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: 10, sm: 12, md: 13 } }}>
-                  Usuario: {evento.usuario.split('@')[0]}
-                </Typography>
-              )}
-            </Box>
-          </Box>
-        </Box>
-      ))}
-    </Box>
+          </VerticalTimelineElement>
+        );
+      })}
+    </VerticalTimeline>
   );
 }
