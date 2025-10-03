@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 import {
   Box,
   Typography,
@@ -17,14 +18,18 @@ import {
   AccordionDetails,
 } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-  // ...existing code...
-import { guardarIngreso, obtenerIngresos } from "../lib/ingresosFirebase";
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { guardarIngreso, obtenerIngresos, eliminarIngreso } from "../lib/ingresosFirebase";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 
 export default function Ingresos({ tasaBCV }) {
+  const { isOwner } = useAuth();
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editIngreso, setEditIngreso] = useState(null);
   const [ingresoFactura, setIngresoFactura] = useState("");
   const [ingresoMontoUSD, setIngresoMontoUSD] = useState("");
   const [ingresoMontoBs, setIngresoMontoBs] = useState("");
@@ -63,15 +68,38 @@ export default function Ingresos({ tasaBCV }) {
       if (fechas.includes(hoyStr)) {
         setTimeout(() => setFechaSeleccionada(hoyStr), 0);
       } else if (fechas.length > 0) {
-        setTimeout(() => setFechaSeleccionada(fechas[0]), 0);
+        // Seleccionar el día más reciente (mayor fecha) con información
+        const fechasOrdenadas = fechas.sort((a, b) => {
+          const fa = Date.parse(a.split('/').reverse().join('-'));
+          const fb = Date.parse(b.split('/').reverse().join('-'));
+          return fb - fa;
+        });
+        setTimeout(() => setFechaSeleccionada(fechasOrdenadas[0]), 0);
       }
     });
   }, []);
 
+  const handleEditarIngreso = (ingreso) => {
+    setEditIngreso(ingreso);
+    setEditModalOpen(true);
+  };
+
+  const handleGuardarEdicion = async (actualizado) => {
+    // Aquí deberías implementar la lógica para actualizar el ingreso en la base de datos
+    // Por ejemplo, actualizarIngreso(actualizado)
+    setEditModalOpen(false);
+    setEditIngreso(null);
+    // Recargar ingresos
+    setLoading(true);
+    const actualizados = await obtenerIngresos();
+    setIngresos(actualizados);
+    setLoading(false);
+  };
+
   const handleAgregarIngreso = async () => {
     const montoUSD = Number(ingresoMontoUSD);
     const montoBs = Number(ingresoMontoBs);
-  if (!ingresoFactura || (!montoUSD && !montoBs)) return;
+    if (!ingresoFactura || (!montoUSD && !montoBs)) return;
     const hoy = new Date();
     const d = String(hoy.getDate()).padStart(2, '0');
     const m = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -89,14 +117,60 @@ export default function Ingresos({ tasaBCV }) {
     // Si el ingreso es de hoy, actualizar la fecha seleccionada
     const hoyStr = `${d}/${m}/${y}`;
     setFechaSeleccionada(hoyStr);
-  // setIngresoDesc eliminado, ahora se usa setIngresoFactura
-  setIngresoFactura("");
+    // setIngresoDesc eliminado, ahora se usa setIngresoFactura
+    setIngresoFactura("");
     setIngresoMontoUSD("");
     setIngresoMontoBs("");
   };
 
+  const handleEliminarIngreso = async (ingreso) => {
+    if (!window.confirm("¿Seguro que deseas eliminar este ingreso?")) return;
+    setLoading(true);
+    try {
+      await eliminarIngreso(ingreso.id);
+      const actualizados = await obtenerIngresos();
+      setIngresos(actualizados);
+    } catch (err) {
+      alert("Error al eliminar ingreso");
+    }
+    setLoading(false);
+  };
+
   return (
   <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
+    {/* Modal de edición */}
+    {isOwner && editModalOpen && editIngreso && (
+      <Paper sx={{ position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, p: 3, minWidth: 320 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>Editar ingreso</Typography>
+        <TextField
+          label="N° Factura"
+          size="small"
+          value={editIngreso.factura || ''}
+          onChange={e => setEditIngreso({ ...editIngreso, factura: e.target.value })}
+          sx={{ mb: 2, width: '100%' }}
+        />
+        <TextField
+          label="Monto ($)"
+          type="number"
+          size="small"
+          value={editIngreso.monto || ''}
+          onChange={e => setEditIngreso({ ...editIngreso, monto: Number(e.target.value) })}
+          sx={{ mb: 2, width: '100%' }}
+        />
+        <TextField
+          label="Monto (Bs)"
+          type="number"
+          size="small"
+          value={editIngreso.montoBs || ''}
+          onChange={e => setEditIngreso({ ...editIngreso, montoBs: Number(e.target.value) })}
+          sx={{ mb: 2, width: '100%' }}
+        />
+        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+          <Button variant="contained" color="primary" onClick={() => handleGuardarEdicion(editIngreso)}>Guardar</Button>
+          <Button variant="outlined" color="secondary" onClick={() => { setEditModalOpen(false); setEditIngreso(null); }}>Cancelar</Button>
+        </Box>
+      </Paper>
+    )}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6" sx={{ mb: 0 }}>
           Registro de Ingresos
@@ -318,6 +392,7 @@ export default function Ingresos({ tasaBCV }) {
             <TableCell align="right">Monto (Bs)</TableCell>
             <TableCell>Forma de Pago</TableCell>
             <TableCell>Ref./Observaciones</TableCell>
+            {isOwner && <TableCell align="center">Acciones</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -410,9 +485,11 @@ export default function Ingresos({ tasaBCV }) {
                     // Si hay formasPago, mostrar todos los montos en Bs separados por ' + '
                     if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
                       const montosBs = ing.formasPago
-                        .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil' && fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
-                        .map(fp => Number(fp.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
-                      return montosBs.length > 0 ? montosBs.join(' + ') : "-";
+                        .map(fp => fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))
+                          ? Number(fp.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 })
+                          : null)
+                        .filter(Boolean);
+                      if (montosBs.length > 0) return montosBs.join(' + ');
                     }
                     // Si montoBs existe y es válido, mostrarlo
                     if (typeof ing.montoBs === 'number' && !isNaN(ing.montoBs)) {
@@ -438,6 +515,18 @@ export default function Ingresos({ tasaBCV }) {
                     ? ing.formasPago.map(fp => fp.referencia || '-').join(' + ')
                     : (ing.referencia || '-')}
                 </TableCell>
+                {isOwner && (
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                      <Button size="small" variant="text" color="primary" sx={{ p: 0 }} onClick={() => handleEditarIngreso(ing)}>
+                        <EditIcon />
+                      </Button>
+                      <Button size="small" variant="text" color="error" sx={{ p: 0 }} onClick={() => handleEliminarIngreso(ing)}>
+                        <DeleteIcon />
+                      </Button>
+                    </Box>
+                  </TableCell>
+                )}
               </TableRow>
             ))
           )}

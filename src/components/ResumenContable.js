@@ -107,7 +107,7 @@ export default function ResumenContable({ tasaBCV }) {
       setCierresPorDia(cierresMap);
       setLoading(false);
 
-      // Seleccionar el día de hoy por defecto si existe, si no el más reciente
+      // Seleccionar el día de hoy por defecto si existe, si no el más cercano con información
       const hoy = new Date();
       const hoyStr = `${String(hoy.getDate()).padStart(2, "0")}/${String(
         hoy.getMonth() + 1
@@ -115,13 +115,28 @@ export default function ResumenContable({ tasaBCV }) {
       const fechas = Object.keys(agrupados).sort((a, b) => {
         const fa = Date.parse(a.split("/").reverse().join("-"));
         const fb = Date.parse(b.split("/").reverse().join("-"));
-        return fb - fa;
+        return Math.abs(fa - Date.parse(hoyStr.split("/").reverse().join("-"))) - Math.abs(fb - Date.parse(hoyStr.split("/").reverse().join("-")));
       });
+      let fechaInicial = hoyStr;
       if (fechas.includes(hoyStr)) {
         setFechaSeleccionada(hoyStr);
+        fechaInicial = hoyStr;
       } else if (fechas.length > 0) {
-        setFechaSeleccionada(fechas[0]);
+        // Seleccionar el día más reciente (mayor fecha) con información
+        const fechasOrdenadas = fechas.sort((a, b) => {
+          const fa = Date.parse(a.split('/').reverse().join('-'));
+          const fb = Date.parse(b.split('/').reverse().join('-'));
+          return fb - fa;
+        });
+        const fechaMasReciente = fechasOrdenadas[0];
+        setFechaSeleccionada(fechaMasReciente);
+        fechaInicial = fechaMasReciente;
       }
+      // Sincronizar el DatePicker con la fecha seleccionada
+      const [d, m, y] = fechaInicial.split('/');
+      const fechaDayjs = window.dayjs ? window.dayjs(`${y}-${m}-${d}`) : require('dayjs')(`${y}-${m}-${d}`);
+      setFechaInicio(fechaDayjs);
+      setFechaFin(fechaDayjs);
     });
   }, []);
 
@@ -170,20 +185,20 @@ export default function ResumenContable({ tasaBCV }) {
               minDate={
                 Object.keys(datosPorDia).length > 0
                   ? dayjs(
-                      Object.keys(datosPorDia)
-                        .sort((a, b) => {
-                          const fa = Date.parse(
-                            a.split("/").reverse().join("-")
-                          );
-                          const fb = Date.parse(
-                            b.split("/").reverse().join("-")
-                          );
-                          return fa - fb;
-                        })[0]
-                        .split("/")
-                        .reverse()
-                        .join("-")
-                    )
+                    Object.keys(datosPorDia)
+                      .sort((a, b) => {
+                        const fa = Date.parse(
+                          a.split("/").reverse().join("-")
+                        );
+                        const fb = Date.parse(
+                          b.split("/").reverse().join("-")
+                        );
+                        return fa - fb;
+                      })[0]
+                      .split("/")
+                      .reverse()
+                      .join("-")
+                  )
                   : undefined
               }
               maxDate={fechaFin || dayjs().startOf("day")}
@@ -196,22 +211,22 @@ export default function ResumenContable({ tasaBCV }) {
               renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
               disableFuture
               minDate={fechaInicio || (Object.keys(datosPorDia).length > 0
-                  ? dayjs(
-                      Object.keys(datosPorDia)
-                        .sort((a, b) => {
-                          const fa = Date.parse(
-                            a.split("/").reverse().join("-")
-                          );
-                          const fb = Date.parse(
-                            b.split("/").reverse().join("-")
-                          );
-                          return fa - fb;
-                        })[0]
-                        .split("/")
-                        .reverse()
-                        .join("-")
-                    )
-                  : undefined)}
+                ? dayjs(
+                  Object.keys(datosPorDia)
+                    .sort((a, b) => {
+                      const fa = Date.parse(
+                        a.split("/").reverse().join("-")
+                      );
+                      const fb = Date.parse(
+                        b.split("/").reverse().join("-")
+                      );
+                      return fa - fb;
+                    })[0]
+                    .split("/")
+                    .reverse()
+                    .join("-")
+                )
+                : undefined)}
               maxDate={dayjs().startOf("day")}
             />
           </LocalizationProvider>
@@ -274,7 +289,7 @@ export default function ResumenContable({ tasaBCV }) {
             }, 0);
             let totalIngresosBs = tasaHistorica ? totalIngresosUSD * tasaHistorica : ingresos.reduce((acc, i) => acc + (Number(i.montoBs) || 0), 0);
             let totalEgresosUSD = egresos.reduce((acc, e) => acc + (Number(e.montoUSD) || 0), 0);
-            let totalEgresosBs = tasaHistorica ? totalEgresosUSD * tasaHistorica : egresos.reduce((acc, e) => acc + (Number(e.montoBs) || 0), 0);
+            let totalEgresosBs = egresos.reduce((acc, e) => acc + (Number(e.montoBs) || 0), 0);
             let utilidadUSD = totalIngresosUSD - totalEgresosUSD;
             // Agrupar ingresos por forma de pago, sumando todos los montos de formasPago
             const pagosPorForma = ingresos.reduce((acc, i) => {
@@ -303,14 +318,14 @@ export default function ResumenContable({ tasaBCV }) {
                     : `Fecha: ${fechasFiltradas[0]}`}
                 </Typography>
                 {/* ...el resto del renderizado permanece igual... */}
-                  {/* <Typography
+                {/* <Typography
                     variant="subtitle1"
                     fontWeight={600}
                     sx={{ mb: 1 }}
                   >
                     Fecha: {fechaSeleccionada}
                   </Typography> */}
-                  <Paper sx={{ p: 2, mb: 2, bgcolor: "#f5f5f5" }}>
+                <Paper sx={{ p: 2, mb: 2, bgcolor: "#f5f5f5" }}>
                   {/* Tasa BCV en bloque al inicio para móviles */}
                   <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 1 }}>
                     <Typography
@@ -320,482 +335,477 @@ export default function ResumenContable({ tasaBCV }) {
                       Tasa BCV:{" "}
                       {cierre?.tasa
                         ? `${cierre.tasa.toLocaleString("de-DE", {
-                            minimumFractionDigits: 2,
-                          })} (histórica)`
+                          minimumFractionDigits: 2,
+                        })} (histórica)`
                         : tasaBCV
-                        ? `${tasaBCV.toLocaleString("de-DE", {
+                          ? `${tasaBCV.toLocaleString("de-DE", {
                             minimumFractionDigits: 2,
                           })}`
-                        : "No disponible"}
+                          : "No disponible"}
                     </Typography>
                   </Box>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection: { xs: 'column', sm: 'row' },
-                        justifyContent: { xs: 'flex-start', sm: 'space-between' },
-                        alignItems: { xs: 'flex-start', sm: 'center' },
-                      }}
-                    >
-                      <Typography>
-                        <b>Ingresos totales:</b>
-                        {(() => {
-                          // Sumar por separado los montos en USD y Bs según la divisa y forma de pago
-                          let totalUSD = 0;
-                          let totalBs = 0;
-                          ingresos.forEach(i => {
-                            if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                              i.formasPago.forEach(fp => {
-                                if (fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil') {
-                                  // Solo sumar montoBs para pago movil
-                                  if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                                    totalBs += Number(fp.montoBs);
-                                  }
-                                } else {
-                                  // Para otras formas, solo sumar monto USD si existe
-                                  if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                                    totalUSD += Number(fp.monto);
-                                  }
-                                }
-                              });
-                            } else {
-                              // Si no hay formasPago, decidir por la divisa
-                              if (i.formaPago && i.formaPago.toLowerCase() === 'pago movil') {
-                                if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
-                                  totalBs += Number(i.montoBs);
-                                }
-                              } else {
-                                if (i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
-                                  totalUSD += Number(i.monto);
-                                }
-                              }
-                            }
-                          });
-                          return ` $ ${totalUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
-                        })()}
-                      </Typography>
-                      {/* Tasa BCV en línea para desktop */}
-                      <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ ml: 2 }}
-                        >
-                          Tasa BCV:{" "}
-                          {cierre?.tasa
-                            ? `${cierre.tasa.toLocaleString("de-DE", {
-                                minimumFractionDigits: 2,
-                              })} (histórica)`
-                            : tasaBCV
-                            ? `${tasaBCV.toLocaleString("de-DE", {
-                                minimumFractionDigits: 2,
-                              })}`
-                            : "No disponible"}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    {/* Mostrar montos por forma de pago como subtítulo */}
-                    <Box sx={{ mb: 1, mt: 1 }}>
-                      {(() => {
-                        // Agrupar montos por forma de pago y divisa
-                        const desglose = {};
-                        ingresos.forEach(i => {
-                          if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                            i.formasPago.forEach(fp => {
-                              const forma = (fp.formaPago || "Sin especificar").toUpperCase();
-                              if (!desglose[forma]) desglose[forma] = { usd: 0, bs: 0 };
-                              if (fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil') {
-                                // Solo sumar montoBs para pago movil
-                                if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                                  desglose[forma].bs += Number(fp.montoBs);
-                                }
-                              } else {
-                                // Para otras formas, solo sumar monto USD si existe
-                                if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                                  desglose[forma].usd += Number(fp.monto);
-                                }
-                              }
-                            });
-                          } else {
-                            const forma = (i.formaPago || "Sin especificar").toUpperCase();
-                            if (!desglose[forma]) desglose[forma] = { usd: 0, bs: 0 };
-                            if (forma === 'PAGO MOVIL') {
-                              if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
-                                desglose[forma].bs += Number(i.montoBs);
-                              }
-                            } else {
-                              if (i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
-                                desglose[forma].usd += Number(i.monto);
-                              }
-                            }
-                          }
-                        });
-                        return Object.entries(desglose)
-                          .sort((a, b) => a[0].localeCompare(b[0]))
-                          .map(([forma, montos]) => (
-                            <Typography
-                              key={forma}
-                              variant="body2"
-                              sx={{ mb: 0.5, pl: 1 }}
-                            >
-                              <b>{forma}:</b>
-                              {/* Para pago movil, mostrar solo Bs; para otros, solo USD */}
-                              {forma === 'PAGO MOVIL'
-                                ? (montos.bs > 0
-                                    ? <span> | Bs. {montos.bs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
-                                    : <span> - </span>)
-                                : (montos.usd > 0
-                                    ? <span> $ {montos.usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                    : <span> - </span>)}
-                            </Typography>
-                          ));
-                      })()}
-                    </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      justifyContent: { xs: 'flex-start', sm: 'space-between' },
+                      alignItems: { xs: 'flex-start', sm: 'center' },
+                    }}
+                  >
                     <Typography>
-                      <b>Egresos totales:</b>
+                      <b>Ingresos totales:</b>
                       {(() => {
-                        // Sumar por separado los montos en USD y Bs según la divisa y forma de pago
+                        // Sumar todos los montos en USD y Bs, sin conversión
                         let totalUSD = 0;
                         let totalBs = 0;
-                        egresos.forEach(e => {
-                          if (Array.isArray(e.formasPago) && e.formasPago.length > 0) {
-                            e.formasPago.forEach(fp => {
-                              if (fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil') {
-                                // Solo sumar montoBs para pago movil
-                                if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                                  totalBs += Number(fp.montoBs);
-                                }
-                              } else {
-                                // Para otras formas, solo sumar monto USD si existe
-                                if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                                  totalUSD += Number(fp.monto);
-                                }
+                        ingresos.forEach(i => {
+                          // Sumar monto USD principal si existe
+                          if (i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
+                            totalUSD += Number(i.monto);
+                          }
+                          // Sumar montoBs principal si existe
+                          if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
+                            totalBs += Number(i.montoBs);
+                          }
+                          // Sumar montos de formasPago si existen
+                          if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                            i.formasPago.forEach(fp => {
+                              if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                                totalUSD += Number(fp.monto);
+                              }
+                              if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
+                                totalBs += Number(fp.montoBs);
                               }
                             });
-                          } else {
-                            // Si no hay formasPago, decidir por la divisa
-                            if (e.formaPago && e.formaPago.toLowerCase() === 'pago movil') {
-                              if (e.montoBs !== undefined && e.montoBs !== null && !isNaN(Number(e.montoBs))) {
-                                totalBs += Number(e.montoBs);
-                              }
-                            } else {
-                              if (e.monto !== undefined && e.monto !== null && !isNaN(Number(e.monto))) {
-                                totalUSD += Number(e.monto);
-                              }
-                            }
                           }
                         });
                         return ` $ ${totalUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
                       })()}
                     </Typography>
-                    <Typography>
-                      <b>Utilidad:</b>
-                      {(() => {
-                        // Calcular utilidad por separado para USD y Bs
-                        let totalIngresosUSD = 0;
-                        let totalIngresosBs = 0;
-                        ingresos.forEach(i => {
-                          if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                            i.formasPago.forEach(fp => {
-                              if (fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil') {
-                                if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                                  totalIngresosBs += Number(fp.montoBs);
-                                }
-                              } else {
-                                if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                                  totalIngresosUSD += Number(fp.monto);
-                                }
-                              }
-                            });
-                          } else {
-                            if (i.formaPago && i.formaPago.toLowerCase() === 'pago movil') {
-                              if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
-                                totalIngresosBs += Number(i.montoBs);
-                              }
-                            } else {
-                              if (i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
-                                totalIngresosUSD += Number(i.monto);
-                              }
-                            }
-                          }
-                        });
-                        let totalEgresosUSD = 0;
-                        let totalEgresosBs = 0;
-                        egresos.forEach(e => {
-                          if (Array.isArray(e.formasPago) && e.formasPago.length > 0) {
-                            e.formasPago.forEach(fp => {
-                              if (fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil') {
-                                if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                                  totalEgresosBs += Number(fp.montoBs);
-                                }
-                              } else {
-                                if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                                  totalEgresosUSD += Number(fp.monto);
-                                }
-                              }
-                            });
-                          } else {
-                            if (e.formaPago && e.formaPago.toLowerCase() === 'pago movil') {
-                              if (e.montoBs !== undefined && e.montoBs !== null && !isNaN(Number(e.montoBs))) {
-                                totalEgresosBs += Number(e.montoBs);
-                              }
-                            } else {
-                              if (e.monto !== undefined && e.monto !== null && !isNaN(Number(e.monto))) {
-                                totalEgresosUSD += Number(e.monto);
-                              }
-                            }
-                          }
-                        });
-                        const utilidadUSD = totalIngresosUSD - totalEgresosUSD;
-                        const utilidadBs = totalIngresosBs - totalEgresosBs;
-                        return ` $ ${utilidadUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${utilidadBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
-                      })()}
-                    </Typography>
-                    {cierre?.observaciones && (
-                      <Typography sx={{ mt: 1 }} color="text.secondary">
-                        <b>Observaciones:</b> {cierre.observaciones}
-                      </Typography>
-                    )}
-                    {cierre?.usuario && (
-                      <Typography sx={{ mt: 1 }} color="text.secondary">
-                        <b>Usuario cierre:</b> {cierre.usuario}
-                      </Typography>
-                    )}
-                  </Paper>
-                  <Accordion
-                    sx={{
-                      mb: 1,
-                      boxShadow: "none",
-                      border: "1px solid #e0e0e0",
-                      borderRadius: 1,
-                    }}
-                  >
-                    <AccordionSummary
-                      expandIcon={<ExpandMoreIcon />}
-                      sx={{
-                        bgcolor: "#e0f7fa",
-                        minHeight: 36,
-                        "& .MuiAccordionSummary-content": { my: 0.5 },
-                      }}
-                    >
+                    {/* Tasa BCV en línea para desktop */}
+                    <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                       <Typography
-                        fontWeight={700}
-                        color="primary"
-                        fontSize={15}
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ ml: 2 }}
                       >
-                        Ingresos
+                        Tasa BCV:{" "}
+                        {cierre?.tasa
+                          ? `${cierre.tasa.toLocaleString("de-DE", {
+                            minimumFractionDigits: 2,
+                          })} (histórica)`
+                          : tasaBCV
+                            ? `${tasaBCV.toLocaleString("de-DE", {
+                              minimumFractionDigits: 2,
+                            })}`
+                            : "No disponible"}
                       </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ py: 0.5 }}>
-                      <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
-                        <Table
-                          component={Paper}
-                          size="small"
-                          sx={{ boxShadow: "none", mb: 0, minWidth: 340 }}
-                        >
-                          <TableHead>
-                            <TableRow sx={{ height: 28 }}>
-                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                Descripción
-                              </TableCell>
-                              <TableCell
-                                align="right"
-                                sx={{ py: 0.5, fontSize: 13 }}
-                              >
-                                Monto ($)
-                              </TableCell>
-                              <TableCell
-                                align="right"
-                                sx={{ py: 0.5, fontSize: 13 }}
-                              >
-                                Monto (Bs)
-                              </TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {ingresos.length === 0 ? (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={3}
-                                  align="center"
-                                  sx={{
-                                    color: "text.secondary",
-                                    py: 0.5,
-                                    fontSize: 13,
-                                  }}
-                                >
-                                  Sin ingresos
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              ingresos.map((i, idx) => (
-                                <TableRow key={idx} sx={{ height: 28 }}>
-                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                    {i.descripcion}
-                                  </TableCell>
-                                  <TableCell
-                                    align="right"
-                                    sx={{ py: 0.5, fontSize: 13 }}
-                                  >
-                                    {(() => {
-                                      // Si hay formasPago, mostrar todos los montos en $ separados por ' + '
-                                      if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                                        const montosUSD = i.formasPago
-                                          .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
-                                          .map(fp => Number(fp.monto).toLocaleString("en-US", { minimumFractionDigits: 2 }));
-                                        return montosUSD.length > 0 ? montosUSD.join(' + ') : "-";
-                                      }
-                                      // Si existe montoUSD
-                                      if (typeof i.montoUSD === 'number' && !isNaN(i.montoUSD)) {
-                                        return i.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 });
-                                      }
-                                      // Si existe monto
-                                      if (typeof i.monto === 'number' && !isNaN(i.monto)) {
-                                        return i.monto.toLocaleString("en-US", { minimumFractionDigits: 2 });
-                                      }
-                                      return "-";
-                                    })()}
-                                  </TableCell>
-                                  <TableCell
-                                    align="right"
-                                    sx={{ py: 0.5, fontSize: 13 }}
-                                  >
-                                    {(() => {
-                                      // Si hay formasPago, mostrar todos los montos en Bs separados por ' + '
-                                      if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                                        const montosBs = i.formasPago
-                                          .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil' && fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
-                                          .map(fp => Number(fp.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
-                                        return montosBs.length > 0 ? montosBs.join(' + ') : "-";
-                                      }
-                                      // Si existe montoBs
-                                      if (typeof i.montoBs === 'number' && !isNaN(i.montoBs)) {
-                                        return i.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 });
-                                      }
-                                      return "-";
-                                    })()}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-                  <Accordion
+                    </Box>
+                  </Box>
+                  {/* Mostrar montos por forma de pago como subtítulo */}
+                  <Box sx={{ mb: 1, mt: 1 }}>
+                    {(() => {
+                      // Agrupar montos por forma de pago y divisa (insensible a mayúsculas y espacios)
+                      const desglose = {};
+                      ingresos.forEach(i => {
+                        // Procesar formasPago
+                        if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                          i.formasPago.forEach(fp => {
+                            const formaNorm = (fp.formaPago || "Sin especificar").trim().toLowerCase();
+                            if (!desglose[formaNorm]) desglose[formaNorm] = { usd: 0, bs: 0 };
+                            // Sumar montoBs si existe
+                            if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
+                              desglose[formaNorm].bs += Number(fp.montoBs);
+                            }
+                            // Sumar monto USD si existe y no es pago movil
+                            if (formaNorm !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              desglose[formaNorm].usd += Number(fp.monto);
+                            }
+                          });
+                        }
+                        // Procesar campo principal
+                        const formaPrincipalNorm = (i.formaPago || "sin especificar").trim().toLowerCase();
+                        // Si el montoBs existe y la forma principal es 'pago movil', sumar bajo 'pago movil'
+                        if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
+                          if (formaPrincipalNorm === 'pago movil' || formaPrincipalNorm === '' || formaPrincipalNorm === 'sin especificar' || formaPrincipalNorm === null) {
+                            if (!desglose['pago movil']) desglose['pago movil'] = { usd: 0, bs: 0 };
+                            desglose['pago movil'].bs += Number(i.montoBs);
+                          }
+                        }
+                        // Sumar monto USD si existe y no es pago movil
+                        if (formaPrincipalNorm !== 'pago movil' && i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
+                          if (!desglose[formaPrincipalNorm]) desglose[formaPrincipalNorm] = { usd: 0, bs: 0 };
+                          desglose[formaPrincipalNorm].usd += Number(i.monto);
+                        }
+                      });
+                      // Mostrar desglose en consola para depuración
+                      console.log('Desglose por forma de pago:', desglose);
+                      return Object.entries(desglose)
+                        .sort((a, b) => a[0].localeCompare(b[0]))
+                        .filter(([formaNorm, montos]) => {
+                          // Ocultar 'sin especificar' si ambos montos son cero
+                          if (formaNorm === 'sin especificar') {
+                            return (montos.usd > 0 || montos.bs > 0);
+                          }
+                          return true;
+                        })
+                        .map(([formaNorm, montos]) => {
+                          // Capitalizar la forma de pago para mostrarla correctamente
+                          const nombreMostrar = formaNorm.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                          const esPagoMovil = formaNorm === 'pago movil';
+                          return (
+                            <Typography
+                              key={nombreMostrar}
+                              variant="body2"
+                              sx={{ mb: 0.5, pl: 1 }}
+                            >
+                              <b>{nombreMostrar}:</b>
+                              {/* Para pago movil, mostrar solo Bs; para otros, solo USD */}
+                              {esPagoMovil
+                                ? (typeof montos.bs === 'number' && !isNaN(montos.bs)
+                                    ? <span> Bs. {montos.bs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
+                                    : montos.bs === 0
+                                      ? <span> Bs. 0,00</span>
+                                      : <span> - </span>)
+                                : (typeof montos.usd === 'number' && !isNaN(montos.usd)
+                                    ? <span> $ {montos.usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                    : <span> - </span>)}
+                            </Typography>
+                          );
+                        });
+                    })()}
+                  </Box>
+                  <Typography>
+                    <b>Egresos totales:</b>
+                    {(() => {
+                      // Sumar por separado los montos en USD y Bs según la divisa y forma de pago
+                      let totalUSD = 0;
+                      let totalBs = 0;
+                      egresos.forEach(e => {
+                        if (Array.isArray(e.formasPago) && e.formasPago.length > 0) {
+                          e.formasPago.forEach(fp => {
+                            if (fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil') {
+                              // Solo sumar montoBs para pago movil
+                              if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
+                                totalBs += Number(fp.montoBs);
+                              }
+                            } else {
+                              // Para otras formas, solo sumar monto USD si existe
+                              if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                                totalUSD += Number(fp.monto);
+                              }
+                            }
+                          });
+                        } else {
+                          // Si no hay formasPago, decidir por la divisa
+                          if (e.formaPago && e.formaPago.toLowerCase() === 'pago movil') {
+                            if (e.montoBs !== undefined && e.montoBs !== null && !isNaN(Number(e.montoBs))) {
+                              totalBs += Number(e.montoBs);
+                            }
+                          } else {
+                            if (e.monto !== undefined && e.monto !== null && !isNaN(Number(e.monto))) {
+                              totalUSD += Number(e.monto);
+                            }
+                          }
+                        }
+                      });
+                      return ` $ ${totalUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
+                    })()}
+                  </Typography>
+                  <Typography>
+                    <b>Utilidad:</b>
+                    {(() => {
+                      // Calcular utilidad por separado para USD y Bs, sumando todos los montoBs y montos
+                      let totalIngresosUSD = 0;
+                      let totalIngresosBs = 0;
+                      ingresos.forEach(i => {
+                        if (i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
+                          totalIngresosUSD += Number(i.monto);
+                        }
+                        if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
+                          totalIngresosBs += Number(i.montoBs);
+                        }
+                        if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                          i.formasPago.forEach(fp => {
+                            if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              totalIngresosUSD += Number(fp.monto);
+                            }
+                            if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
+                              totalIngresosBs += Number(fp.montoBs);
+                            }
+                          });
+                        }
+                      });
+                      let totalEgresosUSD = 0;
+                      let totalEgresosBs = 0;
+                      egresos.forEach(e => {
+                        if (e.monto !== undefined && e.monto !== null && !isNaN(Number(e.monto))) {
+                          totalEgresosUSD += Number(e.monto);
+                        }
+                        if (e.montoBs !== undefined && e.montoBs !== null && !isNaN(Number(e.montoBs))) {
+                          totalEgresosBs += Number(e.montoBs);
+                        }
+                        if (Array.isArray(e.formasPago) && e.formasPago.length > 0) {
+                          e.formasPago.forEach(fp => {
+                            if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              totalEgresosUSD += Number(fp.monto);
+                            }
+                            if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
+                              totalEgresosBs += Number(fp.montoBs);
+                            }
+                          });
+                        }
+                      });
+                      const utilidadUSD = totalIngresosUSD - totalEgresosUSD;
+                      const utilidadBs = totalIngresosBs - totalEgresosBs;
+                      return ` $ ${utilidadUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${utilidadBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
+                    })()}
+                  </Typography>
+                  {cierre?.observaciones && (
+                    <Typography sx={{ mt: 1 }} color="text.secondary">
+                      <b>Observaciones:</b> {cierre.observaciones}
+                    </Typography>
+                  )}
+                  {cierre?.usuario && (
+                    <Typography sx={{ mt: 1 }} color="text.secondary">
+                      <b>Usuario cierre:</b> {cierre.usuario}
+                    </Typography>
+                  )}
+                </Paper>
+                <Accordion
+                  sx={{
+                    mb: 1,
+                    boxShadow: "none",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: 1,
+                  }}
+                >
+                  <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
                     sx={{
-                      mb: 1,
-                      boxShadow: "none",
-                      border: "1px solid #e0e0e0",
-                      borderRadius: 1,
+                      bgcolor: "#e0f7fa",
+                      minHeight: 36,
+                      "& .MuiAccordionSummary-content": { my: 0.5 },
                     }}
                   >
-                    <AccordionSummary
-                      expandIcon={<ExpandMoreIcon />}
-                      sx={{
-                        bgcolor: "#ffe0e0",
-                        minHeight: 36,
-                        "& .MuiAccordionSummary-content": { my: 0.5 },
-                      }}
+                    <Typography
+                      fontWeight={700}
+                      color="primary"
+                      fontSize={15}
                     >
-                      <Typography fontWeight={700} color="error" fontSize={15}>
-                        Egresos
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ py: 0.5 }}>
-                      <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
-                        <Table
-                          component={Paper}
-                          size="small"
-                          sx={{ boxShadow: "none", mb: 0, minWidth: 400 }}
-                        >
-                          <TableHead>
-                            <TableRow sx={{ height: 28 }}>
-                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                Descripción
-                              </TableCell>
+                      Ingresos
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ py: 0.5 }}>
+                    <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+                      <Table
+                        component={Paper}
+                        size="small"
+                        sx={{ boxShadow: "none", mb: 0, minWidth: 340 }}
+                      >
+                        <TableHead>
+                          <TableRow sx={{ height: 28 }}>
+                            <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                              Descripción
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{ py: 0.5, fontSize: 13 }}
+                            >
+                              Monto ($)
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{ py: 0.5, fontSize: 13 }}
+                            >
+                              Monto (Bs)
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {ingresos.length === 0 ? (
+                            <TableRow>
                               <TableCell
-                                align="right"
-                                sx={{ py: 0.5, fontSize: 13 }}
+                                colSpan={3}
+                                align="center"
+                                sx={{
+                                  color: "text.secondary",
+                                  py: 0.5,
+                                  fontSize: 13,
+                                }}
                               >
-                                Monto ($)
-                              </TableCell>
-                              <TableCell
-                                align="right"
-                                sx={{ py: 0.5, fontSize: 13 }}
-                              >
-                                Monto (Bs)
-                              </TableCell>
-                              <TableCell
-                                align="right"
-                                sx={{ py: 0.5, fontSize: 13 }}
-                              >
-                                Tasa
+                                Sin ingresos
                               </TableCell>
                             </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {egresos.length === 0 ? (
-                              <TableRow>
+                          ) : (
+                            ingresos.map((i, idx) => (
+                              <TableRow key={idx} sx={{ height: 28 }}>
+                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                  {i.descripcion}
+                                </TableCell>
                                 <TableCell
-                                  colSpan={4}
-                                  align="center"
-                                  sx={{
-                                    color: "text.secondary",
-                                    py: 0.5,
-                                    fontSize: 13,
-                                  }}
+                                  align="right"
+                                  sx={{ py: 0.5, fontSize: 13 }}
                                 >
-                                  Sin egresos
+                                  {(() => {
+                                    // Si hay formasPago, mostrar todos los montos en $ separados por ' + '
+                                    if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                                      const montosUSD = i.formasPago
+                                        .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
+                                        .map(fp => Number(fp.monto).toLocaleString("en-US", { minimumFractionDigits: 2 }));
+                                      return montosUSD.length > 0 ? montosUSD.join(' + ') : "-";
+                                    }
+                                    // Si existe montoUSD
+                                    if (typeof i.montoUSD === 'number' && !isNaN(i.montoUSD)) {
+                                      return i.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 });
+                                    }
+                                    // Si existe monto
+                                    if (typeof i.monto === 'number' && !isNaN(i.monto)) {
+                                      return i.monto.toLocaleString("en-US", { minimumFractionDigits: 2 });
+                                    }
+                                    return "-";
+                                  })()}
+                                </TableCell>
+                                <TableCell
+                                  align="right"
+                                  sx={{ py: 0.5, fontSize: 13 }}
+                                >
+                                  {(() => {
+                                    // Si hay formasPago, mostrar todos los montos en Bs separados por ' + '
+                                    if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                                      const montosBs = i.formasPago
+                                        .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil' && fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                                        .map(fp => Number(fp.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                                      return montosBs.length > 0 ? montosBs.join(' + ') : "-";
+                                    }
+                                    // Si existe montoBs
+                                    if (typeof i.montoBs === 'number' && !isNaN(i.montoBs)) {
+                                      return i.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 });
+                                    }
+                                    return "-";
+                                  })()}
                                 </TableCell>
                               </TableRow>
-                            ) : (
-                              egresos.map((e, idx) => (
-                                <TableRow key={idx} sx={{ height: 28 }}>
-                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                    {e.descripcion}
-                                  </TableCell>
-                                  <TableCell
-                                    align="right"
-                                    sx={{ py: 0.5, fontSize: 13 }}
-                                  >
-                                    {e.montoUSD.toLocaleString("en-US", {
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+                <Accordion
+                  sx={{
+                    mb: 1,
+                    boxShadow: "none",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: 1,
+                  }}
+                >
+                  <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
+                    sx={{
+                      bgcolor: "#ffe0e0",
+                      minHeight: 36,
+                      "& .MuiAccordionSummary-content": { my: 0.5 },
+                    }}
+                  >
+                    <Typography fontWeight={700} color="error" fontSize={15}>
+                      Egresos
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ py: 0.5 }}>
+                    <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+                      <Table
+                        component={Paper}
+                        size="small"
+                        sx={{ boxShadow: "none", mb: 0, minWidth: 400 }}
+                      >
+                        <TableHead>
+                          <TableRow sx={{ height: 28 }}>
+                            <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                              Descripción
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{ py: 0.5, fontSize: 13 }}
+                            >
+                              Monto ($)
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{ py: 0.5, fontSize: 13 }}
+                            >
+                              Monto (Bs)
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{ py: 0.5, fontSize: 13 }}
+                            >
+                              Tasa
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {egresos.length === 0 ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={4}
+                                align="center"
+                                sx={{
+                                  color: "text.secondary",
+                                  py: 0.5,
+                                  fontSize: 13,
+                                }}
+                              >
+                                Sin egresos
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            egresos.map((e, idx) => (
+                              <TableRow key={idx} sx={{ height: 28 }}>
+                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                  {e.descripcion}
+                                </TableCell>
+                                <TableCell
+                                  align="right"
+                                  sx={{ py: 0.5, fontSize: 13 }}
+                                >
+                                  {e.montoUSD.toLocaleString("en-US", {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </TableCell>
+                                <TableCell
+                                  align="right"
+                                  sx={{ py: 0.5, fontSize: 13 }}
+                                >
+                                  {(e.montoBs && e.montoBs > 0
+                                    ? e.montoBs
+                                    : (e.montoUSD || 0) * (e.tasa || tasaHistorica)
+                                  ).toLocaleString("de-DE", {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </TableCell>
+                                <TableCell
+                                  align="right"
+                                  sx={{ py: 0.5, fontSize: 13 }}
+                                >
+                                  {e.tasa
+                                    ? e.tasa.toLocaleString("de-DE", {
                                       minimumFractionDigits: 2,
-                                    })}
-                                  </TableCell>
-                                  <TableCell
-                                    align="right"
-                                    sx={{ py: 0.5, fontSize: 13 }}
-                                  >
-                                    {(e.montoBs && e.montoBs > 0
-                                      ? e.montoBs
-                                      : (e.montoUSD || 0) * (e.tasa || tasaHistorica)
-                                    ).toLocaleString("de-DE", {
-                                      minimumFractionDigits: 2,
-                                    })}
-                                  </TableCell>
-                                  <TableCell
-                                    align="right"
-                                    sx={{ py: 0.5, fontSize: 13 }}
-                                  >
-                                    {e.tasa
-                                      ? e.tasa.toLocaleString("de-DE", {
-                                          minimumFractionDigits: 2,
-                                        })
-                                      : "-"}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-                </Box>
-              );
-            })()}
+                                    })
+                                    : "-"}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              </Box>
+            );
+          })()}
         </>
       )}
     </Box>

@@ -242,8 +242,8 @@ export default function CierreDia() {
           sx={{
             flex: { xs: "1 1 100%", md: "1 1 20%" },
             minWidth: 0,
-            maxWidth: { md: "33%" },
-            width: { md: "33%" },
+            maxWidth: { md: "27%" },
+            width: { md: "27%" },
           }}
         >
           <Box
@@ -486,8 +486,8 @@ export default function CierreDia() {
           sx={{
             flex: { xs: "1 1 100%", md: "2 1 80%" },
             minWidth: 0,
-            maxWidth: { md: "67%" },
-            width: { md: "67%" },
+            maxWidth: { md: "73%" },
+            width: { md: "73%" },
           }}
         >
           {/* Pestañas: Resumen, Ingresos, Egresos, Caja Chica */}

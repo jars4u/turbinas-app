@@ -1,4 +1,4 @@
-import { getFirestore, collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, Timestamp, doc, deleteDoc } from "firebase/firestore";
 
 const db = getFirestore();
 const INGRESOS_COLLECTION = "ingresosMovimientos";
@@ -89,4 +89,10 @@ export async function obtenerIngresos() {
       };
     })
   .sort((a, b) => (a.fechaRaw?.getTime() || 0) - (b.fechaRaw?.getTime() || 0));
+}
+
+export async function eliminarIngreso(id) {
+  if (!id) throw new Error("ID de ingreso requerido");
+  const db = getFirestore();
+  await deleteDoc(doc(db, INGRESOS_COLLECTION, id));
 }
