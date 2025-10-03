@@ -2,8 +2,7 @@ import React from "react";
 import { Button, Accordion, AccordionSummary, AccordionDetails, TextField } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SavingsIcon from '@mui/icons-material/Savings';
-import AddIcon from '@mui/icons-material/Add';
-import { Box, Typography, Divider, Paper } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { guardarFondoCajaChica, obtenerFondoCajaChica } from "../lib/configuracionCajaChicaFirebase";
 
 export default function ConfiguracionCajaChica({ isOwner }) {
@@ -18,15 +17,8 @@ export default function ConfiguracionCajaChica({ isOwner }) {
       setLoading(false);
     });
   }, []);
-  const handleOpen = () => {
-    alert('Agregar configuración de caja chica');
-  };
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto" }}>
-      <Box sx={{ mb: 1 }}>
-        <Typography variant="caption" color={isOwner ? 'success.main' : 'error.main'}>
-        </Typography>
-      </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <SavingsIcon fontSize="small" sx={{ mb: '2px' }} />

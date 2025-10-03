@@ -95,6 +95,25 @@ export default function HistorialVehiculos() {
   const [ordenAsc, setOrdenAsc] = React.useState(false);
   const [openHistorial, setOpenHistorial] = React.useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = React.useState(null);
+  const [openColumnModal, setOpenColumnModal] = React.useState(false);
+  const [columnasVisibles, setColumnasVisibles] = React.useState({
+    arrivalTime: true,
+    fechaEntrega: true,
+    vehiculo: true,
+    servicio: true,
+    customerName: true,
+    customerPhone: true,
+    precio: true,
+    factura: true,
+    formaPago: true,
+    referencia: true,
+    montoUSD: true,
+    montoBs: true,
+    estadoFactura: true,
+    status: true,
+    registradoPor: true,
+    entregadoPor: true,
+  });
 
   // Cargar datos reales de Firestore y asociar factura
   React.useEffect(() => {
@@ -103,34 +122,44 @@ export default function HistorialVehiculos() {
       import('../lib/vehiculosFirebase').then(({ obtenerVehiculos }) => obtenerVehiculos()),
       obtenerIngresos()
     ]).then(([vehiculosObtenidos, ingresos]) => {
-      // Relacionar factura por id de vehículo o referencia
-      const vehiculosConFactura = vehiculosObtenidos.map(v => {
-        // Buscar ingreso relacionado por el campo 'factura', referencia o descripción
-        let ingresoRelacionado = null;
-        if (v.factura) {
-          ingresoRelacionado = ingresos.find(i => i.factura === v.factura);
-        }
-        if (!ingresoRelacionado && v.referencia) {
-          ingresoRelacionado = ingresos.find(i => i.referencia === v.referencia);
-        }
-        if (!ingresoRelacionado && v.descripcion) {
-          ingresoRelacionado = ingresos.find(i => i.descripcion === v.descripcion);
-        }
-        // Si no hay coincidencia, buscar si la descripción del vehículo está incluida en la descripción del ingreso
-        if (!ingresoRelacionado && v.descripcion) {
-          ingresoRelacionado = ingresos.find(i => i.descripcion && i.descripcion.includes(v.descripcion));
-        }
-        // Si no hay coincidencia, buscar si el ingreso tiene el campo factura y la descripción del vehículo está incluida en la descripción del ingreso
-        if (!ingresoRelacionado && v.descripcion) {
-          ingresoRelacionado = ingresos.find(i => i.factura && i.descripcion && i.descripcion.includes(v.descripcion));
-        }
-        let facturaValor = "-";
-        if (ingresoRelacionado && ingresoRelacionado.factura) {
-          facturaValor = ingresoRelacionado.factura;
-        }
-        return { ...v, factura: facturaValor };
+      // Relacionar ingresos por vehiculoId
+      const vehiculosConPagos = vehiculosObtenidos.map(v => {
+        const ingresosRelacionados = ingresos.filter(i => i.vehiculoId === v.id);
+        let facturaValor = ingresosRelacionados.map(i => i.factura).filter(f => !!f).join(', ');
+        if (!facturaValor) facturaValor = "-";
+        let formasPago = [];
+        let referencias = [];
+        let montosUSD = [];
+        let montosBs = [];
+        let estadosFactura = [];
+        ingresosRelacionados.forEach(ing => {
+          if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
+            ing.formasPago.forEach(fp => {
+              formasPago.push(fp.formaPago || "-");
+              referencias.push(fp.referencia || "-");
+              if (fp.monto !== undefined) montosUSD.push(`$${fp.monto}`);
+              if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
+            });
+          } else {
+            formasPago.push(ing.formaPago || "-");
+            referencias.push(ing.referencia || "-");
+            if (ing.monto !== undefined) montosUSD.push(`$${ing.monto}`);
+            if (ing.montoUSD !== undefined) montosUSD.push(`$${ing.montoUSD}`);
+            if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
+          }
+          if (ing.estadoFactura) estadosFactura.push(ing.estadoFactura);
+        });
+        return {
+          ...v,
+          factura: facturaValor,
+          formaPago: formasPago.length ? formasPago.join(', ') : "-",
+          referencia: referencias.length ? referencias.join(', ') : "-",
+          montoUSD: montosUSD.length ? montosUSD.join(', ') : "-",
+          montoBs: montosBs.length ? montosBs.join(', ') : "-",
+          estadoFactura: estadosFactura.length ? estadosFactura.join(', ') : "-"
+        };
       });
-      setVehiculos(vehiculosConFactura);
+      setVehiculos(vehiculosConPagos);
       setLoading(false);
     });
   }, []);
@@ -178,6 +207,14 @@ export default function HistorialVehiculos() {
             width: 320,
           }}
         />
+        <Button
+          variant="outlined"
+          color="primary"
+          size="small"
+          onClick={() => setOpenColumnModal(true)}
+        >
+          Seleccionar columnas
+        </Button>
       </Box>
       {loading ? (
         <Box
@@ -198,106 +235,23 @@ export default function HistorialVehiculos() {
           >
             <TableHead>
               <TableRow>
-              <TableCell>#</TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("arrivalTime") ||
-                  setOrdenAsc(ordenCol === "arrivalTime" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Fecha de registro {ordenCol === "arrivalTime" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("fechaEntrega") ||
-                  setOrdenAsc(ordenCol === "fechaEntrega" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Fecha de entrega {ordenCol === "fechaEntrega" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("vehiculo") ||
-                  setOrdenAsc(ordenCol === "vehiculo" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Modelo {ordenCol === "vehiculo" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("servicio") ||
-                  setOrdenAsc(ordenCol === "servicio" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Servicio {ordenCol === "servicio" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("customerName") ||
-                  setOrdenAsc(ordenCol === "customerName" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Cliente {ordenCol === "customerName" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("customerPhone") ||
-                  setOrdenAsc(ordenCol === "customerPhone" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Teléfono {ordenCol === "customerPhone" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("precio") ||
-                  setOrdenAsc(ordenCol === "precio" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Precio {ordenCol === "precio" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("factura") ||
-                  setOrdenAsc(ordenCol === "factura" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Factura
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("status") ||
-                  setOrdenAsc(ordenCol === "status" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Estado {ordenCol === "status" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("registradoPor") ||
-                  setOrdenAsc(ordenCol === "registradoPor" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Registrado por {ordenCol === "registradoPor" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
-              <TableCell
-                onClick={() =>
-                  setOrdenCol("entregadoPor") ||
-                  setOrdenAsc(ordenCol === "entregadoPor" ? !ordenAsc : false)
-                }
-                style={{ cursor: "pointer" }}
-              >
-                Entregado por {ordenCol === "entregadoPor" ? (ordenAsc ? "▲" : "▼") : ""}
-              </TableCell>
+                <TableCell>#</TableCell>
+                {columnasVisibles.arrivalTime && <TableCell onClick={() => setOrdenCol("arrivalTime") || setOrdenAsc(ordenCol === "arrivalTime" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Fecha de registro {ordenCol === "arrivalTime" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.fechaEntrega && <TableCell onClick={() => setOrdenCol("fechaEntrega") || setOrdenAsc(ordenCol === "fechaEntrega" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Fecha de entrega {ordenCol === "fechaEntrega" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.vehiculo && <TableCell onClick={() => setOrdenCol("vehiculo") || setOrdenAsc(ordenCol === "vehiculo" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Modelo {ordenCol === "vehiculo" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.servicio && <TableCell onClick={() => setOrdenCol("servicio") || setOrdenAsc(ordenCol === "servicio" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Servicio {ordenCol === "servicio" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.customerName && <TableCell onClick={() => setOrdenCol("customerName") || setOrdenAsc(ordenCol === "customerName" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Cliente {ordenCol === "customerName" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.customerPhone && <TableCell onClick={() => setOrdenCol("customerPhone") || setOrdenAsc(ordenCol === "customerPhone" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Teléfono {ordenCol === "customerPhone" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.precio && <TableCell onClick={() => setOrdenCol("precio") || setOrdenAsc(ordenCol === "precio" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Precio {ordenCol === "precio" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.factura && <TableCell onClick={() => setOrdenCol("factura") || setOrdenAsc(ordenCol === "factura" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Factura</TableCell>}
+                {columnasVisibles.formaPago && <TableCell>Forma de pago</TableCell>}
+                {columnasVisibles.referencia && <TableCell>Referencia</TableCell>}
+                {columnasVisibles.montoUSD && <TableCell>Monto pagado ($)</TableCell>}
+                {columnasVisibles.montoBs && <TableCell>Monto pagado (Bs)</TableCell>}
+                {columnasVisibles.estadoFactura && <TableCell>Estado de facturación</TableCell>}
+                {columnasVisibles.status && <TableCell onClick={() => setOrdenCol("status") || setOrdenAsc(ordenCol === "status" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Estado {ordenCol === "status" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.registradoPor && <TableCell onClick={() => setOrdenCol("registradoPor") || setOrdenAsc(ordenCol === "registradoPor" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Registrado por {ordenCol === "registradoPor" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
+                {columnasVisibles.entregadoPor && <TableCell onClick={() => setOrdenCol("entregadoPor") || setOrdenAsc(ordenCol === "entregadoPor" ? !ordenAsc : false)} style={{ cursor: "pointer" }}>Entregado por {ordenCol === "entregadoPor" ? (ordenAsc ? "▲" : "▼") : ""}</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -344,49 +298,26 @@ export default function HistorialVehiculos() {
                 .map((v, idx) => (
                   <TableRow
                     key={v.id || idx}
-                    sx={{
-                      bgcolor: idx % 2 === 0 ? "background.paper" : "grey.100",
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => {
-                      setServicioSeleccionado(v);
-                      setOpenHistorial(true);
-                    }}
+                    sx={{ bgcolor: idx % 2 === 0 ? "background.paper" : "grey.100", cursor: 'pointer' }}
+                    onClick={() => { setServicioSeleccionado(v); setOpenHistorial(true); }}
                   >
                     <TableCell>{idx + 1}</TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.arrivalTime ? (() => { const d = new Date(v.arrivalTime); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.fechaEntrega ? (() => { const d = new Date(v.fechaEntrega); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.vehiculo || "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.servicio || "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.customerName || "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.customerPhone || "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.precio ? `$${v.precio}` : "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.factura || "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.status || "-"}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {(v.registradoPor || v.usuario || "-").split('@')[0]}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {(v.entregadoPor || "-").split('@')[0]}
-                    </TableCell>
+                    {columnasVisibles.arrivalTime && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{v.arrivalTime ? (() => { const d = new Date(v.arrivalTime); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}</TableCell>}
+                    {columnasVisibles.fechaEntrega && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{v.fechaEntrega ? (() => { const d = new Date(v.fechaEntrega); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` })() : "-"}</TableCell>}
+                    {columnasVisibles.vehiculo && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{v.vehiculo || "-"}</TableCell>}
+                    {columnasVisibles.servicio && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{v.servicio || "-"}</TableCell>}
+                    {columnasVisibles.customerName && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{v.customerName || "-"}</TableCell>}
+                    {columnasVisibles.customerPhone && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{v.customerPhone || "-"}</TableCell>}
+                    {columnasVisibles.precio && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>{v.precio ? `$${v.precio}` : "-"}</TableCell>}
+                    {columnasVisibles.factura && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>{v.factura || "-"}</TableCell>}
+                    {columnasVisibles.formaPago && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>{v.formaPago || "-"}</TableCell>}
+                    {columnasVisibles.referencia && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>{v.referencia || "-"}</TableCell>}
+                    {columnasVisibles.montoUSD && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>{v.monto ? `$${v.monto}` : (v.montoUSD ? `$${v.montoUSD}` : "-")}</TableCell>}
+                    {columnasVisibles.montoBs && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>{v.montoBs ? `Bs. ${v.montoBs}` : "-"}</TableCell>}
+                    {columnasVisibles.estadoFactura && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>{v.estadoFactura || "-"}</TableCell>}
+                    {columnasVisibles.status && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }}>{v.status || "-"}</TableCell>}
+                    {columnasVisibles.registradoPor && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{(v.registradoPor || v.usuario || "-").split('@')[0]}</TableCell>}
+                    {columnasVisibles.entregadoPor && <TableCell sx={{ whiteSpace: "nowrap", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>{(v.entregadoPor || "-").split('@')[0]}</TableCell>}
                   </TableRow>
                 ))
             )}
@@ -394,6 +325,50 @@ export default function HistorialVehiculos() {
           </Table>
         </TableContainer>
       )}
+      {/* Modal para seleccionar columnas */}
+      <Dialog open={openColumnModal} onClose={() => setOpenColumnModal(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Seleccionar columnas</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {Object.entries(columnasVisibles).map(([col, visible]) => (
+              <Box key={col} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <input
+                  type="checkbox"
+                  checked={visible}
+                  id={`col-check-${col}`}
+                  onChange={e => setColumnasVisibles(prev => ({ ...prev, [col]: e.target.checked }))}
+                />
+                <label htmlFor={`col-check-${col}`} style={{ fontSize: 15, cursor: 'pointer' }}>
+                  {(() => {
+                    switch (col) {
+                      case 'arrivalTime': return 'Fecha de registro';
+                      case 'fechaEntrega': return 'Fecha de entrega';
+                      case 'vehiculo': return 'Modelo';
+                      case 'servicio': return 'Servicio';
+                      case 'customerName': return 'Cliente';
+                      case 'customerPhone': return 'Teléfono';
+                      case 'precio': return 'Precio';
+                      case 'factura': return 'Factura';
+                      case 'formaPago': return 'Forma de pago';
+                      case 'referencia': return 'Referencia';
+                      case 'montoUSD': return 'Monto pagado ($)';
+                      case 'montoBs': return 'Monto pagado (Bs)';
+                      case 'estadoFactura': return 'Estado de facturación';
+                      case 'status': return 'Estado';
+                      case 'registradoPor': return 'Registrado por';
+                      case 'entregadoPor': return 'Entregado por';
+                      default: return col;
+                    }
+                  })()}
+                </label>
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenColumnModal(false)} variant="outlined" color="primary" size="small">Cerrar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
       <ServicioHistorialModal
         open={openHistorial}

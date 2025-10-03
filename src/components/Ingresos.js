@@ -104,11 +104,16 @@ export default function Ingresos({ tasaBCV }) {
     const d = String(hoy.getDate()).padStart(2, '0');
     const m = String(hoy.getMonth() + 1).padStart(2, '0');
     const y = hoy.getFullYear();
+    // Aquí deberías obtener el id del vehículo seleccionado, por ejemplo desde un select o contexto
+    // Ejemplo: const vehiculoId = selectedVehiculoId;
+    // Por ahora, lo dejamos como un campo opcional para que lo completes según tu lógica de selección
+    const vehiculoId = editIngreso?.vehiculoId || null; // O el id del vehículo seleccionado
     const nuevoIngreso = {
       factura: ingresoFactura ? ingresoFactura.toUpperCase() : '',
       monto: montoUSD || (montoBs / tasaBCV),
       montoBs: montoBs || (montoUSD * tasaBCV),
       fecha: `${d}/${m}/${y}`,
+      vehiculoId,
     };
     await guardarIngreso(nuevoIngreso);
     // Recargar desde la base de datos para asegurar persistencia

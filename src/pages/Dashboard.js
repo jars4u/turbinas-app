@@ -1544,6 +1544,7 @@ export default function Dashboard() {
               formaPago2: facturaData.formaPago2,
               referencia2: facturaData.referencia2,
               fecha: new Date().toLocaleDateString("es-VE"),
+              vehiculoId: editId || null,
             };
             try {
               const { guardarIngreso } = await import(

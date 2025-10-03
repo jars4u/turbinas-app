@@ -18,7 +18,6 @@ import {
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-// import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { DatePicker } from '@mui/x-date-pickers';
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
@@ -438,8 +437,6 @@ export default function ResumenContable({ tasaBCV }) {
                           desglose[formaPrincipalNorm].usd += Number(i.monto);
                         }
                       });
-                      // Mostrar desglose en consola para depuración
-                      console.log('Desglose por forma de pago:', desglose);
                       return Object.entries(desglose)
                         .sort((a, b) => a[0].localeCompare(b[0]))
                         .filter(([formaNorm, montos]) => {
