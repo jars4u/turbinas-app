@@ -1089,7 +1089,7 @@ export default function Dashboard() {
                   />
                 </Box>
                 {/* Resultado de conversión */}
-                <PrecioConvertido precio={form.precio} />
+                {/* <PrecioConvertido precio={form.precio} /> */}
               </>
             ) : (
               <>
@@ -1177,7 +1177,7 @@ export default function Dashboard() {
                     ${form.precio} / Bs {form.precioBs || "-"}
                   </Typography>
                 </Box>
-                <PrecioConvertido precio={form.precio} />
+                {/* <PrecioConvertido precio={form.precio} /> */}
               </>
             )}
           </Box>
