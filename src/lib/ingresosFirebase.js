@@ -15,8 +15,18 @@ export async function guardarIngreso(ingreso) {
   // Si hay segunda forma de pago, guardar ambas en un array con monto
   if (mov.formaPago2) {
     mov.formasPago = [
-      { formaPago: mov.formaPago, monto: Number(mov.monto), referencia: mov.referencia },
-      { formaPago: mov.formaPago2, monto: Number(mov.monto2), referencia: mov.referencia2 }
+      {
+        formaPago: mov.formaPago,
+        ...(mov.formaPago === 'pago movil'
+          ? { montoBs: Number(mov.monto), referencia: mov.referencia }
+          : { monto: Number(mov.monto), referencia: mov.referencia })
+      },
+      {
+        formaPago: mov.formaPago2,
+        ...(mov.formaPago2 === 'pago movil'
+          ? { montoBs: Number(mov.monto2), referencia: mov.referencia2 }
+          : { monto: Number(mov.monto2), referencia: mov.referencia2 })
+      }
     ];
     delete mov.formaPago;
     delete mov.monto;
@@ -27,7 +37,12 @@ export async function guardarIngreso(ingreso) {
   } else if (mov.formaPago && mov.monto) {
     // Solo una forma de pago, guardar como array para unificar estructura
     mov.formasPago = [
-      { formaPago: mov.formaPago, monto: Number(mov.monto), referencia: mov.referencia }
+      {
+        formaPago: mov.formaPago,
+        ...(mov.formaPago === 'pago movil'
+          ? { montoBs: Number(mov.monto), referencia: mov.referencia }
+          : { monto: Number(mov.monto), referencia: mov.referencia })
+      }
     ];
     delete mov.formaPago;
     delete mov.monto;

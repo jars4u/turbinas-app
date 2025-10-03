@@ -36,7 +36,6 @@ import {
   crearVehiculo,
   actualizarVehiculo,
   eliminarVehiculo,
-  escucharVehiculos,
 } from "../lib/vehiculosFirebase";
 import PrecioConvertido from "../components/PrecioConvertido";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
@@ -69,7 +68,7 @@ export default function Dashboard() {
   // Clientes base: extraer de vehículos
   const [clientes, setClientes] = useState([]);
   useEffect(() => {
-    const unsubscribe = escucharVehiculos((data) => {
+    obtenerVehiculos().then((data) => {
       // Extraer clientes únicos por nombre y teléfono
       const clientesUnicos = [];
       const seen = new Set();
@@ -86,7 +85,6 @@ export default function Dashboard() {
       });
       setClientes(clientesUnicos);
     });
-    return () => unsubscribe();
   }, []);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
@@ -106,8 +104,9 @@ export default function Dashboard() {
     Object.keys(data).forEach(k => {
       if (data[k] === undefined) data[k] = null;
     });
-  await actualizarVehiculo(id, data);
-  // Ya no es necesario recargar manualmente, el listener en tiempo real lo hará
+    await actualizarVehiculo(id, data);
+    const actualizados = await obtenerVehiculos();
+    setVehiculos(actualizados);
   };
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +147,7 @@ export default function Dashboard() {
         placa: vehiculo.placa || "",
         servicio: vehiculo.servicio || "",
         precio: vehiculo.precio || "",
+        precioBs: vehiculo.precioBs || "",
         customerName: vehiculo.customerName || "",
         customerPhone: vehiculo.customerPhone || "",
         observaciones: vehiculo.observaciones || "",
@@ -215,7 +215,8 @@ export default function Dashboard() {
       status: editId
         ? vehiculos.find((v) => v.id === editId)?.status || getDefaultStatus()
         : getDefaultStatus(),
-      precio: form.precio === "" ? null : Number(form.precio),
+  precio: form.precio === "" ? null : Number(form.precio),
+  precioBs: form.precioBs === "" ? null : Number(form.precioBs),
       usuario: usuarioActivo,
       registradoPor: usuarioActivo,
       entregadoPor: editId
@@ -1063,18 +1064,30 @@ export default function Dashboard() {
                   sx={{ mb: 1.5 }}
                   InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                 />
-                <TextField
-                  margin="none"
-                  label="Precio"
-                  name="precio"
-                  type="number"
-                  fullWidth
-                  size="small"
-                  value={form.precio}
-                  onChange={handleChange}
-                  sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                />
+                <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+                  <TextField
+                    margin="none"
+                    label="Precio en $"
+                    name="precio"
+                    type="number"
+                    size="small"
+                    value={form.precio}
+                    onChange={handleChange}
+                    InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
+                    sx={{ flex: 1 }}
+                  />
+                  <TextField
+                    margin="none"
+                    label="Precio en Bs"
+                    name="precioBs"
+                    type="number"
+                    size="small"
+                    value={form.precioBs || ""}
+                    onChange={handleChange}
+                    InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
+                    sx={{ flex: 1 }}
+                  />
+                </Box>
                 {/* Resultado de conversión */}
                 <PrecioConvertido precio={form.precio} />
               </>
@@ -1150,43 +1163,21 @@ export default function Dashboard() {
                     {form.observaciones}
                   </Typography>
                 </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: { xs: "row", sm: "column" },
-                    alignItems: { xs: "flex-start", sm: "flex-start" },
-                    gap: { xs: 0.5, sm: 0 },
-                    width: "100%",
-                    mb: 0.5,
-                    flexWrap: { xs: "wrap", sm: "nowrap" },
-                  }}
-                >
+                <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
                   <Typography
                     variant="caption"
-                    sx={{
-                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
-                      color: "text.secondary",
-                      minWidth: 60,
-                      flexShrink: 0,
-                    }}
+                    sx={{ fontSize: '1rem', color: 'text.secondary', minWidth: 60, flexShrink: 0 }}
                   >
                     Precio:
                   </Typography>
                   <Typography
                     variant="caption"
-                    sx={{
-                      fontSize: { xs: "1rem", sm: "1rem" },
-                      fontWeight: 500,
-                      wordBreak: "break-word",
-                      whiteSpace: { xs: "pre-line", sm: "normal" },
-                      maxWidth: { xs: "calc(100% - 70px)", sm: "100%" },
-                    }}
+                    sx={{ fontSize: '1rem', fontWeight: 500, wordBreak: 'break-word', maxWidth: '100%' }}
                   >
-                    ${form.precio}
+                    ${form.precio} / Bs {form.precioBs || "-"}
                   </Typography>
-                  {/* Resultado de conversión */}
-                  <PrecioConvertido precio={form.precio} />
                 </Box>
+                <PrecioConvertido precio={form.precio} />
               </>
             )}
           </Box>
@@ -1546,7 +1537,7 @@ export default function Dashboard() {
             const nuevoIngreso = {
               descripcion: `${form.vehiculo} - ${form.servicio}`,
               monto: Number(form.precio) || 0,
-              montoBs: null, // Se puede calcular si tienes tasaBCV
+              montoBs: Number(form.precioBs) || null,
               factura: facturaData.numeroFactura,
               formaPago: facturaData.formaPago,
               referencia: facturaData.referencia,
@@ -1582,6 +1573,7 @@ export default function Dashboard() {
                   vehiculos.find((v) => v.id === editId)?.registradoPor ||
                   vehiculos.find((v) => v.id === editId)?.usuario ||
                   null,
+                precioBs: Number(form.precioBs) || null,
               };
               Object.keys(vehiculoUpdate).forEach(k => {
                 if (vehiculoUpdate[k] === undefined) vehiculoUpdate[k] = null;

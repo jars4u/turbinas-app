@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -29,62 +28,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
   });
   const [agregarFormaPago, setAgregarFormaPago] = useState(false);
   const [facturaIntento, setFacturaIntento] = useState(false);
-  const [precioBs, setPrecioBs] = useState(null);
-  const [precioUsdConvertido, setPrecioUsdConvertido] = useState(null);
-  
-  useEffect(() => {
-    async function fetchConversion() {
-      if (form.precio) {
-        const factor = await obtenerFactorConversion();
-        // Obtener tasa BCV
-        let tasa = 1;
-        try {
-          const mod = await import('../lib/tasaBCVFirebase');
-          tasa = await mod.obtenerTasaBCV();
-        } catch (e) {}
-        const precioNum = parseFloat(form.precio);
-        if (!isNaN(precioNum) && factor && tasa) {
-          setPrecioBs((precioNum * factor).toFixed(2));
-          setPrecioUsdConvertido((precioNum * factor / tasa).toFixed(2));
-        } else {
-          setPrecioBs(null);
-          setPrecioUsdConvertido(null);
-        }
-      } else {
-        setPrecioBs(null);
-        setPrecioUsdConvertido(null);
-      }
-    }
-    fetchConversion();
-  }, [form.precio]);
-  useEffect(() => {
-    async function fetchConversion() {
-      if (form.precio && (facturaForm.formaPago === "pago movil" || facturaForm.formaPago2 === "pago movil")) {
-        const factor = await obtenerFactorConversion();
-        const precioNum = parseFloat(form.precio);
-        if (!isNaN(precioNum) && factor) {
-          setPrecioBs((precioNum * factor).toFixed(2));
-        }
-      } else {
-        setPrecioBs(null);
-      }
-    }
-    fetchConversion();
-  }, [form.precio, facturaForm.formaPago, facturaForm.formaPago2]);
-  useEffect(() => {
-    async function fetchConversion() {
-      if (form.precio && (facturaForm.formaPago === "pago movil" || facturaForm.formaPago2 === "pago movil")) {
-        const factor = await obtenerFactorConversion();
-        const precioNum = parseFloat(form.precio);
-        if (!isNaN(precioNum) && factor) {
-          setPrecioBs((precioNum * factor).toFixed(2));
-        }
-      } else {
-        setPrecioBs(null);
-      }
-    }
-    fetchConversion();
-  }, [form.precio, facturaForm.formaPago, facturaForm.formaPago2]);
+  // ...variables y efectos eliminados, ya no se usan para mostrar el precio
 
   const handleRegister = async () => {
     setFacturaIntento(true);
@@ -143,14 +87,11 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             {form.precio ? (
               <>
                 <span>
-                  {facturaForm.formaPago === "pago movil"
-                    ? `$ ${precioUsdConvertido ? Number(precioUsdConvertido).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '—'}`
-                    : `$ ${Number(form.precio).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                  }
+                  $ {Number(form.precio).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
-                {facturaForm.formaPago === "pago movil" && precioBs && (
+                {form.precioBs && (
                   <span style={{ marginLeft: 12 }}>
-                    | Bs {Number(precioBs).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                    | Bs {Number(form.precioBs).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                   </span>
                 )}
               </>

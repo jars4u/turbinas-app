@@ -388,15 +388,17 @@ export default function Ingresos({ tasaBCV }) {
                 <TableCell>{ing.factura || ing.descripcion || '-'}</TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                   {(() => {
+                    // Si hay formasPago, mostrar todos los montos en $ separados por ' + '
+                    if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
+                      const montosUSD = ing.formasPago
+                        .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
+                        .map(fp => Number(fp.monto).toLocaleString("en-US", { minimumFractionDigits: 2 }));
+                      return montosUSD.length > 0 ? montosUSD.join(' + ') : "-";
+                    }
                     // Si el campo monto existe y es válido, mostrarlo
                     if (typeof ing.monto === 'number' && !isNaN(ing.monto)) {
                       return ing.monto.toLocaleString("en-US", { minimumFractionDigits: 2 });
                     }
-                    // Si formasPago tiene monto válido, mostrar el primero
-                    if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0 && ing.formasPago[0].monto !== undefined && ing.formasPago[0].monto !== null && !isNaN(Number(ing.formasPago[0].monto))) {
-                      return Number(ing.formasPago[0].monto).toLocaleString("en-US", { minimumFractionDigits: 2 });
-                    }
-                    // Si el campo monto es string convertible a número
                     if (ing.monto !== undefined && ing.monto !== null && !isNaN(Number(ing.monto))) {
                       return Number(ing.monto).toLocaleString("en-US", { minimumFractionDigits: 2 });
                     }
@@ -405,21 +407,19 @@ export default function Ingresos({ tasaBCV }) {
                 </TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                   {(() => {
+                    // Si hay formasPago, mostrar todos los montos en Bs separados por ' + '
+                    if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
+                      const montosBs = ing.formasPago
+                        .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil' && fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                        .map(fp => Number(fp.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                      return montosBs.length > 0 ? montosBs.join(' + ') : "-";
+                    }
                     // Si montoBs existe y es válido, mostrarlo
                     if (typeof ing.montoBs === 'number' && !isNaN(ing.montoBs)) {
                       return ing.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 });
                     }
                     if (ing.montoBs !== undefined && ing.montoBs !== null && !isNaN(Number(ing.montoBs))) {
                       return Number(ing.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 });
-                    }
-                    // Si hay formasPago, sumar todos los montos y convertir
-                    if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0 && typeof tasaBCV === 'number' && !isNaN(tasaBCV)) {
-                      const sumaUSD = ing.formasPago.reduce((acc, fp) => acc + (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0), 0);
-                      return (sumaUSD * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2 });
-                    }
-                    // Si monto existe, convertirlo
-                    if (ing.monto !== undefined && ing.monto !== null && !isNaN(Number(ing.monto)) && typeof tasaBCV === 'number' && !isNaN(tasaBCV)) {
-                      return (Number(ing.monto) * tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2 });
                     }
                     return "-";
                   })()}
