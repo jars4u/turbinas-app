@@ -21,6 +21,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { guardarIngreso, obtenerIngresos, eliminarIngreso } from "../lib/ingresosFirebase";
+import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -31,11 +32,16 @@ export default function Ingresos({ tasaBCV }) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editIngreso, setEditIngreso] = useState(null);
   const [ingresoFactura, setIngresoFactura] = useState("");
+  const [ingresoDescripcion, setIngresoDescripcion] = useState("");
   const [ingresoMontoUSD, setIngresoMontoUSD] = useState("");
   const [ingresoMontoBs, setIngresoMontoBs] = useState("");
+  const [formaPago, setFormaPago] = useState("");
   const [ingresos, setIngresos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  // Estado para guardar el ingreso original antes de editar
+  const [originalIngreso, setOriginalIngreso] = useState(null);
+
   // Depuración: mostrar ingresos en consola
   useEffect(() => {
     console.log('Ingresos:', ingresos);
@@ -80,16 +86,55 @@ export default function Ingresos({ tasaBCV }) {
   }, []);
 
   const handleEditarIngreso = (ingreso) => {
-    setEditIngreso(ingreso);
+    // Si el ingreso tiene formasPago (array), tomar el primer elemento
+    let monto = ingreso.monto;
+    let montoBs = ingreso.montoBs;
+    let formaPago = ingreso.formaPago;
+    let descripcion = ingreso.descripcion;
+    if (Array.isArray(ingreso.formasPago) && ingreso.formasPago.length > 0) {
+      monto = ingreso.formasPago[0].monto ?? monto;
+      montoBs = ingreso.formasPago[0].montoBs ?? montoBs;
+      formaPago = ingreso.formasPago[0].formaPago ?? ingreso.formasPago[0].metodo ?? formaPago;
+      descripcion = ingreso.descripcion ?? ingreso.formasPago[0].descripcion ?? '';
+    }
+    const mappedIngreso = {
+      ...ingreso,
+      monto,
+      montoBs,
+      formaPago,
+      descripcion,
+    };
+    setEditIngreso(mappedIngreso);
+    setOriginalIngreso(mappedIngreso);
     setEditModalOpen(true);
   };
 
   const handleGuardarEdicion = async (actualizado) => {
-    // Aquí deberías implementar la lógica para actualizar el ingreso en la base de datos
-    // Por ejemplo, actualizarIngreso(actualizado)
+    const db = getFirestore();
+    const ingresoId = actualizado.id;
+    if (!ingresoId) return;
+    // Filtra los campos undefined/null y elimina monto/montoBs si no son numéricos
+    const ingresoEditadoRaw = { ...actualizado };
+    if (ingresoEditadoRaw.monto !== undefined && isNaN(Number(ingresoEditadoRaw.monto))) delete ingresoEditadoRaw.monto;
+    if (ingresoEditadoRaw.montoBs !== undefined && isNaN(Number(ingresoEditadoRaw.montoBs))) delete ingresoEditadoRaw.montoBs;
+    // Actualiza también el array formasPago si existe y filtra sus campos
+    if (Array.isArray(ingresoEditadoRaw.formasPago) && ingresoEditadoRaw.formasPago.length > 0) {
+      ingresoEditadoRaw.formasPago = [
+        Object.fromEntries(Object.entries({
+          ...ingresoEditadoRaw.formasPago[0],
+          monto: ingresoEditadoRaw.monto,
+          montoBs: ingresoEditadoRaw.montoBs,
+          formaPago: ingresoEditadoRaw.formaPago,
+          descripcion: ingresoEditadoRaw.descripcion,
+        }).filter(([_, v]) => v !== undefined && v !== null))
+      ];
+    }
+    const ingresoEditado = Object.fromEntries(
+      Object.entries(ingresoEditadoRaw).filter(([_, v]) => v !== undefined && v !== null)
+    );
+    await updateDoc(doc(db, "ingresosMovimientos", ingresoId), ingresoEditado);
     setEditModalOpen(false);
     setEditIngreso(null);
-    // Recargar ingresos
     setLoading(true);
     const actualizados = await obtenerIngresos();
     setIngresos(actualizados);
@@ -97,35 +142,37 @@ export default function Ingresos({ tasaBCV }) {
   };
 
   const handleAgregarIngreso = async () => {
-    const montoUSD = Number(ingresoMontoUSD);
-    const montoBs = Number(ingresoMontoBs);
-    if (!ingresoFactura || (!montoUSD && !montoBs)) return;
+    const montoUSD = ingresoMontoUSD !== '' ? Number(ingresoMontoUSD) : undefined;
+    const montoBs = ingresoMontoBs !== '' ? Number(ingresoMontoBs) : undefined;
+    if (!ingresoFactura || (!montoUSD && !montoBs) || !formaPago) return;
     const hoy = new Date();
     const d = String(hoy.getDate()).padStart(2, '0');
     const m = String(hoy.getMonth() + 1).padStart(2, '0');
     const y = hoy.getFullYear();
-    // Aquí deberías obtener el id del vehículo seleccionado, por ejemplo desde un select o contexto
-    // Ejemplo: const vehiculoId = selectedVehiculoId;
-    // Por ahora, lo dejamos como un campo opcional para que lo completes según tu lógica de selección
-    const vehiculoId = editIngreso?.vehiculoId || null; // O el id del vehículo seleccionado
-    const nuevoIngreso = {
-      factura: ingresoFactura ? ingresoFactura.toUpperCase() : '',
-      monto: montoUSD || (montoBs / tasaBCV),
-      montoBs: montoBs || (montoUSD * tasaBCV),
+    const vehiculoId = editIngreso?.vehiculoId || undefined;
+    // Construye el objeto y elimina cualquier campo undefined o null
+    const nuevoIngresoRaw = {
+      factura: ingresoFactura ? ingresoFactura.toUpperCase() : undefined,
+      descripcion: ingresoDescripcion || undefined,
+      monto: montoUSD,
+      montoBs: montoBs,
+      formaPago: formaPago || undefined,
       fecha: `${d}/${m}/${y}`,
-      vehiculoId,
+      vehiculoId: vehiculoId,
     };
+    const nuevoIngreso = Object.fromEntries(
+      Object.entries(nuevoIngresoRaw).filter(([_, v]) => v !== undefined && v !== null)
+    );
     await guardarIngreso(nuevoIngreso);
-    // Recargar desde la base de datos para asegurar persistencia
     const actualizados = await obtenerIngresos();
     setIngresos(actualizados);
-    // Si el ingreso es de hoy, actualizar la fecha seleccionada
     const hoyStr = `${d}/${m}/${y}`;
     setFechaSeleccionada(hoyStr);
-    // setIngresoDesc eliminado, ahora se usa setIngresoFactura
     setIngresoFactura("");
+    setIngresoDescripcion("");
     setIngresoMontoUSD("");
     setIngresoMontoBs("");
+    setFormaPago("");
   };
 
   const handleEliminarIngreso = async (ingreso) => {
@@ -141,6 +188,18 @@ export default function Ingresos({ tasaBCV }) {
     setLoading(false);
   };
 
+  // Función para comparar si hubo cambios
+  const ingresoEditadoEsIgual = () => {
+    if (!editIngreso || !originalIngreso) return true;
+    return (
+      editIngreso.factura === originalIngreso.factura &&
+      editIngreso.descripcion === originalIngreso.descripcion &&
+      editIngreso.monto === originalIngreso.monto &&
+      editIngreso.montoBs === originalIngreso.montoBs &&
+      editIngreso.formaPago === originalIngreso.formaPago
+    );
+  };
+
   return (
   <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
     {/* Modal de edición */}
@@ -154,6 +213,31 @@ export default function Ingresos({ tasaBCV }) {
           onChange={e => setEditIngreso({ ...editIngreso, factura: e.target.value })}
           sx={{ mb: 2, width: '100%' }}
         />
+        <TextField
+          label="Descripción"
+          size="small"
+          value={editIngreso.descripcion || ''}
+          onChange={e => setEditIngreso({ ...editIngreso, descripcion: e.target.value })}
+          sx={{ mb: 2, width: '100%' }}
+        />
+        <TextField
+          select
+          label="Forma de pago"
+          size="small"
+          value={editIngreso.formaPago || ''}
+          onChange={e => setEditIngreso({ ...editIngreso, formaPago: e.target.value })}
+          sx={{ mb: 2, width: '100%' }}
+          SelectProps={{ native: true, displayEmpty: true }}
+          InputLabelProps={{ shrink: true }}
+        >
+          <option value="" disabled hidden>Selecciona una forma</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="pago movil">Pago móvil</option>
+          <option value="zelle">Zelle</option>
+          <option value="divisas">Divisas</option>
+          <option value="transferencia" disabled>Transferencia</option>
+          <option value="credito" disabled>Credito</option>
+        </TextField>
         <TextField
           label="Monto ($)"
           type="number"
@@ -171,7 +255,14 @@ export default function Ingresos({ tasaBCV }) {
           sx={{ mb: 2, width: '100%' }}
         />
         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-          <Button variant="contained" color="primary" onClick={() => handleGuardarEdicion(editIngreso)}>Guardar</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => handleGuardarEdicion(editIngreso)}
+            disabled={ingresoEditadoEsIgual()}
+          >
+            Guardar
+          </Button>
           <Button variant="outlined" color="secondary" onClick={() => { setEditModalOpen(false); setEditIngreso(null); }}>Cancelar</Button>
         </Box>
       </Paper>
@@ -259,19 +350,36 @@ export default function Ingresos({ tasaBCV }) {
                   sx={{ minWidth: 180, width: '100%' }}
                 />
                 <TextField
+                  label="Descripción"
+                  size="small"
+                  value={ingresoDescripcion}
+                  onChange={e => setIngresoDescripcion(e.target.value)}
+                  sx={{ minWidth: 180, width: '100%' }}
+                />
+                <TextField
+                  select
+                  label="Forma de pago"
+                  size="small"
+                  value={formaPago}
+                  onChange={e => setFormaPago(e.target.value)}
+                  sx={{ minWidth: 180, width: '100%' }}
+                  SelectProps={{ native: true, displayEmpty: true }}
+                  InputLabelProps={{ shrink: true }}
+                >
+                  <option value="" disabled hidden>Selecciona una forma</option>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="pago movil">Pago móvil</option>
+                  <option value="zelle">Zelle</option>
+                  <option value="divisas">Divisas</option>
+                  <option value="otro">Otro</option>
+                </TextField>
+                <TextField
                   label="Monto ($)"
                   type="number"
                   size="small"
                   value={ingresoMontoUSD}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setIngresoMontoUSD(val);
-                    if (val !== "" && !isNaN(Number(val))) {
-                      setIngresoMontoBs((Number(val) * tasaBCV).toFixed(2));
-                    } else {
-                      setIngresoMontoBs("");
-                    }
-                  }}
+                  onChange={e => setIngresoMontoUSD(e.target.value)}
                   sx={{ bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 180, width: '100%' }}
                   inputProps={{ min: 0 }}
                 />
@@ -280,15 +388,7 @@ export default function Ingresos({ tasaBCV }) {
                   type="number"
                   size="small"
                   value={ingresoMontoBs}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setIngresoMontoBs(val);
-                    if (val !== "" && !isNaN(Number(val))) {
-                      setIngresoMontoUSD((Number(val) / tasaBCV).toFixed(2));
-                    } else {
-                      setIngresoMontoUSD("");
-                    }
-                  }}
+                  onChange={e => setIngresoMontoBs(e.target.value)}
                   sx={{ bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 180, width: '100%' }}
                   inputProps={{ min: 0 }}
                 />
@@ -296,7 +396,7 @@ export default function Ingresos({ tasaBCV }) {
                   variant="contained"
                   color="primary"
                   onClick={handleAgregarIngreso}
-                  disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs)}
+                  disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs) || !formaPago}
                   sx={{ width: '100%' }}
                 >
                   Agregar
@@ -328,19 +428,36 @@ export default function Ingresos({ tasaBCV }) {
               sx={{ flex: 2, minWidth: 120 }}
             />
             <TextField
+              label="Descripción"
+              size="small"
+              value={ingresoDescripcion}
+              onChange={e => setIngresoDescripcion(e.target.value)}
+              sx={{ flex: 2, minWidth: 120 }}
+            />
+            <TextField
+              select
+              label="Forma de pago"
+              size="small"
+              value={formaPago}
+              onChange={e => setFormaPago(e.target.value)}
+              sx={{ flex: 1, minWidth: 90 }}
+              SelectProps={{ native: true, displayEmpty: true }}
+              InputLabelProps={{ shrink: true }}
+            >
+              <option value="" disabled hidden>Selecciona una forma</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="pago movil">Pago móvil</option>
+              <option value="zelle">Zelle</option>
+              <option value="divisas">Divisas</option>
+              <option value="otro">Otro</option>
+            </TextField>
+            <TextField
               label="Monto ($)"
               type="number"
               size="small"
               value={ingresoMontoUSD}
-              onChange={e => {
-                const val = e.target.value;
-                setIngresoMontoUSD(val);
-                if (val !== "" && !isNaN(Number(val))) {
-                  setIngresoMontoBs((Number(val) * tasaBCV).toFixed(2));
-                } else {
-                  setIngresoMontoBs("");
-                }
-              }}
+              onChange={e => setIngresoMontoUSD(e.target.value)}
               sx={{ flex: 1, bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 90 }}
               inputProps={{ min: 0 }}
             />
@@ -349,15 +466,7 @@ export default function Ingresos({ tasaBCV }) {
               type="number"
               size="small"
               value={ingresoMontoBs}
-              onChange={e => {
-                const val = e.target.value;
-                setIngresoMontoBs(val);
-                if (val !== "" && !isNaN(Number(val))) {
-                  setIngresoMontoUSD((Number(val) / tasaBCV).toFixed(2));
-                } else {
-                  setIngresoMontoUSD("");
-                }
-              }}
+              onChange={e => setIngresoMontoBs(e.target.value)}
               sx={{ flex: 1, bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 90 }}
               inputProps={{ min: 0 }}
             />
@@ -365,9 +474,10 @@ export default function Ingresos({ tasaBCV }) {
               variant="contained"
               color="primary"
               onClick={handleAgregarIngreso}
-              disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs)}
+              disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs) || !formaPago}
+              sx={{ minWidth: 90 }}
             >
-              Agregar
+              +
             </Button>
           </Box>
         </Box>
@@ -376,8 +486,8 @@ export default function Ingresos({ tasaBCV }) {
           <Table component={Paper} size="small" sx={{ mb: 2, minWidth: 400 }}>
         {/* Fila de total de ingresos al inicio */}
         <TableHead>
-          <TableRow>
-            <TableCell colSpan={7} sx={{ fontWeight: 700, bgcolor: '#e0f7fa', width: '100%' }}>
+          <TableRow className="w-100">
+            <TableCell colSpan={8} sx={{ fontWeight: 700, bgcolor: '#e0f7fa', width: '100%' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }} className="w-100">
                 <span>Total Ingresos</span>
                 <span>

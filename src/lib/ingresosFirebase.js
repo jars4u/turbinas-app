@@ -5,28 +5,26 @@ const INGRESOS_COLLECTION = "ingresosMovimientos";
 
 export async function guardarIngreso(ingreso) {
   const fechaStr = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  // Antes de guardar, eliminamos todos los campos con valor undefined para evitar que Firestore reciba datos innecesarios.
-  // Esto previene errores y mantiene la base de datos limpia, incluso si el frontend envía campos opcionales.
-  const mov = Object.fromEntries(
+  // Filtra todos los campos undefined o null
+  let mov = Object.fromEntries(
     Object.entries({ ...ingreso, fecha: fechaStr })
-      .filter(([_, v]) => v !== undefined)
+      .filter(([_, v]) => v !== undefined && v !== null)
   );
-  console.log('guardarIngreso llamado con:', mov);
   // Si hay segunda forma de pago, guardar ambas en un array con monto
   if (mov.formaPago2) {
     mov.formasPago = [
-      {
+      Object.fromEntries(Object.entries({
         formaPago: mov.formaPago,
         ...(mov.formaPago === 'pago movil'
           ? { montoBs: Number(mov.monto), referencia: mov.referencia }
           : { monto: Number(mov.monto), referencia: mov.referencia })
-      },
-      {
+      }).filter(([_, v]) => v !== undefined && v !== null)),
+      Object.fromEntries(Object.entries({
         formaPago: mov.formaPago2,
         ...(mov.formaPago2 === 'pago movil'
           ? { montoBs: Number(mov.monto2), referencia: mov.referencia2 }
           : { monto: Number(mov.monto2), referencia: mov.referencia2 })
-      }
+      }).filter(([_, v]) => v !== undefined && v !== null))
     ];
     delete mov.formaPago;
     delete mov.monto;
@@ -35,19 +33,20 @@ export async function guardarIngreso(ingreso) {
     delete mov.monto2;
     delete mov.referencia2;
   } else if (mov.formaPago && mov.monto) {
-    // Solo una forma de pago, guardar como array para unificar estructura
     mov.formasPago = [
-      {
+      Object.fromEntries(Object.entries({
         formaPago: mov.formaPago,
         ...(mov.formaPago === 'pago movil'
           ? { montoBs: Number(mov.monto), referencia: mov.referencia }
           : { monto: Number(mov.monto), referencia: mov.referencia })
-      }
+      }).filter(([_, v]) => v !== undefined && v !== null))
     ];
     delete mov.formaPago;
     delete mov.monto;
     delete mov.referencia;
   }
+  // Filtra nuevamente el objeto final antes de guardar
+  mov = Object.fromEntries(Object.entries(mov).filter(([_, v]) => v !== undefined && v !== null));
   await addDoc(collection(db, INGRESOS_COLLECTION), mov);
 }
 

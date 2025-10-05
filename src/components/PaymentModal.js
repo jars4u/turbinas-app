@@ -16,6 +16,7 @@ import ReceiptOutlinedIcon from '@mui/icons-material/ReceiptOutlined';
 
 
 export default function PaymentModal({ open, onClose, form, onRegister }) {
+  const [salidaInventario, setSalidaInventario] = useState(form.salidaInventario || false);
   const [loading, setLoading] = useState(false);
   const [facturaForm, setFacturaForm] = useState({
     numeroFactura: "",
@@ -42,7 +43,8 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
       numeroFactura: facturaForm.numeroFactura ? facturaForm.numeroFactura.toUpperCase() : '',
       formaPago: facturaForm.formaPago ? facturaForm.formaPago.toUpperCase() : '',
       monto: facturaForm.monto,
-      referencia: facturaForm.referencia ? facturaForm.referencia.toUpperCase() : ''
+      referencia: facturaForm.referencia ? facturaForm.referencia.toUpperCase() : '',
+      salidaInventario: salidaInventario,
     };
     if (
       agregarFormaPago &&
@@ -102,6 +104,18 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
               No se ha definido un precio para este servicio. No se puede registrar el pago.
             </Typography>
           )}
+        </Box>
+        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <input
+            type="checkbox"
+            id="salidaInventario"
+            checked={salidaInventario}
+            onChange={e => setSalidaInventario(e.target.checked)}
+            style={{ marginRight: 8 }}
+          />
+          <label htmlFor="salidaInventario" style={{ fontSize: 15, cursor: 'pointer' }}>
+            Salida de inventario
+          </label>
         </Box>
         <Box sx={{ mb: 2 }}>
           <TextField

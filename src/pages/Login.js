@@ -61,9 +61,11 @@ const Login = () => {
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 autoFocus
+                InputLabelProps={{ shrink: true }}
               />
             )}
             sx={{ mb: 2 }}
+            disableClearable
           />
           <TextField
             label="Clave"
@@ -73,6 +75,7 @@ const Login = () => {
             margin="normal"
             value={password}
             onChange={e => setPassword(e.target.value)}
+            InputLabelProps={{ shrink: true }}
           />
           {error && (
             <Typography color="error" variant="caption">{error}</Typography>

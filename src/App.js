@@ -1,4 +1,5 @@
 import Login from "./pages/Login";
+import Inventario from "./pages/Inventario";
 
 import React from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -68,6 +69,11 @@ function AppRoutes() {
         <Route path="/historial" element={
           <ProtectedRoute>
             <HistorialVehiculos isOwner={isOwner} />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventario" element={
+          <ProtectedRoute>
+            <Inventario />
           </ProtectedRoute>
         } />
       </Routes>

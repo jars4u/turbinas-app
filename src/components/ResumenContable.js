@@ -668,26 +668,29 @@ export default function ResumenContable({ tasaBCV }) {
                                   sx={{ py: 0.5, fontSize: 13 }}
                                 >
                                   {(() => {
-                                    // Si hay formasPago, mostrar todos los montos en Bs separados por ' + '
+                                    // Mostrar todos los montos en Bs, sumando principal y formasPago, igual que en ingresos.js
+                                    let montosBs = [];
+                                    // Principal
+                                    if (typeof i.montoBs === 'number' && !isNaN(i.montoBs) && i.montoBs > 0) {
+                                      montosBs.push(i.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                                    }
+                                    // formasPago
                                     if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                                      const montosBs = i.formasPago
-                                        .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil' && fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
-                                        .map(fp => Number(fp.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
-                                      return montosBs.length > 0 ? montosBs.join(' + ') : "-";
+                                      i.formasPago.forEach(fp => {
+                                        if (typeof fp.montoBs === 'number' && !isNaN(fp.montoBs) && fp.montoBs > 0) {
+                                          montosBs.push(fp.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                                        }
+                                      });
                                     }
-                                    // Si existe montoBs
-                                    if (typeof i.montoBs === 'number' && !isNaN(i.montoBs)) {
-                                      return i.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 });
-                                    }
-                                    return "-";
+                                    return montosBs.length > 0 ? montosBs.join(' + ') : "-";
                                   })()}
                                 </TableCell>
                               </TableRow>
                             ))
                           )}
                         </TableBody>
-                      </Table>
-                    </Box>
+                        </Table>
+                      </Box>
                   </AccordionDetails>
                 </Accordion>
                 <Accordion
