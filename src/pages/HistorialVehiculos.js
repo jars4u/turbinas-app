@@ -157,56 +157,36 @@ export default function HistorialVehiculos() {
   React.useEffect(() => {
     setLoading(true);
     Promise.all([
-      import("../lib/vehiculosFirebase").then(({ obtenerVehiculos }) =>
-        obtenerVehiculos()
-      ),
+      import("../lib/vehiculosFirebase").then(({ obtenerVehiculos }) => obtenerVehiculos()),
       obtenerIngresos(),
     ]).then(([vehiculosObtenidos, ingresos]) => {
       // Relacionar ingresos por vehiculoId
       const vehiculosConPagos = vehiculosObtenidos.map((v) => {
-        const ingresosRelacionados = ingresos.filter(
-          (i) => i.vehiculoId === v.id
-        );
-        // Log de depuración para ver los ingresos relacionados
-        console.log('Vehículo:', v.id, v.vehiculo, '| Ingresos relacionados:', ingresosRelacionados);
-        if (ingresosRelacionados.length > 0) {
-          ingresosRelacionados.forEach((ing, idx) => {
-            console.log(`Ingreso relacionado [${idx}] para vehículo ${v.id} (${v.vehiculo}):`, ing);
-          });
-        }
-        let facturaValor = ingresosRelacionados
-          .map((i) => i.factura)
-          .filter((f) => !!f)
-          .join(", ");
+        const ingresosRelacionados = ingresos.filter((i) => i.vehiculoId === v.id);
+        let facturaValor = ingresosRelacionados.map((i) => i.factura).filter((f) => !!f).join(", ");
         if (!facturaValor) facturaValor = "-";
         let formasPago = [];
         let referencias = [];
         let montosUSD = [];
         let montosBs = [];
         let estadosFactura = [];
-        // Regex para pagos en Bs
         const pagoMovilRegex = /pago[\s\u00A0_-]*m[oó]vil/i;
-        // Regex para pagos en USD
         const usdRegex = /zelle|efectivo|d[oó]lar(es)?|usd/i;
         ingresosRelacionados.forEach((ing) => {
           if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
             ing.formasPago.forEach((fp) => {
               formasPago.push(fp.formaPago || "-");
               referencias.push(fp.referencia || "-");
-              // Mostrar monto SOLO en la columna correspondiente
               if (fp.formaPago && pagoMovilRegex.test(fp.formaPago)) {
-                // Pago móvil: mostrar montoBs si existe, si no mostrar monto
                 if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
                 else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
               } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
-                // Zelle/Efectivo/USD: mostrar monto
                 if (fp.monto !== undefined) montosUSD.push(`$${fp.monto}`);
               }
             });
           } else {
             formasPago.push(ing.formaPago || "-");
             referencias.push(ing.referencia || "-");
-            // Mostrar monto SOLO en la columna correspondiente
             if (ing.formaPago && pagoMovilRegex.test(ing.formaPago)) {
               if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
               else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
@@ -224,12 +204,55 @@ export default function HistorialVehiculos() {
           referencia: referencias.length ? referencias.join(", ") : "-",
           montoUSD: montosUSD.length ? montosUSD.join(", ") : "-",
           montoBs: montosBs.length ? montosBs.join(", ") : "-",
-          estadoFactura: estadosFactura.length
-            ? estadosFactura.join(", ")
-            : "-",
+          estadoFactura: estadosFactura.length ? estadosFactura.join(", ") : "-",
         };
       });
-      setVehiculos(vehiculosConPagos);
+
+      // Ingresos manuales: aquellos sin vehiculoId
+      const ingresosManuales = ingresos.filter((i) => !i.vehiculoId);
+      const ingresosManualesAdaptados = ingresosManuales.map((ing) => {
+        let formasPago = [];
+        let referencias = [];
+        let montosUSD = [];
+        let montosBs = [];
+        const pagoMovilRegex = /pago[\s\u00A0_-]*m[oó]vil/i;
+        const usdRegex = /zelle|efectivo|d[oó]lar(es)?|usd/i;
+        if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
+          ing.formasPago.forEach((fp) => {
+            formasPago.push(fp.formaPago || "-");
+            referencias.push(fp.referencia || "-");
+            if (fp.formaPago && pagoMovilRegex.test(fp.formaPago)) {
+              if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
+              else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
+            } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
+              if (fp.monto !== undefined) montosUSD.push(`$${fp.monto}`);
+            }
+          });
+        } else {
+          formasPago.push(ing.formaPago || "-");
+          referencias.push(ing.referencia || "-");
+          if (ing.formaPago && pagoMovilRegex.test(ing.formaPago)) {
+            if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
+            else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
+          } else if (ing.formaPago && usdRegex.test(ing.formaPago)) {
+            if (ing.monto !== undefined) montosUSD.push(`$${ing.monto}`);
+          }
+          if (ing.montoUSD !== undefined) montosUSD.push(`$${ing.montoUSD}`);
+        }
+        return {
+          id: ing.id,
+          factura: ing.factura || "-",
+          descripcion: ing.descripcion || "-",
+          formaPago: formasPago.length ? formasPago.join(", ") : "-",
+          referencia: referencias.length ? referencias.join(", ") : "-",
+          montoUSD: montosUSD.length ? montosUSD.join(", ") : "-",
+          montoBs: montosBs.length ? montosBs.join(", ") : "-",
+          fecha: ing.fecha || "-",
+        };
+      });
+
+      // Combinar ambos: primero vehículos, luego ingresos manuales
+      setVehiculos([...vehiculosConPagos, ...ingresosManualesAdaptados]);
       setLoading(false);
     });
   }, []);

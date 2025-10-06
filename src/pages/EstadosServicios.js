@@ -48,6 +48,7 @@ export default function EstadosServicios() {
   const [savingDefaultId, setSavingDefaultId] = useState(null);
   const [defaultFacturar, setDefaultFacturar] = useState(null);
   const [savingDefaultFacturarId, setSavingDefaultFacturarId] = useState(null);
+  const [dejarDeMostrarId, setDejarDeMostrarId] = useState(null);
 
   useEffect(() => {
     obtenerEstadosServicio().then((data) => {
@@ -147,6 +148,22 @@ export default function EstadosServicios() {
     setSavingDefaultId(null);
   };
 
+  const handleDejarDeMostrarChange = async (id) => {
+    setDejarDeMostrarId(id);
+    // Marcar solo uno como dejarDeMostrar
+    const nuevosEstados = estados.map(e => ({ ...e, dejarDeMostrar: e.id === id }));
+    setEstados(nuevosEstados);
+    try {
+      await Promise.all(estados.map(e => e.id !== id ? actualizarEstadoServicio(e.id, { ...e, dejarDeMostrar: false }) : null));
+      await actualizarEstadoServicio(id, { ...estados.find(e => e.id === id), dejarDeMostrar: true });
+      const actualizados = await obtenerEstadosServicio();
+      setEstados(actualizados);
+    } catch (err) {
+      setEstados(estados);
+    }
+    setDejarDeMostrarId(null);
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -193,6 +210,7 @@ export default function EstadosServicios() {
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Etiqueta</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Default Registro</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Default Facturar</TableCell>
+                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Dejar de mostrar</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Color</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Acción Timer</TableCell>
                     <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }} align="right">Acciones</TableCell>
@@ -238,8 +256,24 @@ export default function EstadosServicios() {
                           <CircularProgress size={16} sx={{ ml: 1 }} />
                         )}
                       </TableCell>
+                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
+                        <Checkbox
+                          checked={!!estado.dejarDeMostrar}
+                          onChange={() => handleDejarDeMostrarChange(estado.id)}
+                          color="warning"
+                          inputProps={{ 'aria-label': 'Estado dejar de mostrar' }}
+                          disabled={dejarDeMostrarId === estado.id}
+                          sx={{ mx: 'auto', display: 'block' }}
+                        />
+                        {dejarDeMostrarId === estado.id && (
+                          <CircularProgress size={16} sx={{ ml: 1 }} />
+                        )}
+                      </TableCell>
                       <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>
-                        <Chip color={estado.color || "default"} size="small" sx={{ minWidth: 15, height: 15 }} />
+                        {estado.color === "grey"
+                          ? <Chip size="small" sx={{ minWidth: 15, height: 15, bgcolor: 'grey.500' }} />
+                          : <Chip color={estado.color || "default"} size="small" sx={{ minWidth: 15, height: 15 }} />
+                        }
                       </TableCell>
                       <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{estado.accionTimer === "pausar" ? "Pausar" : "Continuar"}</TableCell>
                       <TableCell sx={{ py: 0.5, px: 1 }} align="right">
@@ -299,7 +333,7 @@ export default function EstadosServicios() {
           >
             <MenuItem value="default">Default</MenuItem>
             <MenuItem value="primary">Azul</MenuItem>
-            <MenuItem value="secondary">Gris</MenuItem>
+            <MenuItem value="grey">Gris</MenuItem>
             <MenuItem value="success">Verde</MenuItem>
             <MenuItem value="warning">Amarillo</MenuItem>
             <MenuItem value="error">Rojo</MenuItem>

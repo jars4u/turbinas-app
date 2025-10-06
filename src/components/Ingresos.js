@@ -161,6 +161,8 @@ export default function Ingresos({ tasaBCV }) {
     if (montoBs) {
       formasPago.push({ formaPago, monto: montoBs });
     }
+    // Generar vehiculoId único para ingresos manuales
+    const vehiculoIdManual = `manual-${Date.now()}`;
     // Construye el objeto y elimina cualquier campo undefined o null
     const nuevoIngresoRaw = {
       factura: ingresoFactura ? ingresoFactura.toUpperCase() : undefined,
@@ -168,11 +170,42 @@ export default function Ingresos({ tasaBCV }) {
       formaPago: formaPago || undefined,
       fecha: `${d}/${m}/${y}`,
       formasPago: formasPago.length > 0 ? formasPago : undefined,
+      vehiculoId: vehiculoIdManual,
     };
     const nuevoIngreso = Object.fromEntries(
       Object.entries(nuevoIngresoRaw).filter(([_, v]) => v !== undefined && v !== null)
     );
     await guardarIngreso(nuevoIngreso);
+
+    // Crear vehículo virtual para el ingreso manual
+    const { crearVehiculo } = await import("../lib/vehiculosFirebase");
+    // Obtener el estado dejarDeMostrar
+    let estadoDejarDeMostrar = "oculto";
+    try {
+      const { obtenerEstadosServicio } = await import("../lib/estadosServicioFirebase");
+      const estados = await obtenerEstadosServicio();
+      const estadoOcultar = estados.find(e => e.dejarDeMostrar);
+      if (estadoOcultar) {
+        estadoDejarDeMostrar = estadoOcultar.nombre;
+      }
+    } catch (e) {
+      // Si falla, usar "oculto" por defecto
+      estadoDejarDeMostrar = "oculto";
+    }
+    await crearVehiculo({
+      vehiculo: "Ingreso manual",
+      servicio: "-",
+      customerName: "-",
+      customerPhone: "-",
+      arrivalTime: Date.now(),
+      precio: null,
+      precioBs: null,
+      status: estadoDejarDeMostrar,
+      registradoPor: "-",
+      entregadoPor: "-",
+      id: vehiculoIdManual,
+    });
+
     const actualizados = await obtenerIngresos();
     setIngresos(actualizados);
     const hoyStr = `${d}/${m}/${y}`;

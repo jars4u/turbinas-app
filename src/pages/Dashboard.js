@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -269,6 +268,9 @@ export default function Dashboard() {
     setConfirmDeleteOpen(false);
   };
 
+  const estadoOcultar = estadosServicio.find(e => e.dejarDeMostrar);
+  const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
+
   return (
     <Container
       maxWidth="xl"
@@ -334,7 +336,7 @@ export default function Dashboard() {
             {
               [...vehiculos].filter(
                 (v) =>
-                  (v.status || v.estado) !== "entregado" &&
+                  (v.status || v.estado) !== nombreOcultar &&
                   (!ordenEstado || (v.status || v.estado) === ordenEstado)
               ).length
             }
@@ -383,16 +385,18 @@ export default function Dashboard() {
               <Typography
                 key={estado.nombre}
                 variant="body2"
-                color={estado.color ? `${estado.color}.main` : "text.primary"}
                 fontWeight={600}
                 sx={{
                   textAlign: { xs: "center", sm: "left" },
                   width: { xs: "auto", sm: "auto" },
                   fontSize: { xs: "0.95rem", sm: "1.15rem" },
                   px: { xs: 0.5, sm: 0 },
+                  color: estado.color === "grey"
+                    ? '#757575'
+                    : (theme) => theme.palette[estado.color]?.main || theme.palette.text.primary,
                 }}
               >
-                {estado.label}:{" "}
+                {estado.label}: {" "}
                 {
                   vehiculos.filter(
                     (v) => (v.status || v.estado) === estado.nombre
@@ -540,7 +544,7 @@ export default function Dashboard() {
                 {[...vehiculos]
                   .filter(
                     (v) =>
-                      (v.status || v.estado) !== "entregado" &&
+                      (v.status || v.estado) !== nombreOcultar &&
                       (!ordenEstado || (v.status || v.estado) === ordenEstado)
                   )
                   .sort((a, b) => {
@@ -667,7 +671,7 @@ export default function Dashboard() {
               const heights = [...vehiculos]
                 .filter(
                   (v) =>
-                    (v.status || v.estado) !== "entregado" &&
+                    (v.status || v.estado) !== nombreOcultar &&
                     (!ordenEstado || (v.status || v.estado) === ordenEstado)
                 )
                 .map((v) => {
@@ -682,7 +686,7 @@ export default function Dashboard() {
               return [...vehiculos]
                 .filter(
                   (v) =>
-                    (v.status || v.estado) !== "entregado" &&
+                    (v.status || v.estado) !== nombreOcultar &&
                     (!ordenEstado || (v.status || v.estado) === ordenEstado)
                 )
                 .sort((a, b) => {
