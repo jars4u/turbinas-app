@@ -35,27 +35,27 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
     setFacturaIntento(true);
     // Validación mínima: campos obligatorios
     if (!facturaForm.numeroFactura || !facturaForm.formaPago || !facturaForm.monto) return;
-    if (agregarFormaPago) {
-      if (!facturaForm.formaPago2 || !facturaForm.monto2) return;
-    }
-    setLoading(true);
-    const payload = {
-      numeroFactura: facturaForm.numeroFactura ? facturaForm.numeroFactura.toUpperCase() : '',
+    let formasPago = [];
+    // Primera forma de pago
+    formasPago.push({
       formaPago: facturaForm.formaPago ? facturaForm.formaPago.toUpperCase() : '',
       monto: facturaForm.monto,
       referencia: facturaForm.referencia ? facturaForm.referencia.toUpperCase() : '',
       salidaInventario: salidaInventario,
-    };
-    if (
-      agregarFormaPago &&
-      facturaForm.formaPago2 &&
-      facturaForm.monto2 &&
-      facturaForm.referencia2 !== undefined
-    ) {
-      payload.formaPago2 = facturaForm.formaPago2 ? facturaForm.formaPago2.toUpperCase() : '';
-      payload.monto2 = facturaForm.monto2;
-      payload.referencia2 = facturaForm.referencia2 ? facturaForm.referencia2.toUpperCase() : '';
+    });
+    // Segunda forma de pago si corresponde
+    if (agregarFormaPago && facturaForm.formaPago2 && facturaForm.monto2) {
+      formasPago.push({
+        formaPago: facturaForm.formaPago2 ? facturaForm.formaPago2.toUpperCase() : '',
+        monto: facturaForm.monto2,
+        referencia: facturaForm.referencia2 ? facturaForm.referencia2.toUpperCase() : '',
+        salidaInventario: salidaInventario,
+      });
     }
+    const payload = {
+      numeroFactura: facturaForm.numeroFactura ? facturaForm.numeroFactura.toUpperCase() : '',
+      formasPago,
+    };
     console.log('Payload registro pago:', payload);
     await onRegister(payload);
     setLoading(false);
@@ -85,12 +85,14 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
           <Typography variant="subtitle2" color="primary" fontWeight={600}>Servicio</Typography>
           <Typography variant="body1" sx={{ mb: 1 }}>{form.servicio}</Typography>
           <Typography variant="subtitle2" color="primary" fontWeight={600}>Precio</Typography>
-          <Typography variant="body1" sx={{ mb: form.precio ? 0.5 : 0 }}>
-            {form.precio ? (
+          <Typography variant="body1" sx={{ mb: (form.precio || form.precioBs) ? 0.5 : 0 }}>
+            {(form.precio || form.precioBs) ? (
               <>
-                <span>
-                  $ {Number(form.precio).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </span>
+                {form.precio && (
+                  <span>
+                    $ {Number(form.precio).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                )}
                 {form.precioBs && (
                   <span style={{ marginLeft: 12 }}>
                     | Bs {Number(form.precioBs).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
@@ -99,7 +101,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
               </>
             ) : '—'}
           </Typography>
-          {!form.precio && (
+          {!(form.precio || form.precioBs) && (
             <Typography variant="subtitle2" color="warning.main" fontSize={13} sx={{ mb: 1 }}>
               No se ha definido un precio para este servicio. No se puede registrar el pago.
             </Typography>
@@ -234,7 +236,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
           color="success"
           size="small"
           onClick={handleRegister}
-          disabled={loading || !form.precio}
+          disabled={loading || !(form.precio || form.precioBs)}
           startIcon={loading ? <CircularProgress color="inherit" size={18} /> : null}
         >
           {loading ? "Registrando..." : "Registrar pago"}

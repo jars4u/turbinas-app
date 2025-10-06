@@ -10,8 +10,16 @@ export async function guardarIngreso(ingreso) {
     Object.entries({ ...ingreso, fecha: fechaStr })
       .filter(([_, v]) => v !== undefined && v !== null)
   );
-  // Si hay segunda forma de pago, guardar ambas en un array con monto
-  if (mov.formaPago2) {
+  // Si ya existe formasPago como array, respétalo y no reproceses los campos sueltos
+  if (Array.isArray(mov.formasPago) && mov.formasPago.length > 0) {
+    // Elimina los campos sueltos para evitar duplicidad
+    delete mov.formaPago;
+    delete mov.monto;
+    delete mov.referencia;
+    delete mov.formaPago2;
+    delete mov.monto2;
+    delete mov.referencia2;
+  } else if (mov.formaPago2) {
     mov.formasPago = [
       Object.fromEntries(Object.entries({
         formaPago: mov.formaPago,

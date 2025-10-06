@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import Skeleton from '@mui/material/Skeleton';
+import Skeleton from "@mui/material/Skeleton";
 import dayjs from "dayjs";
 import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { obtenerEgresos } from "../lib/egresosFirebase";
@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DatePicker } from '@mui/x-date-pickers';
+import { DatePicker } from "@mui/x-date-pickers";
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
@@ -29,6 +29,7 @@ function agruparPorDia(arr, tipo) {
     let fecha = "-";
     let d, m, y;
     if (item._fechaDate instanceof Date) {
+      // Usar la fecha local del navegador (ya ajustada por el sistema)
       d = String(item._fechaDate.getDate()).padStart(2, "0");
       m = String(item._fechaDate.getMonth() + 1).padStart(2, "0");
       y = item._fechaDate.getFullYear();
@@ -114,7 +115,10 @@ export default function ResumenContable({ tasaBCV }) {
       const fechas = Object.keys(agrupados).sort((a, b) => {
         const fa = Date.parse(a.split("/").reverse().join("-"));
         const fb = Date.parse(b.split("/").reverse().join("-"));
-        return Math.abs(fa - Date.parse(hoyStr.split("/").reverse().join("-"))) - Math.abs(fb - Date.parse(hoyStr.split("/").reverse().join("-")));
+        return (
+          Math.abs(fa - Date.parse(hoyStr.split("/").reverse().join("-"))) -
+          Math.abs(fb - Date.parse(hoyStr.split("/").reverse().join("-")))
+        );
       });
       let fechaInicial = hoyStr;
       if (fechas.includes(hoyStr)) {
@@ -123,8 +127,8 @@ export default function ResumenContable({ tasaBCV }) {
       } else if (fechas.length > 0) {
         // Seleccionar el día más reciente (mayor fecha) con información
         const fechasOrdenadas = fechas.sort((a, b) => {
-          const fa = Date.parse(a.split('/').reverse().join('-'));
-          const fb = Date.parse(b.split('/').reverse().join('-'));
+          const fa = Date.parse(a.split("/").reverse().join("-"));
+          const fb = Date.parse(b.split("/").reverse().join("-"));
           return fb - fa;
         });
         const fechaMasReciente = fechasOrdenadas[0];
@@ -132,35 +136,45 @@ export default function ResumenContable({ tasaBCV }) {
         fechaInicial = fechaMasReciente;
       }
       // Sincronizar el DatePicker con la fecha seleccionada
-      const [d, m, y] = fechaInicial.split('/');
-      const fechaDayjs = window.dayjs ? window.dayjs(`${y}-${m}-${d}`) : require('dayjs')(`${y}-${m}-${d}`);
+      const [d, m, y] = fechaInicial.split("/");
+      const fechaDayjs = window.dayjs
+        ? window.dayjs(`${y}-${m}-${d}`)
+        : require("dayjs")(`${y}-${m}-${d}`);
       setFechaInicio(fechaDayjs);
       setFechaFin(fechaDayjs);
     });
   }, []);
 
-  if (loading) return (
-    <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Skeleton variant="text" width={180} height={38} />
-        <Skeleton variant="rectangular" width={160} height={38} />
+  if (loading)
+    return (
+      <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
+        >
+          <Skeleton variant="text" width={180} height={38} />
+          <Skeleton variant="rectangular" width={160} height={38} />
+        </Box>
+        <Divider sx={{ mb: 2 }} />
+        <Skeleton variant="rectangular" height={60} sx={{ mb: 2 }} />
+        <Skeleton variant="text" width={220} height={32} sx={{ mb: 1 }} />
+        <Skeleton variant="rectangular" height={120} sx={{ mb: 2 }} />
+        <Skeleton variant="rectangular" height={120} sx={{ mb: 2 }} />
       </Box>
-      <Divider sx={{ mb: 2 }} />
-      <Skeleton variant="rectangular" height={60} sx={{ mb: 2 }} />
-      <Skeleton variant="text" width={220} height={32} sx={{ mb: 1 }} />
-      <Skeleton variant="rectangular" height={120} sx={{ mb: 2 }} />
-      <Skeleton variant="rectangular" height={120} sx={{ mb: 2 }} />
-    </Box>
-  );
+    );
 
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
       <Box
         sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: { xs: 'center', sm: 'center' },
-          justifyContent: { xs: 'center', sm: 'space-between' },
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "center", sm: "center" },
+          justifyContent: { xs: "center", sm: "space-between" },
           mb: 2,
           gap: { xs: 2, sm: 0 },
         }}
@@ -169,35 +183,48 @@ export default function ResumenContable({ tasaBCV }) {
           variant="h5"
           fontWeight={700}
           gutterBottom
-          sx={{ textAlign: { xs: 'center', sm: 'left' }, width: { xs: '100%', sm: 'auto' } }}
+          sx={{
+            textAlign: { xs: "center", sm: "left" },
+            width: { xs: "100%", sm: "auto" },
+          }}
         >
           Resumen diario
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'center', sm: 'flex-start' } }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            width: { xs: "100%", sm: "auto" },
+            justifyContent: { xs: "center", sm: "flex-start" },
+          }}
+        >
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
               label="Desde"
               value={fechaInicio}
               onChange={setFechaInicio}
-              renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
+              renderInput={(params) => (
+                <TextField {...params} size="small" sx={{ minWidth: 120 }} />
+              )}
               disableFuture
               minDate={
                 Object.keys(datosPorDia).length > 0
                   ? dayjs(
-                    Object.keys(datosPorDia)
-                      .sort((a, b) => {
-                        const fa = Date.parse(
-                          a.split("/").reverse().join("-")
-                        );
-                        const fb = Date.parse(
-                          b.split("/").reverse().join("-")
-                        );
-                        return fa - fb;
-                      })[0]
-                      .split("/")
-                      .reverse()
-                      .join("-")
-                  )
+                      Object.keys(datosPorDia)
+                        .sort((a, b) => {
+                          const fa = Date.parse(
+                            a.split("/").reverse().join("-")
+                          );
+                          const fb = Date.parse(
+                            b.split("/").reverse().join("-")
+                          );
+                          return fa - fb;
+                        })[0]
+                        .split("/")
+                        .reverse()
+                        .join("-")
+                    )
                   : undefined
               }
               maxDate={fechaFin || dayjs().startOf("day")}
@@ -207,25 +234,30 @@ export default function ResumenContable({ tasaBCV }) {
               label="Hasta"
               value={fechaFin}
               onChange={setFechaFin}
-              renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
+              renderInput={(params) => (
+                <TextField {...params} size="small" sx={{ minWidth: 120 }} />
+              )}
               disableFuture
-              minDate={fechaInicio || (Object.keys(datosPorDia).length > 0
-                ? dayjs(
-                  Object.keys(datosPorDia)
-                    .sort((a, b) => {
-                      const fa = Date.parse(
-                        a.split("/").reverse().join("-")
-                      );
-                      const fb = Date.parse(
-                        b.split("/").reverse().join("-")
-                      );
-                      return fa - fb;
-                    })[0]
-                    .split("/")
-                    .reverse()
-                    .join("-")
-                )
-                : undefined)}
+              minDate={
+                fechaInicio ||
+                (Object.keys(datosPorDia).length > 0
+                  ? dayjs(
+                      Object.keys(datosPorDia)
+                        .sort((a, b) => {
+                          const fa = Date.parse(
+                            a.split("/").reverse().join("-")
+                          );
+                          const fb = Date.parse(
+                            b.split("/").reverse().join("-")
+                          );
+                          return fa - fb;
+                        })[0]
+                        .split("/")
+                        .reverse()
+                        .join("-")
+                    )
+                  : undefined)
+              }
               maxDate={dayjs().startOf("day")}
             />
           </LocalizationProvider>
@@ -243,31 +275,41 @@ export default function ResumenContable({ tasaBCV }) {
             let fechasFiltradas = [];
             if (fechaInicio && fechaFin) {
               // Normalizar fechas a formato DD/MM/YYYY para comparar correctamente
-              const start = fechaInicio.startOf('day');
-              const end = fechaFin.startOf('day');
-              fechasFiltradas = Object.keys(datosPorDia).filter(f => {
-                // f ya está en formato DD/MM/YYYY
-                const [d, m, y] = f.split('/');
-                // Comparar usando dayjs para evitar problemas de zona horaria
-                const fecha = dayjs(`${y}-${m}-${d}`);
-                // Incluir la fecha de inicio y fin
-                return fecha.isValid() && (fecha.isAfter(start) || fecha.isSame(start, 'day')) && (fecha.isBefore(end) || fecha.isSame(end, 'day'));
-              }).sort((a, b) => {
-                const fa = Date.parse(a.split("/").reverse().join("-"));
-                const fb = Date.parse(b.split("/").reverse().join("-"));
-                return fa - fb;
-              });
+              const start = fechaInicio.startOf("day");
+              const end = fechaFin.startOf("day");
+              fechasFiltradas = Object.keys(datosPorDia)
+                .filter((f) => {
+                  // f ya está en formato DD/MM/YYYY
+                  const [d, m, y] = f.split("/");
+                  // Comparar usando dayjs para evitar problemas de zona horaria
+                  const fecha = dayjs(`${y}-${m}-${d}`);
+                  // Incluir la fecha de inicio y fin
+                  return (
+                    fecha.isValid() &&
+                    (fecha.isAfter(start) || fecha.isSame(start, "day")) &&
+                    (fecha.isBefore(end) || fecha.isSame(end, "day"))
+                  );
+                })
+                .sort((a, b) => {
+                  const fa = Date.parse(a.split("/").reverse().join("-"));
+                  const fb = Date.parse(b.split("/").reverse().join("-"));
+                  return fa - fb;
+                });
             } else if (fechaSeleccionada) {
               fechasFiltradas = [fechaSeleccionada];
             }
             if (fechasFiltradas.length === 0) {
-              return <Typography color="text.secondary">No hay datos en el rango seleccionado.</Typography>;
+              return (
+                <Typography color="text.secondary">
+                  No hay datos en el rango seleccionado.
+                </Typography>
+              );
             }
             // Acumular ingresos y egresos de todas las fechas seleccionadas
             let ingresos = [];
             let egresos = [];
             let cierres = [];
-            fechasFiltradas.forEach(f => {
+            fechasFiltradas.forEach((f) => {
               if (datosPorDia[f]) {
                 ingresos = ingresos.concat(datosPorDia[f].ingresos);
                 egresos = egresos.concat(datosPorDia[f].egresos);
@@ -277,26 +319,54 @@ export default function ResumenContable({ tasaBCV }) {
               }
             });
             // Usar la tasa histórica del último cierre del rango, si existe
-            const cierre = cierres.length > 0 ? cierres[cierres.length - 1] : undefined;
+            const cierre =
+              cierres.length > 0 ? cierres[cierres.length - 1] : undefined;
             const tasaHistorica = cierre?.tasa ?? tasaBCV;
             // Sumar todos los montos de formasPago en los ingresos
             let totalIngresosUSD = ingresos.reduce((acc, i) => {
               if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                return acc + i.formasPago.reduce((sum, fp) => sum + (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0), 0);
+                return (
+                  acc +
+                  i.formasPago.reduce(
+                    (sum, fp) =>
+                      sum +
+                      (fp.monto !== undefined &&
+                      fp.monto !== null &&
+                      !isNaN(Number(fp.monto))
+                        ? Number(fp.monto)
+                        : 0),
+                    0
+                  )
+                );
               }
               return acc + Number(i.montoUSD || i.monto || 0);
             }, 0);
-            let totalIngresosBs = tasaHistorica ? totalIngresosUSD * tasaHistorica : ingresos.reduce((acc, i) => acc + (Number(i.montoBs) || 0), 0);
-            let totalEgresosUSD = egresos.reduce((acc, e) => acc + (Number(e.montoUSD) || 0), 0);
-            let totalEgresosBs = egresos.reduce((acc, e) => acc + (Number(e.montoBs) || 0), 0);
+            let totalIngresosBs = tasaHistorica
+              ? totalIngresosUSD * tasaHistorica
+              : ingresos.reduce((acc, i) => acc + (Number(i.montoBs) || 0), 0);
+            let totalEgresosUSD = egresos.reduce(
+              (acc, e) => acc + (Number(e.montoUSD) || 0),
+              0
+            );
+            let totalEgresosBs = egresos.reduce(
+              (acc, e) => acc + (Number(e.montoBs) || 0),
+              0
+            );
             let utilidadUSD = totalIngresosUSD - totalEgresosUSD;
             // Agrupar ingresos por forma de pago, sumando todos los montos de formasPago
             const pagosPorForma = ingresos.reduce((acc, i) => {
               if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                i.formasPago.forEach(fp => {
-                  const forma = (fp.formaPago || "Sin especificar").toUpperCase();
+                i.formasPago.forEach((fp) => {
+                  const forma = (
+                    fp.formaPago || "Sin especificar"
+                  ).toUpperCase();
                   if (!acc[forma]) acc[forma] = 0;
-                  acc[forma] += fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0;
+                  acc[forma] +=
+                    fp.monto !== undefined &&
+                    fp.monto !== null &&
+                    !isNaN(Number(fp.monto))
+                      ? Number(fp.monto)
+                      : 0;
                 });
               } else {
                 const forma = (i.formaPago || "Sin especificar").toUpperCase();
@@ -306,14 +376,12 @@ export default function ResumenContable({ tasaBCV }) {
               return acc;
             }, {});
             return (
-              <Box key={fechasFiltradas.join('-')} sx={{ mb: 4 }}>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={600}
-                  sx={{ mb: 1 }}
-                >
+              <Box key={fechasFiltradas.join("-")} sx={{ mb: 4 }}>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
                   {fechaInicio && fechaFin
-                    ? `Rango: ${fechaInicio.format('DD/MM/YYYY')} a ${fechaFin.format('DD/MM/YYYY')}`
+                    ? `Rango: ${fechaInicio.format(
+                        "DD/MM/YYYY"
+                      )} a ${fechaFin.format("DD/MM/YYYY")}`
                     : `Fecha: ${fechasFiltradas[0]}`}
                 </Typography>
                 {/* ...el resto del renderizado permanece igual... */}
@@ -326,63 +394,63 @@ export default function ResumenContable({ tasaBCV }) {
                   </Typography> */}
                 <Paper sx={{ p: 2, mb: 2, bgcolor: "#f5f5f5" }}>
                   {/* Tasa BCV en bloque al inicio para móviles */}
-                  <Box sx={{ display: { xs: 'block', sm: 'none' }, mb: 1 }}>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                    >
+                  <Box sx={{ display: { xs: "block", sm: "none" }, mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
                       Tasa BCV:{" "}
                       {cierre?.tasa
                         ? `${cierre.tasa.toLocaleString("de-DE", {
-                          minimumFractionDigits: 2,
-                        })} (histórica)`
+                            minimumFractionDigits: 2,
+                          })} (histórica)`
                         : tasaBCV
-                          ? `${tasaBCV.toLocaleString("de-DE", {
+                        ? `${tasaBCV.toLocaleString("de-DE", {
                             minimumFractionDigits: 2,
                           })}`
-                          : "No disponible"}
+                        : "No disponible"}
                     </Typography>
                   </Box>
                   <Box
                     sx={{
                       display: "flex",
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      justifyContent: { xs: 'flex-start', sm: 'space-between' },
-                      alignItems: { xs: 'flex-start', sm: 'center' },
+                      flexDirection: { xs: "column", sm: "row" },
+                      justifyContent: { xs: "flex-start", sm: "space-between" },
+                      alignItems: { xs: "flex-start", sm: "center" },
                     }}
                   >
                     <Typography>
                       <b>Ingresos totales:</b>
                       {(() => {
-                        // Sumar todos los montos en USD y Bs, sin conversión
+                        // Sumar solo los montos de pagos Zelle/Efectivo en USD y Pago Móvil en Bs
                         let totalUSD = 0;
                         let totalBs = 0;
-                        ingresos.forEach(i => {
-                          // Sumar monto USD principal si existe
-                          if (i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
-                            totalUSD += Number(i.monto);
-                          }
-                          // Sumar montoBs principal si existe
-                          if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
-                            totalBs += Number(i.montoBs);
-                          }
-                          // Sumar montos de formasPago si existen
+                        ingresos.forEach((i) => {
                           if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                            i.formasPago.forEach(fp => {
-                              if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                            i.formasPago.forEach((fp) => {
+                              if (
+                                fp.formaPago &&
+                                ["zelle", "efectivo", "$", "usd"].includes(fp.formaPago.trim().toLowerCase()) &&
+                                fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))
+                              ) {
                                 totalUSD += Number(fp.monto);
                               }
-                              if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                                totalBs += Number(fp.montoBs);
+                              if (
+                                fp.formaPago &&
+                                fp.formaPago.trim().toLowerCase() === "pago movil" &&
+                                fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))
+                              ) {
+                                totalBs += Number(fp.monto);
                               }
                             });
                           }
                         });
-                        return ` $ ${totalUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
+                        return ` $ ${totalUSD.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })} | Bs. ${totalBs.toLocaleString("de-DE", {
+                          minimumFractionDigits: 2,
+                        })}`;
                       })()}
                     </Typography>
                     {/* Tasa BCV en línea para desktop */}
-                    <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                    <Box sx={{ display: { xs: "none", sm: "block" } }}>
                       <Typography
                         variant="body2"
                         color="text.secondary"
@@ -391,119 +459,66 @@ export default function ResumenContable({ tasaBCV }) {
                         Tasa BCV:{" "}
                         {cierre?.tasa
                           ? `${cierre.tasa.toLocaleString("de-DE", {
-                            minimumFractionDigits: 2,
-                          })} (histórica)`
+                              minimumFractionDigits: 2,
+                            })} (histórica)`
                           : tasaBCV
-                            ? `${tasaBCV.toLocaleString("de-DE", {
+                          ? `${tasaBCV.toLocaleString("de-DE", {
                               minimumFractionDigits: 2,
                             })}`
-                            : "No disponible"}
+                          : "No disponible"}
                       </Typography>
                     </Box>
                   </Box>
                   {/* Mostrar montos por forma de pago como subtítulo */}
                   <Box sx={{ mb: 1, mt: 1 }}>
-                    {(() => {
-                      // Agrupar montos por forma de pago y divisa (insensible a mayúsculas y espacios)
-                      const desglose = {};
-                      ingresos.forEach(i => {
-                        // Procesar formasPago
-                        if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                          i.formasPago.forEach(fp => {
-                            const formaNorm = (fp.formaPago || "Sin especificar").trim().toLowerCase();
-                            if (!desglose[formaNorm]) desglose[formaNorm] = { usd: 0, bs: 0 };
-                            // Sumar montoBs si existe
-                            if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                              desglose[formaNorm].bs += Number(fp.montoBs);
-                            }
-                            // Sumar monto USD si existe y no es pago movil
-                            if (formaNorm !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                              desglose[formaNorm].usd += Number(fp.monto);
-                            }
-                          });
-                        }
-                        // Procesar campo principal
-                        const formaPrincipalNorm = (i.formaPago || "sin especificar").trim().toLowerCase();
-                        // Si el montoBs existe y la forma principal es 'pago movil', sumar bajo 'pago movil'
-                        if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
-                          if (formaPrincipalNorm === 'pago movil' || formaPrincipalNorm === '' || formaPrincipalNorm === 'sin especificar' || formaPrincipalNorm === null) {
-                            if (!desglose['pago movil']) desglose['pago movil'] = { usd: 0, bs: 0 };
-                            desglose['pago movil'].bs += Number(i.montoBs);
+                  {/* Sumatoria por forma de pago */}
+                  {(() => {
+                    // Mostrar sumatoria total por cada forma de pago
+                    const desglose = {};
+                    ingresos.forEach((i) => {
+                      if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                        i.formasPago.forEach((fp) => {
+                          const formaNorm = (fp.formaPago || "Sin especificar").trim().toLowerCase();
+                          if (!desglose[formaNorm]) desglose[formaNorm] = { usd: 0, bs: 0 };
+                          if (["zelle", "efectivo", "$", "usd"].includes(formaNorm) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                            desglose[formaNorm].usd += Number(fp.monto);
                           }
-                        }
-                        // Sumar monto USD si existe y no es pago movil
-                        if (formaPrincipalNorm !== 'pago movil' && i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
-                          if (!desglose[formaPrincipalNorm]) desglose[formaPrincipalNorm] = { usd: 0, bs: 0 };
-                          desglose[formaPrincipalNorm].usd += Number(i.monto);
-                        }
-                      });
-                      return Object.entries(desglose)
-                        .sort((a, b) => a[0].localeCompare(b[0]))
-                        .filter(([formaNorm, montos]) => {
-                          // Ocultar 'sin especificar' si ambos montos son cero
-                          if (formaNorm === 'sin especificar') {
-                            return (montos.usd > 0 || montos.bs > 0);
+                          if (formaNorm === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                            desglose[formaNorm].bs += Number(fp.monto);
                           }
-                          return true;
-                        })
-                        .map(([formaNorm, montos]) => {
-                          // Capitalizar la forma de pago para mostrarla correctamente
-                          const nombreMostrar = formaNorm.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                          const esPagoMovil = formaNorm === 'pago movil';
-                          return (
-                            <Typography
-                              key={nombreMostrar}
-                              variant="body2"
-                              sx={{ mb: 0.5, pl: 1 }}
-                            >
-                              <b>{nombreMostrar}:</b>
-                              {/* Para pago movil, mostrar solo Bs; para otros, solo USD */}
-                              {esPagoMovil
-                                ? (typeof montos.bs === 'number' && !isNaN(montos.bs)
-                                    ? <span> Bs. {montos.bs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
-                                    : montos.bs === 0
-                                      ? <span> Bs. 0,00</span>
-                                      : <span> - </span>)
-                                : (typeof montos.usd === 'number' && !isNaN(montos.usd)
-                                    ? <span> $ {montos.usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                    : <span> - </span>)}
-                            </Typography>
-                          );
                         });
-                    })()}
+                      }
+                    });
+                    return Object.entries(desglose)
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([formaNorm, montos]) => {
+                        const nombreMostrar = formaNorm
+                          .split(" ")
+                          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                          .join(" ");
+                        return (
+                          <Typography key={"total-" + nombreMostrar} variant="body2" sx={{ mb: 0.5, pl: 2 }}>
+                            <b>Total {nombreMostrar}:</b>
+                            {formaNorm === "pago movil"
+                              ? ` Bs. ${montos.bs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`
+                              : ` $ ${montos.usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+                          </Typography>
+                        );
+                      });
+                  })()}
                   </Box>
                   <Typography>
                     <b>Egresos totales:</b>
                     {(() => {
-                      // Sumar por separado los montos en USD y Bs según la divisa y forma de pago
+                      // Sumar solo los valores que se muestran en la tabla de egresos
                       let totalUSD = 0;
                       let totalBs = 0;
-                      egresos.forEach(e => {
-                        if (Array.isArray(e.formasPago) && e.formasPago.length > 0) {
-                          e.formasPago.forEach(fp => {
-                            if (fp.formaPago && fp.formaPago.toLowerCase() === 'pago movil') {
-                              // Solo sumar montoBs para pago movil
-                              if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                                totalBs += Number(fp.montoBs);
-                              }
-                            } else {
-                              // Para otras formas, solo sumar monto USD si existe
-                              if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                                totalUSD += Number(fp.monto);
-                              }
-                            }
-                          });
-                        } else {
-                          // Si no hay formasPago, decidir por la divisa
-                          if (e.formaPago && e.formaPago.toLowerCase() === 'pago movil') {
-                            if (e.montoBs !== undefined && e.montoBs !== null && !isNaN(Number(e.montoBs))) {
-                              totalBs += Number(e.montoBs);
-                            }
-                          } else {
-                            if (e.monto !== undefined && e.monto !== null && !isNaN(Number(e.monto))) {
-                              totalUSD += Number(e.monto);
-                            }
-                          }
+                      egresos.forEach((e) => {
+                        if (typeof e.montoUSD === 'number' && e.montoUSD > 0) {
+                          totalUSD += e.montoUSD;
+                        }
+                        if (typeof e.montoBs === 'number' && e.montoBs > 0) {
+                          totalBs += e.montoBs;
                         }
                       });
                       return ` $ ${totalUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
@@ -512,49 +527,39 @@ export default function ResumenContable({ tasaBCV }) {
                   <Typography>
                     <b>Utilidad:</b>
                     {(() => {
-                      // Calcular utilidad por separado para USD y Bs, sumando todos los montoBs y montos
-                      let totalIngresosUSD = 0;
-                      let totalIngresosBs = 0;
-                      ingresos.forEach(i => {
-                        if (i.monto !== undefined && i.monto !== null && !isNaN(Number(i.monto))) {
-                          totalIngresosUSD += Number(i.monto);
-                        }
-                        if (i.montoBs !== undefined && i.montoBs !== null && !isNaN(Number(i.montoBs))) {
-                          totalIngresosBs += Number(i.montoBs);
-                        }
+                      // Calcular utilidad por divisa: ingresos menos egresos para cada divisa
+                      let ingresosUSD = 0;
+                      let ingresosBs = 0;
+                      ingresos.forEach((i) => {
                         if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                          i.formasPago.forEach(fp => {
-                            if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                              totalIngresosUSD += Number(fp.monto);
+                          i.formasPago.forEach((fp) => {
+                            const formaNorm = (fp.formaPago || "").trim().toLowerCase();
+                            if (["zelle", "efectivo", "$", "usd"].includes(formaNorm) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              ingresosUSD += Number(fp.monto);
                             }
-                            if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                              totalIngresosBs += Number(fp.montoBs);
+                            if (formaNorm === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              ingresosBs += Number(fp.monto);
                             }
                           });
                         }
                       });
-                      let totalEgresosUSD = 0;
-                      let totalEgresosBs = 0;
-                      egresos.forEach(e => {
-                        if (e.monto !== undefined && e.monto !== null && !isNaN(Number(e.monto))) {
-                          totalEgresosUSD += Number(e.monto);
-                        }
-                        if (e.montoBs !== undefined && e.montoBs !== null && !isNaN(Number(e.montoBs))) {
-                          totalEgresosBs += Number(e.montoBs);
-                        }
+                      let egresosUSD = 0;
+                      let egresosBs = 0;
+                      egresos.forEach((e) => {
                         if (Array.isArray(e.formasPago) && e.formasPago.length > 0) {
-                          e.formasPago.forEach(fp => {
-                            if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                              totalEgresosUSD += Number(fp.monto);
+                          e.formasPago.forEach((fp) => {
+                            const formaNorm = (fp.formaPago || "").trim().toLowerCase();
+                            if (["zelle", "efectivo", "$", "usd"].includes(formaNorm) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              egresosUSD += Number(fp.monto);
                             }
-                            if (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) {
-                              totalEgresosBs += Number(fp.montoBs);
+                            if (formaNorm === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              egresosBs += Number(fp.monto);
                             }
                           });
                         }
                       });
-                      const utilidadUSD = totalIngresosUSD - totalEgresosUSD;
-                      const utilidadBs = totalIngresosBs - totalEgresosBs;
+                      const utilidadUSD = ingresosUSD - egresosUSD;
+                      const utilidadBs = ingresosBs - egresosBs;
                       return ` $ ${utilidadUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${utilidadBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
                     })()}
                   </Typography>
@@ -585,16 +590,17 @@ export default function ResumenContable({ tasaBCV }) {
                       "& .MuiAccordionSummary-content": { my: 0.5 },
                     }}
                   >
-                    <Typography
-                      fontWeight={700}
-                      color="primary"
-                      fontSize={15}
-                    >
+                    <Typography fontWeight={700} color="primary" fontSize={15}>
                       Ingresos
                     </Typography>
                   </AccordionSummary>
                   <AccordionDetails sx={{ py: 0.5 }}>
-                    <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+                    <Box
+                      sx={{
+                        width: "100%",
+                        overflowX: { xs: "auto", sm: "visible" },
+                      }}
+                    >
                       <Table
                         component={Paper}
                         size="small"
@@ -604,6 +610,9 @@ export default function ResumenContable({ tasaBCV }) {
                           <TableRow sx={{ height: 28 }}>
                             <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                               Descripción
+                            </TableCell>
+                            <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                              Forma de pago
                             </TableCell>
                             <TableCell
                               align="right"
@@ -623,7 +632,7 @@ export default function ResumenContable({ tasaBCV }) {
                           {ingresos.length === 0 ? (
                             <TableRow>
                               <TableCell
-                                colSpan={3}
+                                colSpan={4}
                                 align="center"
                                 sx={{
                                   color: "text.secondary",
@@ -640,27 +649,32 @@ export default function ResumenContable({ tasaBCV }) {
                                 <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                   {i.descripcion}
                                 </TableCell>
+                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                  {Array.isArray(i.formasPago) && i.formasPago.length > 0
+                                    ? i.formasPago.map((fp, fidx) => {
+                                        const nombre = (fp.formaPago || '').trim();
+                                        return (
+                                          <span key={fidx}>
+                                            {nombre.charAt(0).toUpperCase() + nombre.slice(1)}
+                                            {fidx < i.formasPago.length - 1 ? ', ' : ''}
+                                          </span>
+                                        );
+                                      })
+                                    : '-'}
+                                </TableCell>
                                 <TableCell
                                   align="right"
                                   sx={{ py: 0.5, fontSize: 13 }}
                                 >
                                   {(() => {
-                                    // Si hay formasPago, mostrar todos los montos en $ separados por ' + '
+                                    // Mostrar solo montos asociados a formaPago Zelle y Efectivo usando atributo monto
                                     if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
                                       const montosUSD = i.formasPago
-                                        .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
-                                        .map(fp => Number(fp.monto).toLocaleString("en-US", { minimumFractionDigits: 2 }));
-                                      return montosUSD.length > 0 ? montosUSD.join(' + ') : "-";
+                                        .filter(fp => fp.formaPago && ["zelle", "efectivo", "$", "usd"].includes(fp.formaPago.trim().toLowerCase()) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
+                                        .map(fp => Number(fp.monto).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                                      return montosUSD.length > 0 ? montosUSD.join(' + ') : '-';
                                     }
-                                    // Si existe montoUSD
-                                    if (typeof i.montoUSD === 'number' && !isNaN(i.montoUSD)) {
-                                      return i.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 });
-                                    }
-                                    // Si existe monto
-                                    if (typeof i.monto === 'number' && !isNaN(i.monto)) {
-                                      return i.monto.toLocaleString("en-US", { minimumFractionDigits: 2 });
-                                    }
-                                    return "-";
+                                    return '-';
                                   })()}
                                 </TableCell>
                                 <TableCell
@@ -668,29 +682,22 @@ export default function ResumenContable({ tasaBCV }) {
                                   sx={{ py: 0.5, fontSize: 13 }}
                                 >
                                   {(() => {
-                                    // Mostrar todos los montos en Bs, sumando principal y formasPago, igual que en ingresos.js
-                                    let montosBs = [];
-                                    // Principal
-                                    if (typeof i.montoBs === 'number' && !isNaN(i.montoBs) && i.montoBs > 0) {
-                                      montosBs.push(i.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 }));
-                                    }
-                                    // formasPago
+                                    // Mostrar solo montos asociados a formaPago 'pago movil'
                                     if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                                      i.formasPago.forEach(fp => {
-                                        if (typeof fp.montoBs === 'number' && !isNaN(fp.montoBs) && fp.montoBs > 0) {
-                                          montosBs.push(fp.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 }));
-                                        }
-                                      });
+                                      const montosBs = i.formasPago
+                                        .filter(fp => fp.formaPago && fp.formaPago.trim().toLowerCase() === 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
+                                        .map(fp => Number(fp.monto).toLocaleString('de-DE', { minimumFractionDigits: 2 }));
+                                      return montosBs.length > 0 ? montosBs.join(' + ') : '-';
                                     }
-                                    return montosBs.length > 0 ? montosBs.join(' + ') : "-";
+                                    return '-';
                                   })()}
                                 </TableCell>
                               </TableRow>
                             ))
                           )}
                         </TableBody>
-                        </Table>
-                      </Box>
+                      </Table>
+                    </Box>
                   </AccordionDetails>
                 </Accordion>
                 <Accordion
@@ -714,7 +721,12 @@ export default function ResumenContable({ tasaBCV }) {
                     </Typography>
                   </AccordionSummary>
                   <AccordionDetails sx={{ py: 0.5 }}>
-                    <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+                    <Box
+                      sx={{
+                        width: "100%",
+                        overflowX: { xs: "auto", sm: "visible" },
+                      }}
+                    >
                       <Table
                         component={Paper}
                         size="small"
@@ -770,20 +782,17 @@ export default function ResumenContable({ tasaBCV }) {
                                   align="right"
                                   sx={{ py: 0.5, fontSize: 13 }}
                                 >
-                                  {e.montoUSD.toLocaleString("en-US", {
-                                    minimumFractionDigits: 2,
-                                  })}
+                                    {(typeof e.montoUSD === 'number' && e.montoUSD > 0)
+                                      ? e.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })
+                                      : "-"}
                                 </TableCell>
                                 <TableCell
                                   align="right"
                                   sx={{ py: 0.5, fontSize: 13 }}
                                 >
-                                  {(e.montoBs && e.montoBs > 0
-                                    ? e.montoBs
-                                    : (e.montoUSD || 0) * (e.tasa || tasaHistorica)
-                                  ).toLocaleString("de-DE", {
-                                    minimumFractionDigits: 2,
-                                  })}
+                                    {(typeof e.montoBs === 'number' && e.montoBs > 0)
+                                      ? e.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })
+                                      : "-"}
                                 </TableCell>
                                 <TableCell
                                   align="right"
@@ -791,8 +800,8 @@ export default function ResumenContable({ tasaBCV }) {
                                 >
                                   {e.tasa
                                     ? e.tasa.toLocaleString("de-DE", {
-                                      minimumFractionDigits: 2,
-                                    })
+                                        minimumFractionDigits: 2,
+                                      })
                                     : "-"}
                                 </TableCell>
                               </TableRow>

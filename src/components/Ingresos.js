@@ -36,6 +36,7 @@ export default function Ingresos({ tasaBCV }) {
   const [ingresoMontoUSD, setIngresoMontoUSD] = useState("");
   const [ingresoMontoBs, setIngresoMontoBs] = useState("");
   const [formaPago, setFormaPago] = useState("");
+  // El ingreso manual no debe tener vehiculoId
   const [ingresos, setIngresos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
@@ -144,21 +145,29 @@ export default function Ingresos({ tasaBCV }) {
   const handleAgregarIngreso = async () => {
     const montoUSD = ingresoMontoUSD !== '' ? Number(ingresoMontoUSD) : undefined;
     const montoBs = ingresoMontoBs !== '' ? Number(ingresoMontoBs) : undefined;
-    if (!ingresoFactura || (!montoUSD && !montoBs) || !formaPago) return;
+    if (!ingresoFactura || (!montoUSD && !montoBs) || !formaPago) {
+      alert('Debes completar todos los campos obligatorios.');
+      return;
+    }
     const hoy = new Date();
     const d = String(hoy.getDate()).padStart(2, '0');
     const m = String(hoy.getMonth() + 1).padStart(2, '0');
     const y = hoy.getFullYear();
-    const vehiculoId = editIngreso?.vehiculoId || undefined;
+    // Construir formasPago: cada monto va como 'monto', el backend adapta montoBs si es pago movil
+    let formasPago = [];
+    if (montoUSD) {
+      formasPago.push({ formaPago, monto: montoUSD });
+    }
+    if (montoBs) {
+      formasPago.push({ formaPago, monto: montoBs });
+    }
     // Construye el objeto y elimina cualquier campo undefined o null
     const nuevoIngresoRaw = {
       factura: ingresoFactura ? ingresoFactura.toUpperCase() : undefined,
       descripcion: ingresoDescripcion || undefined,
-      monto: montoUSD,
-      montoBs: montoBs,
       formaPago: formaPago || undefined,
       fecha: `${d}/${m}/${y}`,
-      vehiculoId: vehiculoId,
+      formasPago: formasPago.length > 0 ? formasPago : undefined,
     };
     const nuevoIngreso = Object.fromEntries(
       Object.entries(nuevoIngresoRaw).filter(([_, v]) => v !== undefined && v !== null)
@@ -342,6 +351,7 @@ export default function Ingresos({ tasaBCV }) {
             </AccordionSummary>
             <AccordionDetails>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                {/* El campo de vehículoId se asigna automáticamente y no se muestra */}
                 <TextField
                   label="N° Factura"
                   size="small"
@@ -420,6 +430,7 @@ export default function Ingresos({ tasaBCV }) {
               mb: 1,
             }}
           >
+            {/* El campo de vehículoId se asigna automáticamente y no se muestra */}
             <TextField
               label="N° Factura"
               size="small"
@@ -491,8 +502,42 @@ export default function Ingresos({ tasaBCV }) {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }} className="w-100">
                 <span>Total Ingresos</span>
                 <span>
-                  $ {ingresos.reduce((acc, ing) => acc + (Number(ing.monto) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                  {' '}| Bs. {ingresos.reduce((acc, ing) => acc + (Number(ing.montoBs) || (Number(ing.monto) * tasaBCV) || 0), 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                  {(() => {
+                    const ingresosFiltrados = ingresos.filter(ing => {
+                      if (!fechaSeleccionada) return false;
+                      let ingresoFecha = '';
+                      if (ing.fecha && typeof ing.fecha === 'string') {
+                        const parts = ing.fecha.split(/[/-]/);
+                        if (parts.length === 3) {
+                          ingresoFecha = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+                        } else {
+                          ingresoFecha = ing.fecha;
+                        }
+                      } else if (ing.fecha && ing.fecha.seconds) {
+                        const dd = String(new Date(ing.fecha.seconds * 1000).getDate()).padStart(2, '0');
+                        const mm = String(new Date(ing.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+                        const yy = new Date(ing.fecha.seconds * 1000).getFullYear();
+                        ingresoFecha = `${dd}/${mm}/${yy}`;
+                      }
+                      return ingresoFecha === fechaSeleccionada;
+                    });
+                    // Sumar por divisa usando formasPago
+                    let totalUSD = 0;
+                    let totalBs = 0;
+                    ingresosFiltrados.forEach(ing => {
+                      if (Array.isArray(ing.formasPago)) {
+                        ing.formasPago.forEach(fp => {
+                          if (fp.formaPago && ["zelle", "efectivo", "$", "usd"].includes(fp.formaPago.trim().toLowerCase()) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                            totalUSD += Number(fp.monto);
+                          }
+                          if (fp.formaPago && fp.formaPago.trim().toLowerCase() === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                            totalBs += Number(fp.monto);
+                          }
+                        });
+                      }
+                    });
+                    return `$ ${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`;
+                  })()}
                 </span>
               </Box>
             </TableCell>
@@ -578,40 +623,24 @@ export default function Ingresos({ tasaBCV }) {
                 <TableCell>{ing.factura || ing.descripcion || '-'}</TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                   {(() => {
-                    // Si hay formasPago, mostrar todos los montos en $ separados por ' + '
+                    // Mostrar monto en $ solo si la forma de pago es Zelle, Efectivo, USD, $
                     if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
                       const montosUSD = ing.formasPago
-                        .filter(fp => fp.formaPago && fp.formaPago.toLowerCase() !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
+                        .filter(fp => fp.formaPago && ["zelle", "efectivo", "$", "usd"].includes(fp.formaPago.trim().toLowerCase()) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
                         .map(fp => Number(fp.monto).toLocaleString("en-US", { minimumFractionDigits: 2 }));
                       return montosUSD.length > 0 ? montosUSD.join(' + ') : "-";
-                    }
-                    // Si el campo monto existe y es válido, mostrarlo
-                    if (typeof ing.monto === 'number' && !isNaN(ing.monto)) {
-                      return ing.monto.toLocaleString("en-US", { minimumFractionDigits: 2 });
-                    }
-                    if (ing.monto !== undefined && ing.monto !== null && !isNaN(Number(ing.monto))) {
-                      return Number(ing.monto).toLocaleString("en-US", { minimumFractionDigits: 2 });
                     }
                     return "-";
                   })()}
                 </TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                   {(() => {
-                    // Si hay formasPago, mostrar todos los montos en Bs separados por ' + '
+                    // Mostrar monto en Bs solo si la forma de pago es 'pago movil', usando el atributo monto
                     if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
                       const montosBs = ing.formasPago
-                        .map(fp => fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))
-                          ? Number(fp.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 })
-                          : null)
-                        .filter(Boolean);
-                      if (montosBs.length > 0) return montosBs.join(' + ');
-                    }
-                    // Si montoBs existe y es válido, mostrarlo
-                    if (typeof ing.montoBs === 'number' && !isNaN(ing.montoBs)) {
-                      return ing.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 });
-                    }
-                    if (ing.montoBs !== undefined && ing.montoBs !== null && !isNaN(Number(ing.montoBs))) {
-                      return Number(ing.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 });
+                        .filter(fp => fp.formaPago && fp.formaPago.trim().toLowerCase() === 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
+                        .map(fp => Number(fp.monto).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                      return montosBs.length > 0 ? montosBs.join(' + ') : "-";
                     }
                     return "-";
                   })()}
@@ -633,11 +662,11 @@ export default function Ingresos({ tasaBCV }) {
                 {isOwner && (
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                      <Button size="small" variant="text" color="primary" sx={{ p: 0 }} onClick={() => handleEditarIngreso(ing)}>
-                        <EditIcon />
+                      <Button size="small" variant="text" color="primary" sx={{ p: 0, minWidth: 28, mr: 0.5 }} onClick={() => handleEditarIngreso(ing)}>
+                        <EditIcon fontSize="small" />
                       </Button>
-                      <Button size="small" variant="text" color="error" sx={{ p: 0 }} onClick={() => handleEliminarIngreso(ing)}>
-                        <DeleteIcon />
+                      <Button size="small" variant="text" color="error" sx={{ p: 0, minWidth: 28 }} onClick={() => handleEliminarIngreso(ing)}>
+                        <DeleteIcon fontSize="small" />
                       </Button>
                     </Box>
                   </TableCell>

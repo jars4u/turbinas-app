@@ -215,8 +215,9 @@ export default function Dashboard() {
       status: editId
         ? vehiculos.find((v) => v.id === editId)?.status || getDefaultStatus()
         : getDefaultStatus(),
-  precio: form.precio === "" ? null : Number(form.precio),
-  precioBs: form.precioBs === "" ? null : Number(form.precioBs),
+      precio: form.precio === "" ? null : Number(form.precio),
+      precioBs: form.precioBs === "" ? null : Number(form.precioBs),
+      monto2: form.precio !== undefined && form.precio !== "" && form.precio !== null ? Number(form.precio) : null,
       usuario: usuarioActivo,
       registradoPor: usuarioActivo,
       entregadoPor: editId
@@ -1533,19 +1534,38 @@ export default function Dashboard() {
           onClose={() => setFacturaOpen(false)}
           form={form}
           onRegister={async (facturaData) => {
-            // Registrar ingreso en Firestore
-            const nuevoIngreso = {
+            // Validar que exista al menos un precio
+            if ((form.precio === "" || form.precio === null) && (form.precioBs === "" || form.precioBs === null)) {
+              setSnackbarMsg("No se ha definido un precio para este servicio. No se puede registrar el pago.");
+              setSnackbarOpen(true);
+              return;
+            }
+            // Si el modal envía formasPago, usarlo y eliminar los campos sueltos
+            let nuevoIngreso = {
               descripcion: `${form.vehiculo} - ${form.servicio}`,
-              monto: Number(form.precio) || 0,
-              montoBs: Number(form.precioBs) || null,
               factura: facturaData.numeroFactura,
-              formaPago: facturaData.formaPago,
-              referencia: facturaData.referencia,
-              formaPago2: facturaData.formaPago2,
-              referencia2: facturaData.referencia2,
               fecha: new Date().toLocaleDateString("es-VE"),
               vehiculoId: editId || null,
+              montoBs: form.precioBs !== undefined && form.precioBs !== "" && form.precioBs !== null ? Number(form.precioBs) : null,
+              monto2: form.precio !== undefined && form.precio !== "" && form.precio !== null ? Number(form.precio) : null,
             };
+            // monto2 SIEMPRE debe crearse con el input precio en $
+            nuevoIngreso.monto2 = form.precio !== undefined && form.precio !== "" && form.precio !== null ? Number(form.precio) : null;
+            if (Array.isArray(facturaData.formasPago) && facturaData.formasPago.length > 0) {
+              nuevoIngreso.formasPago = facturaData.formasPago;
+            } else {
+              // Lógica anterior para una sola forma de pago
+              let monto = facturaData.monto !== undefined && facturaData.monto !== null && facturaData.monto !== ""
+                ? Number(facturaData.monto)
+                : (facturaData.formaPago && /pago[ _-]?movil/i.test(facturaData.formaPago)
+                    ? Number(form.precioBs) || 0
+                    : (facturaData.formaPago && (/zelle/i.test(facturaData.formaPago) || /efectivo/i.test(facturaData.formaPago))
+                        ? Number(form.precio) || 0
+                        : Number(form.precio) || Number(form.precioBs) || 0));
+              nuevoIngreso.monto = monto;
+              nuevoIngreso.formaPago = facturaData.formaPago;
+              nuevoIngreso.referencia = facturaData.referencia;
+            }
             try {
               const { guardarIngreso } = await import(
                 "../lib/ingresosFirebase"

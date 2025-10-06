@@ -119,7 +119,6 @@ export default function HistorialVehiculos() {
     referencia: true,
     montoUSD: true,
     montoBs: true,
-    estadoFactura: true,
     status: true,
     registradoPor: true,
     entregadoPor: true,
@@ -183,50 +182,48 @@ export default function HistorialVehiculos() {
         let formasPago = [];
         let referencias = [];
         let montosUSD = [];
-          let montosBs = [];
+        let montosBs = [];
         let estadosFactura = [];
+        // Regex para pagos en Bs
+        const pagoMovilRegex = /pago[\s\u00A0_-]*m[oó]vil/i;
+        // Regex para pagos en USD
+        const usdRegex = /zelle|efectivo|d[oó]lar(es)?|usd/i;
         ingresosRelacionados.forEach((ing) => {
-          // Expresión regular para detectar variantes de 'pago móvil'
-          const pagoMovilRegex = /pago[\s\u00A0_-]*m[oó]vil/i;
           if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
             ing.formasPago.forEach((fp) => {
               formasPago.push(fp.formaPago || "-");
               referencias.push(fp.referencia || "-");
-              if (fp.monto !== undefined) montosUSD.push(`$${fp.monto}`);
-              // Solo mostrar montoBs si la forma de pago es Pago móvil (cualquier variante)
-              if (
-                fp.montoBs !== undefined &&
-                fp.formaPago &&
-                pagoMovilRegex.test(fp.formaPago)
-              ) {
-                montosBs.push(`Bs. ${fp.montoBs}`);
+              // Mostrar monto SOLO en la columna correspondiente
+              if (fp.formaPago && pagoMovilRegex.test(fp.formaPago)) {
+                // Pago móvil: mostrar montoBs si existe, si no mostrar monto
+                if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
+                else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
+              } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
+                // Zelle/Efectivo/USD: mostrar monto
+                if (fp.monto !== undefined) montosUSD.push(`$${fp.monto}`);
               }
             });
           } else {
             formasPago.push(ing.formaPago || "-");
             referencias.push(ing.referencia || "-");
-            if (ing.monto !== undefined) montosUSD.push(`$${ing.monto}`);
-            if (ing.montoUSD !== undefined) montosUSD.push(`$${ing.montoUSD}`);
-            // Solo mostrar montoBs si la forma de pago es Pago móvil (cualquier variante)
-            if (
-              ing.montoBs !== undefined &&
-              ing.formaPago &&
-              pagoMovilRegex.test(ing.formaPago)
-            ) {
-              montosBs.push(`Bs. ${ing.montoBs}`);
+            // Mostrar monto SOLO en la columna correspondiente
+            if (ing.formaPago && pagoMovilRegex.test(ing.formaPago)) {
+              if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
+              else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
+            } else if (ing.formaPago && usdRegex.test(ing.formaPago)) {
+              if (ing.monto !== undefined) montosUSD.push(`$${ing.monto}`);
             }
+            if (ing.montoUSD !== undefined) montosUSD.push(`$${ing.montoUSD}`);
           }
           if (ing.estadoFactura) estadosFactura.push(ing.estadoFactura);
         });
-        // Log de depuración para ver el resultado de montosBs
-        console.log('Vehículo:', v.id, v.vehiculo, '| montosBs:', montosBs);
         return {
           ...v,
           factura: facturaValor,
           formaPago: formasPago.length ? formasPago.join(", ") : "-",
           referencia: referencias.length ? referencias.join(", ") : "-",
           montoUSD: montosUSD.length ? montosUSD.join(", ") : "-",
-            montoBs: montosBs.length ? montosBs.join(", ") : "-",
+          montoBs: montosBs.length ? montosBs.join(", ") : "-",
           estadoFactura: estadosFactura.length
             ? estadosFactura.join(", ")
             : "-",
@@ -584,9 +581,7 @@ export default function HistorialVehiculos() {
                   {columnasVisibles.montoBs && (
                     <TableCell>Monto pagado (Bs)</TableCell>
                   )}
-                  {columnasVisibles.estadoFactura && (
-                    <TableCell>Estado de facturación</TableCell>
-                  )}
+                  {/* columna estadoFactura eliminada */}
                   {columnasVisibles.status && (
                     <TableCell
                       onClick={() =>
@@ -812,12 +807,20 @@ export default function HistorialVehiculos() {
                           <TableCell
                             sx={{
                               whiteSpace: "nowrap",
-                              maxWidth: 90,
+                              maxWidth: 120,
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                             }}
                           >
-                            {v.precio ? `$${v.precio}` : "-"}
+                            {/* Mostrar precio y precioBs del objeto principal (vehículo) */}
+                            {(() => {
+                              const tienePrecio = Object.prototype.hasOwnProperty.call(v, "precio");
+                              const tienePrecioBs = Object.prototype.hasOwnProperty.call(v, "precioBs");
+                              if (tienePrecio && tienePrecioBs) return `$${v.precio} | Bs ${v.precioBs}`;
+                              if (tienePrecio) return `$${v.precio}`;
+                              if (tienePrecioBs) return `Bs ${v.precioBs}`;
+                              return "-";
+                            })()}
                           </TableCell>
                         )}
                         {columnasVisibles.factura && (
@@ -884,18 +887,7 @@ export default function HistorialVehiculos() {
                             {v.montoBs && v.montoBs !== "-" ? v.montoBs : "-"}
                           </TableCell>
                         )}
-                        {columnasVisibles.estadoFactura && (
-                          <TableCell
-                            sx={{
-                              whiteSpace: "nowrap",
-                              maxWidth: 90,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {v.estadoFactura || "-"}
-                          </TableCell>
-                        )}
+                        {/* columna estadoFactura eliminada */}
                         {columnasVisibles.status && (
                           <TableCell
                             sx={{
