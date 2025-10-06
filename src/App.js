@@ -1,5 +1,6 @@
 import Login from "./pages/Login";
 import Inventario from "./pages/Inventario";
+import CalculoNominaPage from "./pages/CalculoNomina";
 
 import React from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -74,6 +75,11 @@ function AppRoutes() {
         <Route path="/inventario" element={
           <ProtectedRoute>
             <Inventario />
+          </ProtectedRoute>
+        } />
+        <Route path="/nomina" element={
+          <ProtectedRoute>
+            <CalculoNominaPage />
           </ProtectedRoute>
         } />
       </Routes>

@@ -5,6 +5,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonIcon from "@mui/icons-material/Person";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import GroupIcon from "@mui/icons-material/Group";
 
 export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
 
@@ -49,6 +50,19 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
           }}
         >
           <Box sx={{ display: "flex", flexDirection: { xs: "row" }, alignItems: "center", justifyContent: { xs: "center", sm: "flex-end" }, gap: 1, width: { xs: "100%", sm: "auto" } }}>
+            <Tooltip title="Nómina" arrow>
+              <span>
+                <IconButton
+                  color="default"
+                  size="small"
+                  sx={{ color: "#757575" }}
+                  onClick={() => navigate("/nomina")}
+                  aria-label="Ir a cálculo de nómina"
+                >
+                  <GroupIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
             <Tooltip title="Inventario" arrow>
               <span>
                 <IconButton

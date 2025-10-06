@@ -336,74 +336,80 @@ export default function CierreDia() {
                 <Typography variant="subtitle1" fontWeight={600}>Totales por estado</Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Box sx={{ width: '100%', overflowX: 'auto' }}>
-                  <Table component={Paper} size="small" sx={{ mb: 2, minWidth: 400 }}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Estado</TableCell>
-                        <TableCell align="right">Total $</TableCell>
-                        <TableCell align="right">Total Bs</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {totalesPorEstado.map((estado) => (
-                        <TableRow key={estado.nombre}>
-                          <TableCell>
-                            <Chip
-                              label={estado.label}
-                              color={estado.color || "default"}
-                              size="small"
-                              sx={{ fontWeight: 500, fontSize: "0.95rem", height: 24 }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            {typeof estado.total === 'number' && !isNaN(estado.total)
-                              ? estado.total.toLocaleString("en-US", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })
-                              : "-"}
-                          </TableCell>
-                          <TableCell align="right">
-                            {tasaBCV && typeof estado.total === 'number' && !isNaN(estado.total)
-                              ? (estado.total * tasaBCV).toLocaleString("de-DE", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })
-                              : "-"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {/* Fila de total */}
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>
-                          {(() => {
-                            const total = totalesPorEstado.reduce((acc, estado) => acc + (typeof estado.total === 'number' && !isNaN(estado.total) ? estado.total : 0), 0);
-                            return typeof total === 'number' && !isNaN(total)
-                              ? total.toLocaleString("en-US", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })
-                              : "-";
-                          })()}
+                <Table size="small" sx={{ mb: 2, minWidth: 400, width: '100%', overflowX: 'auto' }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Estado</TableCell>
+                      <TableCell align="right">Total $</TableCell>
+                      <TableCell align="right">Total Bs</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {totalesPorEstado.map((estado) => (
+                      <TableRow key={estado.nombre}>
+                        <TableCell>
+                          <Chip
+                            label={estado.label}
+                            size="small"
+                            sx={{
+                              fontWeight: 500,
+                              fontSize: "0.95rem",
+                              height: 24,
+                              bgcolor: estado.color === "gris" ? "grey.500" : undefined,
+                              color: estado.color === "gris" ? "#fff" : undefined,
+                            }}
+                            {...(['default','primary','secondary','error','info','success','warning'].includes(estado.color)
+                              ? { color: estado.color }
+                              : {})}
+                          />
                         </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>
-                          {(() => {
-                            if (!tasaBCV) return "-";
-                            const totalBs = totalesPorEstado.reduce((acc, estado) => acc + (typeof estado.total === 'number' && !isNaN(estado.total) ? estado.total * tasaBCV : 0), 0);
-                            return typeof totalBs === 'number' && !isNaN(totalBs)
-                              ? totalBs.toLocaleString("de-DE", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })
-                              : "-";
-                          })()}
+                        <TableCell align="right">
+                          {typeof estado.total === 'number' && !isNaN(estado.total)
+                            ? estado.total.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
+                            : "-"}
+                        </TableCell>
+                        <TableCell align="right">
+                          {tasaBCV && typeof estado.total === 'number' && !isNaN(estado.total)
+                            ? (estado.total * tasaBCV).toLocaleString("de-DE", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
+                            : "-"}
                         </TableCell>
                       </TableRow>
-                    </TableBody>
-                  </Table>
-                </Box>
+                    ))}
+                    {/* Fila de total */}
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>
+                        {(() => {
+                          const total = totalesPorEstado.reduce((acc, estado) => acc + (typeof estado.total === 'number' && !isNaN(estado.total) ? estado.total : 0), 0);
+                          return typeof total === 'number' && !isNaN(total)
+                            ? total.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
+                            : "-";
+                        })()}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>
+                        {(() => {
+                          if (!tasaBCV) return "-";
+                          const totalBs = totalesPorEstado.reduce((acc, estado) => acc + (typeof estado.total === 'number' && !isNaN(estado.total) ? estado.total * tasaBCV : 0), 0);
+                          return typeof totalBs === 'number' && !isNaN(totalBs)
+                            ? totalBs.toLocaleString("de-DE", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
+                            : "-";
+                        })()}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                   El total de entregados corresponde al monto cobrado hoy y se reflejará en los egresos. El total
                   en proceso y notificado muestra los montos aún no cobrados.
@@ -426,9 +432,17 @@ export default function CierreDia() {
                     <TableCell>
                       <Chip
                         label={estado.label}
-                        color={estado.color || "default"}
                         size="small"
-                        sx={{ fontWeight: 500, fontSize: "0.95rem", height: 24 }}
+                        sx={{
+                          fontWeight: 500,
+                          fontSize: "0.95rem",
+                          height: 24,
+                          bgcolor: estado.color === "gris" ? "grey.500" : undefined,
+                          color: estado.color === "gris" ? "#fff" : undefined,
+                        }}
+                        {...(['default','primary','secondary','error','info','success','warning'].includes(estado.color)
+                          ? { color: estado.color }
+                          : {})}
                       />
                     </TableCell>
                     <TableCell align="right">

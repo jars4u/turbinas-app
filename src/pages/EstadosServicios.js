@@ -38,6 +38,7 @@ import {
 } from '../lib/estadosServicioFirebase';
 
 export default function EstadosServicios() {
+  const [confirmDejarDeMostrar, setConfirmDejarDeMostrar] = useState({ open: false, id: null });
   const [estados, setEstados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -149,19 +150,7 @@ export default function EstadosServicios() {
   };
 
   const handleDejarDeMostrarChange = async (id) => {
-    setDejarDeMostrarId(id);
-    // Marcar solo uno como dejarDeMostrar
-    const nuevosEstados = estados.map(e => ({ ...e, dejarDeMostrar: e.id === id }));
-    setEstados(nuevosEstados);
-    try {
-      await Promise.all(estados.map(e => e.id !== id ? actualizarEstadoServicio(e.id, { ...e, dejarDeMostrar: false }) : null));
-      await actualizarEstadoServicio(id, { ...estados.find(e => e.id === id), dejarDeMostrar: true });
-      const actualizados = await obtenerEstadosServicio();
-      setEstados(actualizados);
-    } catch (err) {
-      setEstados(estados);
-    }
-    setDejarDeMostrarId(null);
+    setConfirmDejarDeMostrar({ open: true, id });
   };
 
   return (
@@ -262,12 +251,36 @@ export default function EstadosServicios() {
                           onChange={() => handleDejarDeMostrarChange(estado.id)}
                           color="warning"
                           inputProps={{ 'aria-label': 'Estado dejar de mostrar' }}
-                          disabled={dejarDeMostrarId === estado.id}
                           sx={{ mx: 'auto', display: 'block' }}
                         />
                         {dejarDeMostrarId === estado.id && (
                           <CircularProgress size={16} sx={{ ml: 1 }} />
                         )}
+      <Dialog open={confirmDejarDeMostrar.open} onClose={() => setConfirmDejarDeMostrar({ open: false, id: null })}>
+        <DialogTitle>¿Ocultar este estado en el dashboard?</DialogTitle>
+        <DialogContent>
+          <Typography>Si confirmas, el estado dejará de mostrarse en el dashboard y no podrá ser seleccionado por los usuarios.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDejarDeMostrar({ open: false, id: null })} color="inherit">Cancelar</Button>
+          <Button color="warning" variant="contained" onClick={async () => {
+            const id = confirmDejarDeMostrar.id;
+            setDejarDeMostrarId(id);
+            const nuevosEstados = estados.map(e => ({ ...e, dejarDeMostrar: e.id === id }));
+            setEstados(nuevosEstados);
+            try {
+              await Promise.all(estados.map(e => e.id !== id ? actualizarEstadoServicio(e.id, { ...e, dejarDeMostrar: false }) : null));
+              await actualizarEstadoServicio(id, { ...estados.find(e => e.id === id), dejarDeMostrar: true });
+              const actualizados = await obtenerEstadosServicio();
+              setEstados(actualizados);
+            } catch (err) {
+              setEstados(estados);
+            }
+            setDejarDeMostrarId(null);
+            setConfirmDejarDeMostrar({ open: false, id: null });
+          }}>Confirmar</Button>
+        </DialogActions>
+      </Dialog>
                       </TableCell>
                       <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>
                         {estado.color === "grey"

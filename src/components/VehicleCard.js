@@ -11,6 +11,12 @@ import {
   Menu,
   MenuItem,
   Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+    Popover,
+    Button,
 } from "@mui/material";
 import Divider from '@mui/material/Divider';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -52,6 +58,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [currentStatus, setCurrentStatus] = useState(vehiculo.status || "servicio");
   const [estadosServicio, setEstadosServicio] = useState([]);
+    const [popoverConfirm, setPopoverConfirm] = useState({ open: false, anchorEl: null, estado: null, newStatus: null });
 
   // Cargar estados dinámicos desde Firestore
   useEffect(() => {
@@ -98,8 +105,6 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
       .toString()
       .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
-  // ...existing code...
-
   // Mostrar hora de registro estática
   // const formatHoraRegistro = (timestamp) => {
   //   const date = new Date(timestamp);
@@ -117,6 +122,12 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
     setAnchorEl(null);
   };
   const handleStatusChange = async (newStatus) => {
+    // Buscar si el estado seleccionado es dejarDeMostrar
+    const estadoObj = estadosServicio.find(e => e.nombre === newStatus);
+    if (estadoObj && estadoObj.dejarDeMostrar) {
+      setPopoverConfirm({ open: true, anchorEl, estado: estadoObj, newStatus });
+      return;
+    }
     setCurrentStatus(newStatus);
     setAnchorEl(null);
     // Actualizar en Firestore
@@ -129,16 +140,17 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
       onStatusChange(newStatus);
     }
   };
+  // ...existing code...
 
   return (
     <Card
       variant="outlined"
       sx={{
-  width: 210,
-  minWidth: 210,
-  maxWidth: 210,
-  minHeight: 180,
-  height: height || 'auto',
+        width: 210,
+        minWidth: 210,
+        maxWidth: 210,
+        minHeight: 180,
+        height: height || 'auto',
         mx: 1.5,
         display: "flex",
         flexDirection: "column",
@@ -164,6 +176,35 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
         onEdit();
       }}
     >
+      {/* ...contenido de la tarjeta... */}
+      <Popover
+        open={popoverConfirm.open}
+        anchorEl={popoverConfirm.anchorEl}
+        onClose={() => setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Box sx={{ p: 2, maxWidth: 260 }}>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Este servicio desaparecerá del Dashboard. ¿Desea continuar?
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button size="small" onClick={() => setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null })} color="primary" variant="outlined">Cancelar</Button>
+            <Button size="small" color="error" variant="contained" onClick={async () => {
+              setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null });
+              setCurrentStatus(popoverConfirm.newStatus);
+              setAnchorEl(null);
+              if (vehiculo.id) {
+                const data = sanitizeDeep({ ...vehiculo, status: popoverConfirm.newStatus });
+                await actualizarVehiculo(vehiculo.id, data);
+              }
+              if (typeof onStatusChange === "function") {
+                onStatusChange(popoverConfirm.newStatus);
+              }
+            }}>Confirmar</Button>
+          </Box>
+        </Box>
+      </Popover>
       <CardContent>
         <div
           style={{
@@ -188,9 +229,11 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
             label={
               estadosServicio.find(e => e.nombre === currentStatus)?.label || "Sin estado"
             }
-            color={
-              estadosServicio.find(e => e.nombre === currentStatus)?.color || "default"
-            }
+            color={(() => {
+              const estadoObj = estadosServicio.find(e => e.nombre === currentStatus);
+              const validColors = ["default", "primary", "secondary", "error", "info", "success", "warning"];
+              return validColors.includes(estadoObj?.color) ? estadoObj?.color : "default";
+            })()}
             size="small"
             onClick={(e) => {
               e.stopPropagation();
@@ -203,13 +246,19 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
             open={Boolean(anchorEl)}
             onClose={handleClose}
           >
-            {estadosServicio.filter(e => e.nombre !== "entregado").map((estado) => (
+            {estadosServicio.map((estado) => (
               <MenuItem
                 key={estado.nombre}
                 selected={estado.nombre === currentStatus}
                 onClick={(event) => {
                   event.stopPropagation();
-                  handleStatusChange(estado.nombre);
+                  const estadoObj = estadosServicio.find(e => e.nombre === estado.nombre);
+                  if (estadoObj && estadoObj.dejarDeMostrar) {
+                    setPopoverConfirm({ open: true, anchorEl: event.currentTarget, estado: estadoObj, newStatus: estado.nombre });
+                  } else {
+                    setAnchorEl(null);
+                    handleStatusChange(estado.nombre);
+                  }
                 }}
               >
                 {estado.label}

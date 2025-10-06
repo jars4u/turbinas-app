@@ -20,6 +20,7 @@ import {
   Alert,
   Autocomplete,
 } from "@mui/material";
+import Skeleton from "@mui/material/Skeleton";
 import PaymentModal from "../components/PaymentModal";
 import CircularProgress from "@mui/material/CircularProgress";
 import EditIcon from "@mui/icons-material/Edit";
@@ -36,7 +37,6 @@ import {
   actualizarVehiculo,
   eliminarVehiculo,
 } from "../lib/vehiculosFirebase";
-import PrecioConvertido from "../components/PrecioConvertido";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
 
@@ -60,6 +60,8 @@ function sanitizeDeep(obj) {
 }
 
 export default function Dashboard() {
+  // Estado para el modal de confirmación de ocultar servicio
+  const [confirmOcultar, setConfirmOcultar] = useState({ open: false, estado: null });
   const { usuario, handleLogout } = useAuth();
   // Estado para modal de cambio de estado
   const [openEstadoModal, setOpenEstadoModal] = useState(false);
@@ -454,16 +456,35 @@ export default function Dashboard() {
         </Box>
       </Box>
       {loading ? (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: 200,
-          }}
-        >
-          <CircularProgress color="primary" size={48} />
-        </Box>
+        <Grid container spacing={3} columns={6} sx={{ mt: 1 }}>
+          {[...Array(4)].map((_, idx) => (
+            <Grid key={idx} sx={{ mb: 3 }}>
+              <Box
+                sx={{
+                  width: 210,
+                  minWidth: 210,
+                  maxWidth: 210,
+                  minHeight: 180,
+                  mx: 1.5,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  p: 0.8,
+                  borderRadius: 2,
+                  boxShadow: 2,
+                  bgcolor: "background.paper",
+                }}
+              >
+                <Skeleton variant="rectangular" width={180} height={24} sx={{ mb: 1 }} />
+                <Skeleton variant="text" width={120} sx={{ mb: 1 }} />
+                <Skeleton variant="text" width={80} sx={{ mb: 1 }} />
+                <Skeleton variant="rectangular" width={180} height={18} sx={{ mb: 1 }} />
+                <Skeleton variant="text" width={100} sx={{ mb: 1 }} />
+                <Skeleton variant="rectangular" width={60} height={32} sx={{ mt: 2 }} />
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
       ) : (
         <>
           {/* Vista tabla en móviles */}
@@ -623,7 +644,9 @@ export default function Dashboard() {
                             const estadoObj = estadosServicio.find(
                               (e) => e.nombre === (v.status || v.estado)
                             );
-                            return estadoObj?.color || "default";
+                            // Solo permitir colores válidos de MUI
+                            const validColors = ["default", "primary", "secondary", "error", "info", "success", "warning"];
+                            return validColors.includes(estadoObj?.color) ? estadoObj?.color : "default";
                           })()}
                           size="small"
                           sx={{ fontSize: "0.80rem", height: 24 }}
@@ -810,6 +833,9 @@ export default function Dashboard() {
                   e.nombre ===
                   (vehiculoActual?.status || vehiculoActual?.estado)
               );
+              // Validar color permitido por MUI
+              const validColors = ["default", "primary", "secondary", "error", "info", "success", "warning"];
+              const chipColor = validColors.includes(estadoActual?.color) ? estadoActual?.color : "default";
               return (
                 <Box sx={{ width: "100%", display: "block" }}>
                   <Chip
@@ -819,7 +845,7 @@ export default function Dashboard() {
                       vehiculoActual?.estado ||
                       "Sin estado"
                     }
-                    color={estadoActual?.color || "default"}
+                    color={chipColor}
                     size="small"
                     sx={{
                       fontSize: "0.85rem",
@@ -851,35 +877,76 @@ export default function Dashboard() {
                 }}
               >
                 {estadosServicio
-                  .filter((e) => !e.defaultFacturar)
-                  .map((estado) => (
-                    <Button
-                      key={estado.nombre}
-                      variant={
-                        vehiculoEstadoModal &&
-                        (vehiculoEstadoModal.status === estado.nombre ||
-                          vehiculoEstadoModal.estado === estado.nombre)
-                          ? "contained"
-                          : "outlined"
-                      }
-                      color={estado.color || "primary"}
-                      onClick={async () => {
-                        setOpenEstadoModal(false);
-                        if (!vehiculoEstadoModal) return;
-                        const data = sanitizeDeep({ ...vehiculoEstadoModal, status: estado.nombre });
-                        await actualizarVehiculo(vehiculoEstadoModal.id, data);
-                        const actualizados = await obtenerVehiculos();
-                        setVehiculos(actualizados);
-                      }}
-                      sx={{
-                        justifyContent: "flex-start",
-                        textTransform: "none",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {estado.label}
-                    </Button>
-                  ))}
+                  .map((estado) => {
+                    const validColors = ["default", "primary", "secondary", "error", "info", "success", "warning"];
+                    let buttonColor = validColors.includes(estado.color) ? estado.color : "primary";
+                    let sxButton = {
+                      justifyContent: "flex-start",
+                      textTransform: "none",
+                      fontWeight: 600,
+                    };
+                    if (estado.color === "grey") {
+                      buttonColor = "inherit";
+                      sxButton = {
+                        ...sxButton,
+                        bgcolor: "#e0e0e0",
+                        color: "#424242",
+                        '&:hover': { bgcolor: "#bdbdbd" }
+                      };
+                    }
+                    const esOcultar = !!estado.dejarDeMostrar;
+                    return (
+                      <>
+                        <Button
+                          key={estado.nombre}
+                          variant={
+                            vehiculoEstadoModal &&
+                            (vehiculoEstadoModal.status === estado.nombre ||
+                              vehiculoEstadoModal.estado === estado.nombre)
+                              ? "contained"
+                              : "outlined"
+                          }
+                          color={buttonColor}
+                          onClick={() => {
+                            if (!vehiculoEstadoModal) return;
+                            if (esOcultar) {
+                              setConfirmOcultar({ open: true, estado });
+                            } else {
+                              setOpenEstadoModal(false);
+                              const data = sanitizeDeep({ ...vehiculoEstadoModal, status: estado.nombre });
+                              actualizarVehiculo(vehiculoEstadoModal.id, data).then(async () => {
+                                const actualizados = await obtenerVehiculos();
+                                setVehiculos(actualizados);
+                              });
+                            }
+                          }}
+                          sx={sxButton}
+                        >
+                          {estado.label}
+                        </Button>
+                        {/* Modal de confirmación para dejar de mostrar */}
+                        {esOcultar && confirmOcultar?.open && confirmOcultar.estado?.nombre === estado.nombre && (
+                          <Dialog open={true} onClose={() => setConfirmOcultar({ open: false, estado: null })}>
+                            <DialogTitle>Confirmar acción</DialogTitle>
+                            <DialogContent>
+                              <Typography>Este servicio desaparecerá del Dashboard. ¿Desea continuar?</Typography>
+                            </DialogContent>
+                            <DialogActions>
+                              <Button onClick={() => setConfirmOcultar({ open: false, estado: null })} color="primary">Cancelar</Button>
+                              <Button onClick={async () => {
+                                setConfirmOcultar({ open: false, estado: null });
+                                setOpenEstadoModal(false);
+                                const data = sanitizeDeep({ ...vehiculoEstadoModal, status: estado.nombre });
+                                await actualizarVehiculo(vehiculoEstadoModal.id, data);
+                                const actualizados = await obtenerVehiculos();
+                                setVehiculos(actualizados);
+                              }} color="error" variant="contained">Confirmar</Button>
+                            </DialogActions>
+                          </Dialog>
+                        )}
+                      </>
+                    );
+                  })}
               </Box>
             </DialogContent>
             <DialogActions>
