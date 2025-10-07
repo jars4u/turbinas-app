@@ -191,6 +191,10 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
             <Button size="small" onClick={() => setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null })} color="primary" variant="outlined">Cancelar</Button>
             <Button size="small" color="error" variant="contained" onClick={async () => {
+              // Evitar que el click se propague y abra el modal de edición
+              if (typeof window !== "undefined" && window.event) {
+                window.event.stopPropagation();
+              }
               setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null });
               setCurrentStatus(popoverConfirm.newStatus);
               setAnchorEl(null);

@@ -1,8 +1,16 @@
 import React from "react";
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
+import { obtenerNominas } from "../lib/obtenerNominasFirebase";
+import { guardarNomina } from "../lib/nominasFirebase";
 import { obtenerConfiguracionNomina } from "../lib/configuracionNominaFirebase";
 import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { useState, useEffect } from "react";
-import { Button, Container, Typography, Table, TableHead, TableRow, TableCell, TableBody, Paper, Box, TextField } from "@mui/material";
+import { Button, Container, Typography, Table, TableHead, TableRow, TableCell, TableBody, Paper, Box, TextField, Divider } from "@mui/material";
 import DownloadIcon from '@mui/icons-material/Download';
 import { LinearProgress } from "@mui/material";
 import { obtenerCargos } from "../lib/cargosFirebase";
@@ -12,6 +20,16 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 
 export default function CalculoNomina() {
+  const [highlightedNominaId, setHighlightedNominaId] = useState(null);
+  const [modalSobreescribir, setModalSobreescribir] = useState(false);
+  const [nominaPendiente, setNominaPendiente] = useState(null);
+  const [savingNomina, setSavingNomina] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  // Estado para nóminas históricas
+  const [nominasGuardadas, setNominasGuardadas] = useState([]);
+  useEffect(() => {
+    obtenerNominas().then(setNominasGuardadas);
+  }, []);
   // Días de semana laboral (sincronizado con Firestore)
   const [diasSemanaLaboral, setDiasSemanaLaboral] = useState(5);
   useEffect(() => {
@@ -26,7 +44,11 @@ export default function CalculoNomina() {
   const [empleados, setEmpleados] = useState([]);
   const [cargos, setCargos] = useState([]);
   const [totalServicios, setTotalServicios] = useState(0); // total de servicios facturados en el rango
-  // Calcular lunes y viernes de la semana actual
+  // Estado para servicios y bono por empleado
+  const [serviciosPorEmpleado, setServiciosPorEmpleado] = useState({}); // { id: cantidad }
+  const [bonosPorEmpleado, setBonosPorEmpleado] = useState({}); // { id: bono }
+  // Estado para observaciones por empleado
+  const [observacionesPorEmpleado, setObservacionesPorEmpleado] = useState({}); // { id: texto }
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
   const monday = new Date(today);
@@ -40,8 +62,22 @@ export default function CalculoNomina() {
   useEffect(() => {
   // Obtener cargos y empleados desde Firestore
   obtenerCargos().then(setCargos);
-  obtenerEmpleados().then(setEmpleados);
-}, []);
+  obtenerEmpleados().then(emps => {
+    setEmpleados(emps);
+    // Inicializar servicios, bonos y observaciones por empleado
+    const serviciosInit = {};
+    const bonosInit = {};
+    const obsInit = {};
+    emps.forEach(e => {
+      serviciosInit[e.id] = totalServicios;
+      bonosInit[e.id] = 0;
+      obsInit[e.id] = "";
+    });
+    setServiciosPorEmpleado(serviciosInit);
+    setBonosPorEmpleado(bonosInit);
+    setObservacionesPorEmpleado(obsInit);
+  });
+}, [totalServicios]);
 
 useEffect(() => {
   // Consultar Firestore para obtener el total de servicios facturados en el rango
@@ -62,8 +98,9 @@ useEffect(() => {
   // Calcula el monto total a pagar según el cargo y cantidad de servicios en el rango
   const calcularMonto = (empleado) => {
     const cargoObj = cargos.find(c => c.id === empleado.cargo);
-    const cantidad = totalServicios;
-    if (!cargoObj) return 0;
+    const cantidad = serviciosPorEmpleado[empleado.id] ?? totalServicios;
+    const bono = bonosPorEmpleado[empleado.id] ?? 0;
+    if (!cargoObj) return bono;
     // Calcular días del rango
     let diasRango = 1;
     if (fechaInicio && fechaFin) {
@@ -71,28 +108,24 @@ useEffect(() => {
       const d2 = new Date(fechaFin);
       diasRango = Math.max(1, Math.floor((d2 - d1) / (1000 * 60 * 60 * 24)) + 1);
     }
+    let monto = 0;
     // Comisión: salario * cantidad de servicios
     if (cargoObj.tipo === "comision") {
-      return (cargoObj.salario || 0) * cantidad;
+      monto = (cargoObj.salario || 0) * cantidad;
+    } else if (cargoObj.tipo === "dia") {
+      monto = (cargoObj.salario || 0) * diasRango;
+    } else if (cargoObj.tipo === "semana") {
+      monto = (cargoObj.salario || 0) * (diasRango / diasSemanaLaboral);
+    } else if (cargoObj.tipo === "mes") {
+      monto = (cargoObj.salario || 0) * (diasRango / 30);
+    } else {
+      monto = cargoObj.salario || 0;
     }
-    // Por día: salario * días del rango
-    if (cargoObj.tipo === "dia") {
-      return (cargoObj.salario || 0) * diasRango;
-    }
-    // Por semana: salario * (días del rango / díasSemanaLaboral)
-    if (cargoObj.tipo === "semana") {
-      return (cargoObj.salario || 0) * (diasRango / diasSemanaLaboral);
-    }
-    // Por mes: salario * (días del rango / 30)
-    if (cargoObj.tipo === "mes") {
-      return (cargoObj.salario || 0) * (diasRango / 30);
-    }
-    // Default: salario fijo
-    return cargoObj.salario || 0;
+    return monto + bono;
   };
 
   return (
-  <Container maxWidth="md" sx={{ mt: 6 }}>
+  <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Button
         variant="text"
         startIcon={<ArrowBackIcon />}
@@ -137,19 +170,21 @@ useEffect(() => {
             }, 1200); // Simula cálculo de nómina
           }}
         >
-          Pagar nómina
+          Calcular nómina
         </Button>
       </Box>
       {loading && <LinearProgress sx={{ mb: 2 }} />}
       {mostrarTabla && (
-        <Paper sx={{ p: 2 }}>
-          <Table size="small">
+        <Paper sx={{ p: 2, minWidth: 900, overflowX: 'auto' }}>
+          <Table size="small" sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
                 <TableCell>Nombre</TableCell>
                 <TableCell>Cédula</TableCell>
                 <TableCell>Cargo</TableCell>
                 <TableCell>Cant. servicios</TableCell>
+                <TableCell>Bono ($)</TableCell>
+                <TableCell>Observaciones</TableCell>
                 <TableCell>Monto a pagar ($)</TableCell>
               </TableRow>
             </TableHead>
@@ -161,21 +196,133 @@ useEffect(() => {
                     <TableCell>{empleado.nombre}</TableCell>
                     <TableCell>{empleado.cedula}</TableCell>
                     <TableCell>{cargoObj ? cargoObj.nombre : ""}</TableCell>
-                    <TableCell>{totalServicios}</TableCell>
+                    <TableCell>
+                      <TextField
+                        value={serviciosPorEmpleado[empleado.id] ?? totalServicios}
+                        type="number"
+                        size="small"
+                        sx={{ width: 80 }}
+                        inputProps={{ min: 0, step: 1 }}
+                        onChange={e => {
+                          const val = Math.max(0, parseInt(e.target.value) || 0);
+                          setServiciosPorEmpleado(prev => ({ ...prev, [empleado.id]: val }));
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={bonosPorEmpleado[empleado.id] ?? 0}
+                        type="number"
+                        size="small"
+                        sx={{ width: 80 }}
+                        inputProps={{ min: 0, step: "0.01" }}
+                        onChange={e => {
+                          const val = Math.max(0, parseFloat(e.target.value) || 0);
+                          setBonosPorEmpleado(prev => ({ ...prev, [empleado.id]: val }));
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={observacionesPorEmpleado[empleado.id] ?? ""}
+                        size="small"
+                        sx={{ width: 180 }}
+                        onChange={e => {
+                          setObservacionesPorEmpleado(prev => ({ ...prev, [empleado.id]: e.target.value }));
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>{calcularMonto(empleado).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
                   </TableRow>
                 );
               })}
               {empleados.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ color: "text.secondary" }}>
+                  <TableCell colSpan={6} align="center" sx={{ color: "text.secondary" }}>
                     No hay empleados registrados.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16, gap: 12 }}>
+            <Button variant="outlined" color="secondary" size="small" onClick={async () => {
+              // Verificar si ya existe una nómina para el mismo rango
+              const existe = nominasGuardadas.some(n => n.fechaInicio === fechaInicio && n.fechaFin === fechaFin);
+              const nomina = {
+                fechaInicio,
+                fechaFin,
+                empleados: empleados.map(empleado => {
+                  const cargoObj = cargos.find(c => c.id === empleado.cargo);
+                  return {
+                    id: empleado.id,
+                    nombre: empleado.nombre,
+                    cedula: empleado.cedula,
+                    cargo: cargoObj ? cargoObj.nombre : "",
+                    servicios: serviciosPorEmpleado[empleado.id] ?? totalServicios,
+                    bono: bonosPorEmpleado[empleado.id] ?? 0,
+                    observaciones: observacionesPorEmpleado[empleado.id] ?? "",
+                    monto: calcularMonto(empleado)
+                  };
+                })
+              };
+              if (existe) {
+                setNominaPendiente(nomina);
+                setModalSobreescribir(true);
+                return;
+              }
+              setSavingNomina(true);
+              try {
+                const docRef = await guardarNomina(nomina);
+                setSnackbar({ open: true, message: 'Nómina guardada correctamente en el histórico.', severity: 'success' });
+                obtenerNominas().then(nominas => {
+                  setNominasGuardadas(nominas);
+                  // Resaltar la nueva nómina
+                  setHighlightedNominaId(docRef?.id || null);
+                  setTimeout(() => setHighlightedNominaId(null), 2200);
+                });
+              } catch (err) {
+                setSnackbar({ open: true, message: 'Error al guardar la nómina.', severity: 'error' });
+              }
+              setSavingNomina(false);
+            }} disabled={savingNomina}>
+              {savingNomina ? 'Guardando...' : 'Guardar nómina'}
+            </Button>
+          {/* Modal de advertencia de sobreescritura */}
+          <Dialog open={modalSobreescribir} onClose={() => setModalSobreescribir(false)}>
+            <DialogTitle>Advertencia</DialogTitle>
+            <DialogContent>
+              <Typography>Ya existe una nómina guardada para el rango seleccionado.<br />¿Desea sobreescribirla? Se perderán los datos anteriores.</Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setModalSobreescribir(false)} color="primary">Cancelar</Button>
+              <Button onClick={async () => {
+                setSavingNomina(true);
+                setModalSobreescribir(false);
+                try {
+                  // Eliminar nómina anterior
+                  const anterior = nominasGuardadas.find(n => n.fechaInicio === fechaInicio && n.fechaFin === fechaFin);
+                  if (anterior && anterior.id) {
+                    // Eliminar el documento anterior
+                    const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
+                    const db = getFirestore();
+                    await deleteDoc(doc(db, 'nominas', anterior.id));
+                  }
+                  const docRef = await guardarNomina(nominaPendiente);
+                  setSnackbar({ open: true, message: 'Nómina sobreescrita correctamente.', severity: 'success' });
+                  obtenerNominas().then(nominas => {
+                    setNominasGuardadas(nominas);
+                    setHighlightedNominaId(docRef?.id || null);
+                    setTimeout(() => setHighlightedNominaId(null), 2200);
+                  });
+                } catch (err) {
+                  setSnackbar({ open: true, message: 'Error al sobreescribir la nómina.', severity: 'error' });
+                }
+                setSavingNomina(false);
+                setNominaPendiente(null);
+              }} color="error" variant="contained">Sobreescribir</Button>
+            </DialogActions>
+          </Dialog>
             <Button variant="outlined" color="success" size="small" onClick={() => {
               // Generar datos para Excel
               const data = empleados.map(empleado => {
@@ -184,7 +331,9 @@ useEffect(() => {
                   Nombre: empleado.nombre,
                   Cedula: empleado.cedula,
                   Cargo: cargoObj ? cargoObj.nombre : "",
-                  Servicios: totalServicios,
+                  Servicios: serviciosPorEmpleado[empleado.id] ?? totalServicios,
+                  Bono: bonosPorEmpleado[empleado.id] ?? 0,
+                  Observaciones: observacionesPorEmpleado[empleado.id] ?? "",
                   "Monto a pagar ($)": calcularMonto(empleado)
                 };
               });
@@ -198,8 +347,50 @@ useEffect(() => {
               Exportar a Excel
             </Button>
           </div>
+          <Snackbar open={snackbar.open} autoHideDuration={3500} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+            <MuiAlert elevation={6} variant="filled" onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+              {snackbar.message}
+            </MuiAlert>
+          </Snackbar>
         </Paper>
       )}
+      {/* Lista de nóminas guardadas */}
+      <Divider />
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          Historial de nóminas guardadas
+        </Typography>
+        {nominasGuardadas.length > 0 ? (
+          <Table size="small" sx={{ minWidth: 700 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Fecha guardado</TableCell>
+                <TableCell>Rango</TableCell>
+                <TableCell>Cantidad empleados</TableCell>
+                <TableCell>Monto total ($)</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {nominasGuardadas.map(nomina => (
+                <TableRow key={nomina.id}
+                  sx={highlightedNominaId === nomina.id ? {
+                    backgroundColor: 'rgba(76, 175, 80, 0.18)',
+                    transition: 'background-color 1.2s',
+                  } : { transition: 'background-color 1.2s' }}>
+                  <TableCell>{nomina.fechaGuardado?.toDate ? nomina.fechaGuardado.toDate().toLocaleString() : ""}</TableCell>
+                  <TableCell>{nomina.fechaInicio} a {nomina.fechaFin}</TableCell>
+                  <TableCell>{nomina.empleados?.length ?? 0}</TableCell>
+                  <TableCell>{(nomina.empleados?.reduce((acc, e) => acc + (e.monto || 0), 0) ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No hay nóminas guardadas en el histórico.
+          </Typography>
+        )}
+      </Box>
     </Container>
   );
 }

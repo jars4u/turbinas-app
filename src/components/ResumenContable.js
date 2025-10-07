@@ -15,7 +15,9 @@ import {
   TableBody,
   Paper,
   TextField,
+  Button,
 } from "@mui/material";
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers";
@@ -341,49 +343,78 @@ export default function ResumenContable({ tasaBCV }) {
               }
               return acc + Number(i.montoUSD || i.monto || 0);
             }, 0);
-            let totalIngresosBs = tasaHistorica
-              ? totalIngresosUSD * tasaHistorica
-              : ingresos.reduce((acc, i) => acc + (Number(i.montoBs) || 0), 0);
             let totalEgresosUSD = egresos.reduce(
               (acc, e) => acc + (Number(e.montoUSD) || 0),
               0
             );
-            let totalEgresosBs = egresos.reduce(
-              (acc, e) => acc + (Number(e.montoBs) || 0),
-              0
-            );
-            let utilidadUSD = totalIngresosUSD - totalEgresosUSD;
-            // Agrupar ingresos por forma de pago, sumando todos los montos de formasPago
-            const pagosPorForma = ingresos.reduce((acc, i) => {
-              if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                i.formasPago.forEach((fp) => {
-                  const forma = (
-                    fp.formaPago || "Sin especificar"
-                  ).toUpperCase();
-                  if (!acc[forma]) acc[forma] = 0;
-                  acc[forma] +=
-                    fp.monto !== undefined &&
-                    fp.monto !== null &&
-                    !isNaN(Number(fp.monto))
-                      ? Number(fp.monto)
-                      : 0;
-                });
-              } else {
-                const forma = (i.formaPago || "Sin especificar").toUpperCase();
-                if (!acc[forma]) acc[forma] = 0;
-                acc[forma] += Number(i.montoUSD || i.monto || 0);
-              }
-              return acc;
-            }, {});
+            // ...existing code...
             return (
               <Box key={fechasFiltradas.join("-")} sx={{ mb: 4 }}>
-                <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
-                  {fechaInicio && fechaFin
-                    ? `Rango: ${fechaInicio.format(
-                        "DD/MM/YYYY"
-                      )} a ${fechaFin.format("DD/MM/YYYY")}`
-                    : `Fecha: ${fechasFiltradas[0]}`}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {fechaInicio && fechaFin
+                      ? `Rango: ${fechaInicio.format(
+                          "DD/MM/YYYY"
+                        )} a ${fechaFin.format("DD/MM/YYYY")}`
+                      : `Fecha: ${fechasFiltradas[0]}`}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    size="small"
+                    endIcon={<WhatsAppIcon sx={{ fontSize: 20 }} />}
+                    sx={{ minWidth: 100 }}
+                    onClick={() => {
+                      // Generar el texto del resumen para WhatsApp
+                      let texto = `Resumen contable\n`;
+                      texto += fechaInicio && fechaFin
+                        ? `Rango: ${fechaInicio.format("DD/MM/YYYY")} a ${fechaFin.format("DD/MM/YYYY")}`
+                        : `Fecha: ${fechasFiltradas[0]}`;
+                      texto += `\n\n`;
+                      // Ingresos
+                      texto += `Ingresos totales: $ ${ingresos.reduce((acc, i) => {
+                        if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                          return acc + i.formasPago.filter(fp => ["zelle", "efectivo", "$", "usd"].includes((fp.formaPago || "").trim().toLowerCase()) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))).reduce((sum, fp) => sum + Number(fp.monto), 0);
+                        }
+                        return acc;
+                      }, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+                      texto += `\n`;
+                      texto += `Ingresos Bs: Bs. ${ingresos.reduce((acc, i) => {
+                        if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                          return acc + i.formasPago.filter(fp => (fp.formaPago || "").trim().toLowerCase() === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))).reduce((sum, fp) => sum + Number(fp.monto), 0);
+                        }
+                        return acc;
+                      }, 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
+                      texto += `\n`;
+                      // Egresos
+                      texto += `Egresos totales: $ ${egresos.reduce((acc, e) => acc + (typeof e.montoUSD === 'number' && e.montoUSD > 0 ? e.montoUSD : 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+                      texto += `\n`;
+                      texto += `Egresos Bs: Bs. ${egresos.reduce((acc, e) => acc + (typeof e.montoBs === 'number' && e.montoBs > 0 ? e.montoBs : 0), 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
+                      texto += `\n`;
+                      // Utilidad
+                      let totalUSD = ingresos.reduce((acc, i) => {
+                        if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                          return acc + i.formasPago.filter(fp => ["zelle", "efectivo", "$", "usd"].includes((fp.formaPago || "").trim().toLowerCase()) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))).reduce((sum, fp) => sum + Number(fp.monto), 0);
+                        }
+                        return acc;
+                      }, 0);
+                      let totalBs = ingresos.reduce((acc, i) => {
+                        if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                          return acc + i.formasPago.filter(fp => (fp.formaPago || "").trim().toLowerCase() === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))).reduce((sum, fp) => sum + Number(fp.monto), 0);
+                        }
+                        return acc;
+                      }, 0);
+                      let totalEgresosUSD = egresos.reduce((acc, e) => acc + (typeof e.montoUSD === 'number' && e.montoUSD > 0 ? e.montoUSD : 0), 0);
+                      let totalEgresosBs = egresos.reduce((acc, e) => acc + (typeof e.montoBs === 'number' && e.montoBs > 0 ? e.montoBs : 0), 0);
+                      texto += `Utilidad: $ ${(totalUSD - totalEgresosUSD).toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${(totalBs - totalEgresosBs).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
+                      // Abrir WhatsApp con el texto
+                      const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+                      window.open(url, '_blank');
+                    }}
+                  >
+                    Enviar
+                  </Button>
+                </Box>
                 {/* ...el resto del renderizado permanece igual... */}
                 {/* <Typography
                     variant="subtitle1"
@@ -527,39 +558,33 @@ export default function ResumenContable({ tasaBCV }) {
                   <Typography>
                     <b>Utilidad:</b>
                     {(() => {
-                      // Calcular utilidad por divisa: ingresos menos egresos para cada divisa
-                      let ingresosUSD = 0;
-                      let ingresosBs = 0;
+                      // Usar los totales del resumen para utilidad
+                      let totalUSD = 0;
+                      let totalBs = 0;
                       ingresos.forEach((i) => {
                         if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
                           i.formasPago.forEach((fp) => {
-                            const formaNorm = (fp.formaPago || "").trim().toLowerCase();
-                            if (["zelle", "efectivo", "$", "usd"].includes(formaNorm) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                              ingresosUSD += Number(fp.monto);
+                            if (["zelle", "efectivo", "$", "usd"].includes((fp.formaPago || "").trim().toLowerCase()) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              totalUSD += Number(fp.monto);
                             }
-                            if (formaNorm === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                              ingresosBs += Number(fp.monto);
+                            if ((fp.formaPago || "").trim().toLowerCase() === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                              totalBs += Number(fp.monto);
                             }
                           });
                         }
                       });
-                      let egresosUSD = 0;
-                      let egresosBs = 0;
+                      let totalEgresosUSD = 0;
+                      let totalEgresosBs = 0;
                       egresos.forEach((e) => {
-                        if (Array.isArray(e.formasPago) && e.formasPago.length > 0) {
-                          e.formasPago.forEach((fp) => {
-                            const formaNorm = (fp.formaPago || "").trim().toLowerCase();
-                            if (["zelle", "efectivo", "$", "usd"].includes(formaNorm) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                              egresosUSD += Number(fp.monto);
-                            }
-                            if (formaNorm === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                              egresosBs += Number(fp.monto);
-                            }
-                          });
+                        if (typeof e.montoUSD === 'number' && e.montoUSD > 0) {
+                          totalEgresosUSD += e.montoUSD;
+                        }
+                        if (typeof e.montoBs === 'number' && e.montoBs > 0) {
+                          totalEgresosBs += e.montoBs;
                         }
                       });
-                      const utilidadUSD = ingresosUSD - egresosUSD;
-                      const utilidadBs = ingresosBs - egresosBs;
+                      const utilidadUSD = totalUSD - totalEgresosUSD;
+                      const utilidadBs = totalBs - totalEgresosBs;
                       return ` $ ${utilidadUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${utilidadBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
                     })()}
                   </Typography>

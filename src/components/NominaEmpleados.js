@@ -247,6 +247,36 @@ export default function NominaEmpleados() {
               <option value="comision">Por comisión</option>
             </TextField>
           </Box>
+          {/* Lista de cargos existentes */}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Cargos existentes:
+            </Typography>
+            {cargos.length > 0 ? (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Nombre</TableCell>
+                    <TableCell>Salario</TableCell>
+                    <TableCell>Tipo</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {cargos.map((cargo) => (
+                    <TableRow key={cargo.id}>
+                      <TableCell>{cargo.nombre}</TableCell>
+                      <TableCell>{cargo.salario}</TableCell>
+                      <TableCell>{cargo.tipo}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No hay cargos registrados.
+              </Typography>
+            )}
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCrearCargo(false)}>Cancelar</Button>

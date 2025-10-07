@@ -111,20 +111,37 @@ export default function Dashboard() {
     const actualizados = await obtenerVehiculos();
     setVehiculos(actualizados);
   };
+  const [vehiculosRaw, setVehiculosRaw] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingVehiculos, setLoadingVehiculos] = useState(true);
+  const [loadingEstados, setLoadingEstados] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   // Cargar vehículos y estados desde la API al montar
   useEffect(() => {
     const unsubscribe = escucharVehiculos((data) => {
-      setVehiculos(data);
-      setLoading(false);
+      setVehiculosRaw(data);
+      setLoadingVehiculos(false);
     });
     obtenerEstadosServicio().then((data) => {
       setEstadosServicio(data);
+      setLoadingEstados(false);
     });
     return () => unsubscribe();
   }, []);
+
+  // Filtrar vehículos solo cuando ambos estados estén listos
+  useEffect(() => {
+    if (!loadingVehiculos && !loadingEstados) {
+      const estadoOcultar = estadosServicio.find(e => e.dejarDeMostrar);
+      const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
+      const filtrados = vehiculosRaw.filter(
+        (v) =>
+          (v.status || v.estado) !== nombreOcultar &&
+          (!ordenEstado || (v.status || v.estado) === ordenEstado)
+      );
+      setVehiculos(filtrados);
+    }
+  }, [vehiculosRaw, estadosServicio, ordenEstado, loadingVehiculos, loadingEstados]);
   const [open, setOpen] = useState(false);
   // Estado para el modal de confirmación de eliminación
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -252,14 +269,23 @@ export default function Dashboard() {
   };
 
   const handleDelete = async () => {
-    if (editId) {
-      setActionLoading(true);
+    if (!editId) {
+      setSnackbarMsg("No se pudo eliminar: servicio no válido.");
+      setSnackbarOpen(true);
+      return;
+    }
+    setActionLoading(true);
+    try {
       await eliminarVehiculo(editId);
       const actualizados = await obtenerVehiculos();
       setVehiculos(actualizados);
       setActionLoading(false);
       handleClose();
       setConfirmDeleteOpen(false);
+    } catch (e) {
+      setActionLoading(false);
+      setSnackbarMsg("Error al eliminar el servicio. Intente nuevamente.");
+      setSnackbarOpen(true);
     }
   };
 
@@ -458,7 +484,7 @@ export default function Dashboard() {
           </Button>
         </Box>
       </Box>
-      {loading ? (
+  {loadingVehiculos || loadingEstados ? (
         <Grid container spacing={3} columns={6} sx={{ mt: 1 }}>
           {[...Array(4)].map((_, idx) => (
             <Grid key={idx} sx={{ mb: 3 }}>
