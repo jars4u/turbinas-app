@@ -33,6 +33,7 @@ import VehicleCard from "../components/VehicleCard";
 import AppHeader from "../components/AppHeader";
 import {
   obtenerVehiculos,
+  escucharVehiculos,
   crearVehiculo,
   actualizarVehiculo,
   eliminarVehiculo,
@@ -69,7 +70,7 @@ export default function Dashboard() {
   // Clientes base: extraer de vehículos
   const [clientes, setClientes] = useState([]);
   useEffect(() => {
-    obtenerVehiculos().then((data) => {
+    const unsubscribe = escucharVehiculos((data) => {
       // Extraer clientes únicos por nombre y teléfono
       const clientesUnicos = [];
       const seen = new Set();
@@ -86,6 +87,7 @@ export default function Dashboard() {
       });
       setClientes(clientesUnicos);
     });
+    return () => unsubscribe();
   }, []);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
@@ -114,13 +116,14 @@ export default function Dashboard() {
   const [actionLoading, setActionLoading] = useState(false);
   // Cargar vehículos y estados desde la API al montar
   useEffect(() => {
-    obtenerVehiculos().then((data) => {
+    const unsubscribe = escucharVehiculos((data) => {
       setVehiculos(data);
       setLoading(false);
     });
     obtenerEstadosServicio().then((data) => {
       setEstadosServicio(data);
     });
+    return () => unsubscribe();
   }, []);
   const [open, setOpen] = useState(false);
   // Estado para el modal de confirmación de eliminación

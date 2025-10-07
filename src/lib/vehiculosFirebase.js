@@ -1,6 +1,6 @@
 
 import { db } from "../firebase";
-import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, onSnapshot } from "firebase/firestore";
 
 // Sanitiza cualquier undefined en null, recursivamente
 function sanitizeDeep(obj) {
@@ -30,6 +30,14 @@ export async function crearVehiculo(data) {
 export async function obtenerVehiculos() {
   const snapshot = await getDocs(collection(db, "vehiculos"));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+// Escuchar vehículos en tiempo real
+export function escucharVehiculos(callback) {
+  return onSnapshot(collection(db, "vehiculos"), (snapshot) => {
+    const vehiculos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(vehiculos);
+  });
 }
 
 // Actualizar vehículo con historial de cambios
