@@ -1,4 +1,7 @@
 import React from "react";
+import { eliminarNomina } from '../lib/eliminarNominaFirebase';
+import Popover from '@mui/material/Popover';
+import DeleteIcon from '@mui/icons-material/Delete';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -20,6 +23,11 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 
 export default function CalculoNomina() {
+  const [popoverAnchor, setPopoverAnchor] = useState(null);
+  const [nominaAEliminar, setNominaAEliminar] = useState(null);
+  const [eliminandoNominaId, setEliminandoNominaId] = useState(null);
+  const [modalDetalleNomina, setModalDetalleNomina] = useState(false);
+  const [nominaDetalle, setNominaDetalle] = useState(null);
   const [highlightedNominaId, setHighlightedNominaId] = useState(null);
   const [modalSobreescribir, setModalSobreescribir] = useState(false);
   const [nominaPendiente, setNominaPendiente] = useState(null);
@@ -182,7 +190,7 @@ useEffect(() => {
                 <TableCell>Nombre</TableCell>
                 <TableCell>Cédula</TableCell>
                 <TableCell>Cargo</TableCell>
-                <TableCell>Cant. servicios</TableCell>
+                <TableCell>Servicios</TableCell>
                 <TableCell>Bono ($)</TableCell>
                 <TableCell>Observaciones</TableCell>
                 <TableCell>Monto a pagar ($)</TableCell>
@@ -246,46 +254,53 @@ useEffect(() => {
             </TableBody>
           </Table>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16, gap: 12 }}>
-            <Button variant="outlined" color="secondary" size="small" onClick={async () => {
-              // Verificar si ya existe una nómina para el mismo rango
-              const existe = nominasGuardadas.some(n => n.fechaInicio === fechaInicio && n.fechaFin === fechaFin);
-              const nomina = {
-                fechaInicio,
-                fechaFin,
-                empleados: empleados.map(empleado => {
-                  const cargoObj = cargos.find(c => c.id === empleado.cargo);
-                  return {
-                    id: empleado.id,
-                    nombre: empleado.nombre,
-                    cedula: empleado.cedula,
-                    cargo: cargoObj ? cargoObj.nombre : "",
-                    servicios: serviciosPorEmpleado[empleado.id] ?? totalServicios,
-                    bono: bonosPorEmpleado[empleado.id] ?? 0,
-                    observaciones: observacionesPorEmpleado[empleado.id] ?? "",
-                    monto: calcularMonto(empleado)
-                  };
-                })
-              };
-              if (existe) {
-                setNominaPendiente(nomina);
-                setModalSobreescribir(true);
-                return;
-              }
-              setSavingNomina(true);
-              try {
-                const docRef = await guardarNomina(nomina);
-                setSnackbar({ open: true, message: 'Nómina guardada correctamente en el histórico.', severity: 'success' });
-                obtenerNominas().then(nominas => {
-                  setNominasGuardadas(nominas);
-                  // Resaltar la nueva nómina
-                  setHighlightedNominaId(docRef?.id || null);
-                  setTimeout(() => setHighlightedNominaId(null), 2200);
-                });
-              } catch (err) {
-                setSnackbar({ open: true, message: 'Error al guardar la nómina.', severity: 'error' });
-              }
-              setSavingNomina(false);
-            }} disabled={savingNomina}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              disabled={savingNomina}
+              onClick={async (e) => {
+                if (e && e.stopPropagation) e.stopPropagation();
+                // Verificar si ya existe una nómina para el mismo rango
+                const existe = nominasGuardadas.some(n => n.fechaInicio === fechaInicio && n.fechaFin === fechaFin);
+                const nomina = {
+                  fechaInicio,
+                  fechaFin,
+                  empleados: empleados.map(empleado => {
+                    const cargoObj = cargos.find(c => c.id === empleado.cargo);
+                    return {
+                      id: empleado.id,
+                      nombre: empleado.nombre,
+                      cedula: empleado.cedula,
+                      cargo: cargoObj ? cargoObj.nombre : "",
+                      servicios: serviciosPorEmpleado[empleado.id] ?? totalServicios,
+                      bono: bonosPorEmpleado[empleado.id] ?? 0,
+                      observaciones: observacionesPorEmpleado[empleado.id] ?? "",
+                      monto: calcularMonto(empleado)
+                    };
+                  })
+                };
+                if (existe) {
+                  setNominaPendiente(nomina);
+                  setModalSobreescribir(true);
+                  return;
+                }
+                setSavingNomina(true);
+                try {
+                  const docRef = await guardarNomina(nomina);
+                  setSnackbar({ open: true, message: 'Nómina guardada correctamente en el histórico.', severity: 'success' });
+                  obtenerNominas().then(nominas => {
+                    setNominasGuardadas(nominas);
+                    // Resaltar la nueva nómina
+                    setHighlightedNominaId(docRef?.id || null);
+                    setTimeout(() => setHighlightedNominaId(null), 2200);
+                  });
+                } catch (err) {
+                  setSnackbar({ open: true, message: 'Error al guardar la nómina.', severity: 'error' });
+                }
+                setSavingNomina(false);
+              }}
+            >
               {savingNomina ? 'Guardando...' : 'Guardar nómina'}
             </Button>
           {/* Modal de advertencia de sobreescritura */}
@@ -366,8 +381,9 @@ useEffect(() => {
               <TableRow>
                 <TableCell>Fecha guardado</TableCell>
                 <TableCell>Rango</TableCell>
-                <TableCell>Cantidad empleados</TableCell>
+                <TableCell>Empleados</TableCell>
                 <TableCell>Monto total ($)</TableCell>
+                <TableCell align="center">Eliminar</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -376,13 +392,126 @@ useEffect(() => {
                   sx={highlightedNominaId === nomina.id ? {
                     backgroundColor: 'rgba(76, 175, 80, 0.18)',
                     transition: 'background-color 1.2s',
-                  } : { transition: 'background-color 1.2s' }}>
+                  } : { transition: 'background-color 1.2s' }}
+                  style={{ cursor: 'pointer' }}
+                  onClick={e => {
+                    // Evitar abrir modal si se hace click en el icono de eliminar
+                    if (e.target.closest('.delete-nomina-icon')) return;
+                    setNominaDetalle(nomina);
+                    setModalDetalleNomina(true);
+                  }}>
                   <TableCell>{nomina.fechaGuardado?.toDate ? nomina.fechaGuardado.toDate().toLocaleString() : ""}</TableCell>
                   <TableCell>{nomina.fechaInicio} a {nomina.fechaFin}</TableCell>
                   <TableCell>{nomina.empleados?.length ?? 0}</TableCell>
                   <TableCell>{(nomina.empleados?.reduce((acc, e) => acc + (e.monto || 0), 0) ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
+                  <TableCell align="center">
+                    <Button size="small" color="error" className="delete-nomina-icon" disabled={eliminandoNominaId === nomina.id}
+                      onClick={ev => {
+                        if (ev) ev.stopPropagation();
+                        setPopoverAnchor(ev.currentTarget);
+                        setNominaAEliminar(nomina);
+                      }}>
+                      <DeleteIcon fontSize="small" />
+                    </Button>
+                  </TableCell>
+      {/* Popover de confirmación de eliminación */}
+      <Popover
+        open={Boolean(popoverAnchor)}
+        anchorEl={popoverAnchor}
+        onClose={() => { setPopoverAnchor(null); setNominaAEliminar(null); }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Box sx={{ p: 2, maxWidth: 260 }}>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            ¿Seguro que deseas eliminar esta nómina?<br />Esta acción no se puede deshacer.
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button size="small" onClick={e => { e.stopPropagation(); setPopoverAnchor(null); setNominaAEliminar(null); }} color="primary" variant="outlined">Cancelar</Button>
+            <Button size="small" color="error" variant="contained" disabled={eliminandoNominaId === nominaAEliminar?.id}
+              onClick={async () => {
+                setEliminandoNominaId(nominaAEliminar.id);
+                setPopoverAnchor(null);
+                try {
+                  await eliminarNomina(nominaAEliminar.id);
+                  setSnackbar({ open: true, message: 'Nómina eliminada correctamente.', severity: 'success' });
+                  obtenerNominas().then(setNominasGuardadas);
+                  // Si la nómina eliminada está abierta en el modal, ciérralo
+                  if (nominaDetalle?.id === nominaAEliminar.id) {
+                    setModalDetalleNomina(false);
+                    setNominaDetalle(null);
+                  }
+                } catch (err) {
+                  setSnackbar({ open: true, message: 'Error al eliminar la nómina.', severity: 'error' });
+                }
+                setEliminandoNominaId(null);
+                setNominaAEliminar(null);
+              }}>
+              Eliminar
+            </Button>
+          </Box>
+        </Box>
+      </Popover>
                 </TableRow>
               ))}
+      {/* Modal detalle nómina guardada */}
+      <Dialog open={modalDetalleNomina} onClose={() => setModalDetalleNomina(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Detalle de nómina</DialogTitle>
+        <DialogContent>
+          {nominaDetalle && (
+            <>
+              <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                Rango: {nominaDetalle.fechaInicio} a {nominaDetalle.fechaFin}
+              </Typography>
+              <Table size="small" sx={{ minWidth: 700, mb: 2 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Nombre</TableCell>
+                    <TableCell>Cédula</TableCell>
+                    <TableCell>Cargo</TableCell>
+                    <TableCell>Servicios</TableCell>
+                    <TableCell>Bono</TableCell>
+                    <TableCell>Observaciones</TableCell>
+                    <TableCell>Monto a pagar ($)</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {nominaDetalle.empleados?.map((e, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{e.nombre}</TableCell>
+                      <TableCell>{e.cedula}</TableCell>
+                      <TableCell>{e.cargo}</TableCell>
+                      <TableCell>{e.servicios}</TableCell>
+                      <TableCell>{e.bono}</TableCell>
+                      <TableCell>{e.observaciones}</TableCell>
+                      <TableCell>{e.monto?.toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalDetalleNomina(false)} color="primary">Cerrar</Button>
+          <Button variant="outlined" color="success" size="small" onClick={() => {
+            if (!nominaDetalle) return;
+            const data = nominaDetalle.empleados?.map(e => ({
+              Nombre: e.nombre,
+              Cedula: e.cedula,
+              Cargo: e.cargo,
+              Servicios: e.servicios,
+              Bono: e.bono,
+              Observaciones: e.observaciones,
+              "Monto a pagar ($)": e.monto
+            })) || [];
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Nomina");
+            XLSX.writeFile(wb, `nomina_${nominaDetalle.fechaInicio}_${nominaDetalle.fechaFin}.xlsx`);
+          }} startIcon={<DownloadIcon />}>Exportar a Excel</Button>
+        </DialogActions>
+      </Dialog>
             </TableBody>
           </Table>
         ) : (
