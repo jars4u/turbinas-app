@@ -45,9 +45,9 @@ import SortIcon from "@mui/icons-material/Sort";
 function sanitizeDeep(obj) {
   if (Array.isArray(obj)) {
     return obj.map(sanitizeDeep);
-  } else if (obj && typeof obj === 'object') {
+  } else if (obj && typeof obj === "object") {
     const newObj = {};
-    Object.keys(obj).forEach(k => {
+    Object.keys(obj).forEach((k) => {
       const val = obj[k];
       if (val === undefined) {
         newObj[k] = null;
@@ -62,7 +62,10 @@ function sanitizeDeep(obj) {
 
 export default function Dashboard() {
   // Estado para el modal de confirmación de ocultar servicio
-  const [confirmOcultar, setConfirmOcultar] = useState({ open: false, estado: null });
+  const [confirmOcultar, setConfirmOcultar] = useState({
+    open: false,
+    estado: null,
+  });
   const { usuario, handleLogout } = useAuth();
   // Estado para modal de cambio de estado
   const [openEstadoModal, setOpenEstadoModal] = useState(false);
@@ -104,7 +107,7 @@ export default function Dashboard() {
     if (!vehiculo) return;
     // Limpiar campos undefined
     const data = { ...vehiculo, status: newStatus };
-    Object.keys(data).forEach(k => {
+    Object.keys(data).forEach((k) => {
       if (data[k] === undefined) data[k] = null;
     });
     await actualizarVehiculo(id, data);
@@ -132,7 +135,7 @@ export default function Dashboard() {
   // Filtrar vehículos solo cuando ambos estados estén listos
   useEffect(() => {
     if (!loadingVehiculos && !loadingEstados) {
-      const estadoOcultar = estadosServicio.find(e => e.dejarDeMostrar);
+      const estadoOcultar = estadosServicio.find((e) => e.dejarDeMostrar);
       const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
       const filtrados = vehiculosRaw.filter(
         (v) =>
@@ -141,7 +144,13 @@ export default function Dashboard() {
       );
       setVehiculos(filtrados);
     }
-  }, [vehiculosRaw, estadosServicio, ordenEstado, loadingVehiculos, loadingEstados]);
+  }, [
+    vehiculosRaw,
+    estadosServicio,
+    ordenEstado,
+    loadingVehiculos,
+    loadingEstados,
+  ]);
   const [open, setOpen] = useState(false);
   // Estado para el modal de confirmación de eliminación
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -224,21 +233,24 @@ export default function Dashboard() {
 
   const handleSave = async () => {
     const vehiculoData = {
-      vehiculo: form.vehiculo ? form.vehiculo.toUpperCase() : '',
-      placa: form.placa ? form.placa.toUpperCase() : '',
-      servicio: form.servicio ? form.servicio.toUpperCase() : '',
+      vehiculo: form.vehiculo ? form.vehiculo.toUpperCase() : "",
+      placa: form.placa ? form.placa.toUpperCase() : "",
+      servicio: form.servicio ? form.servicio.toUpperCase() : "",
       arrivalTime: editId
         ? vehiculos.find((v) => v.id === editId)?.arrivalTime
         : Date.now(),
-      customerName: form.customerName ? form.customerName.toUpperCase() : '',
+      customerName: form.customerName ? form.customerName.toUpperCase() : "",
       customerPhone: form.customerPhone,
-      observaciones: form.observaciones ? form.observaciones.toUpperCase() : '',
+      observaciones: form.observaciones ? form.observaciones.toUpperCase() : "",
       status: editId
         ? vehiculos.find((v) => v.id === editId)?.status || getDefaultStatus()
         : getDefaultStatus(),
       precio: form.precio === "" ? null : Number(form.precio),
       precioBs: form.precioBs === "" ? null : Number(form.precioBs),
-      monto2: form.precio !== undefined && form.precio !== "" && form.precio !== null ? Number(form.precio) : null,
+      monto2:
+        form.precio !== undefined && form.precio !== "" && form.precio !== null
+          ? Number(form.precio)
+          : null,
       usuario: usuarioActivo,
       registradoPor: usuarioActivo,
       entregadoPor: editId
@@ -250,7 +262,7 @@ export default function Dashboard() {
     };
     setActionLoading(true);
     // Limpiar campos undefined
-    Object.keys(vehiculoData).forEach(k => {
+    Object.keys(vehiculoData).forEach((k) => {
       if (vehiculoData[k] === undefined) vehiculoData[k] = null;
     });
     if (editId) {
@@ -299,7 +311,7 @@ export default function Dashboard() {
     setConfirmDeleteOpen(false);
   };
 
-  const estadoOcultar = estadosServicio.find(e => e.dejarDeMostrar);
+  const estadoOcultar = estadosServicio.find((e) => e.dejarDeMostrar);
   const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
 
   return (
@@ -309,7 +321,7 @@ export default function Dashboard() {
         py: 4,
         maxWidth: "100%",
         width: "100%",
-        px: { xs: 2, sm: 4 }
+        px: { xs: 2, sm: 4 },
       }}
     >
       <AppHeader
@@ -422,12 +434,15 @@ export default function Dashboard() {
                   width: { xs: "auto", sm: "auto" },
                   fontSize: { xs: "0.95rem", sm: "1.15rem" },
                   px: { xs: 0.5, sm: 0 },
-                  color: estado.color === "grey"
-                    ? '#757575'
-                    : (theme) => theme.palette[estado.color]?.main || theme.palette.text.primary,
+                  color:
+                    estado.color === "grey"
+                      ? "#757575"
+                      : (theme) =>
+                          theme.palette[estado.color]?.main ||
+                          theme.palette.text.primary,
                 }}
               >
-                {estado.label}: {" "}
+                {estado.label}:{" "}
                 {
                   vehiculos.filter(
                     (v) => (v.status || v.estado) === estado.nombre
@@ -484,7 +499,7 @@ export default function Dashboard() {
           </Button>
         </Box>
       </Box>
-  {loadingVehiculos || loadingEstados ? (
+      {loadingVehiculos || loadingEstados ? (
         <Grid container spacing={3} columns={6} sx={{ mt: 1 }}>
           {[...Array(4)].map((_, idx) => (
             <Grid key={idx} sx={{ mb: 3 }}>
@@ -504,12 +519,27 @@ export default function Dashboard() {
                   bgcolor: "background.paper",
                 }}
               >
-                <Skeleton variant="rectangular" width={180} height={24} sx={{ mb: 1 }} />
+                <Skeleton
+                  variant="rectangular"
+                  width={180}
+                  height={24}
+                  sx={{ mb: 1 }}
+                />
                 <Skeleton variant="text" width={120} sx={{ mb: 1 }} />
                 <Skeleton variant="text" width={80} sx={{ mb: 1 }} />
-                <Skeleton variant="rectangular" width={180} height={18} sx={{ mb: 1 }} />
+                <Skeleton
+                  variant="rectangular"
+                  width={180}
+                  height={18}
+                  sx={{ mb: 1 }}
+                />
                 <Skeleton variant="text" width={100} sx={{ mb: 1 }} />
-                <Skeleton variant="rectangular" width={60} height={32} sx={{ mt: 2 }} />
+                <Skeleton
+                  variant="rectangular"
+                  width={60}
+                  height={32}
+                  sx={{ mt: 2 }}
+                />
               </Box>
             </Grid>
           ))}
@@ -632,7 +662,11 @@ export default function Dashboard() {
                           typeof v.arrivalTime === "string"
                             ? Number(v.arrivalTime)
                             : v.arrivalTime
-                        ).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                        ).toLocaleDateString("es-VE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit",
+                        })}
                       </td>
                       <td
                         style={{
@@ -674,8 +708,18 @@ export default function Dashboard() {
                               (e) => e.nombre === (v.status || v.estado)
                             );
                             // Solo permitir colores válidos de MUI
-                            const validColors = ["default", "primary", "secondary", "error", "info", "success", "warning"];
-                            return validColors.includes(estadoObj?.color) ? estadoObj?.color : "default";
+                            const validColors = [
+                              "default",
+                              "primary",
+                              "secondary",
+                              "error",
+                              "info",
+                              "success",
+                              "warning",
+                            ];
+                            return validColors.includes(estadoObj?.color)
+                              ? estadoObj?.color
+                              : "default";
                           })()}
                           size="small"
                           sx={{ fontSize: "0.80rem", height: 24 }}
@@ -753,15 +797,13 @@ export default function Dashboard() {
                       ) || a.arrivalTime - b.arrivalTime
                     );
                   return (
-                    (b.status || b.estado).localeCompare(a.status || a.estado) ||
-                    b.arrivalTime - a.arrivalTime
+                    (b.status || b.estado).localeCompare(
+                      a.status || a.estado
+                    ) || b.arrivalTime - a.arrivalTime
                   );
                 })
                 .map((v) => (
-                  <Grid
-                    key={v.id}
-                    sx={{ mb: 3 }}
-                  >
+                  <Grid key={v.id} sx={{ mb: 3 }}>
                     <VehicleCard
                       vehiculo={v}
                       onEdit={() => handleOpen(v)}
@@ -863,8 +905,18 @@ export default function Dashboard() {
                   (vehiculoActual?.status || vehiculoActual?.estado)
               );
               // Validar color permitido por MUI
-              const validColors = ["default", "primary", "secondary", "error", "info", "success", "warning"];
-              const chipColor = validColors.includes(estadoActual?.color) ? estadoActual?.color : "default";
+              const validColors = [
+                "default",
+                "primary",
+                "secondary",
+                "error",
+                "info",
+                "success",
+                "warning",
+              ];
+              const chipColor = validColors.includes(estadoActual?.color)
+                ? estadoActual?.color
+                : "default";
               return (
                 <Box sx={{ width: "100%", display: "block" }}>
                   <Chip
@@ -905,77 +957,127 @@ export default function Dashboard() {
                   minWidth: 220,
                 }}
               >
-                {estadosServicio
-                  .map((estado) => {
-                    const validColors = ["default", "primary", "secondary", "error", "info", "success", "warning"];
-                    let buttonColor = validColors.includes(estado.color) ? estado.color : "primary";
-                    let sxButton = {
-                      justifyContent: "flex-start",
-                      textTransform: "none",
-                      fontWeight: 600,
+                {estadosServicio.map((estado) => {
+                  const validColors = [
+                    "default",
+                    "primary",
+                    "secondary",
+                    "error",
+                    "info",
+                    "success",
+                    "warning",
+                  ];
+                  let buttonColor = validColors.includes(estado.color)
+                    ? estado.color
+                    : "primary";
+                  let sxButton = {
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    fontWeight: 600,
+                  };
+                  if (estado.color === "grey") {
+                    buttonColor = "inherit";
+                    sxButton = {
+                      ...sxButton,
+                      bgcolor: "#e0e0e0",
+                      color: "#424242",
+                      "&:hover": { bgcolor: "#bdbdbd" },
                     };
-                    if (estado.color === "grey") {
-                      buttonColor = "inherit";
-                      sxButton = {
-                        ...sxButton,
-                        bgcolor: "#e0e0e0",
-                        color: "#424242",
-                        '&:hover': { bgcolor: "#bdbdbd" }
-                      };
-                    }
-                    const esOcultar = !!estado.dejarDeMostrar;
-                    return (
-                      <>
-                        <Button
-                          key={estado.nombre}
-                          variant={
-                            vehiculoEstadoModal &&
-                            (vehiculoEstadoModal.status === estado.nombre ||
-                              vehiculoEstadoModal.estado === estado.nombre)
-                              ? "contained"
-                              : "outlined"
+                  }
+                  const esOcultar = !!estado.dejarDeMostrar;
+                  return (
+                    <>
+                      <Button
+                        key={estado.nombre}
+                        variant={
+                          vehiculoEstadoModal &&
+                          (vehiculoEstadoModal.status === estado.nombre ||
+                            vehiculoEstadoModal.estado === estado.nombre)
+                            ? "contained"
+                            : "outlined"
+                        }
+                        color={buttonColor}
+                        onClick={() => {
+                          if (!vehiculoEstadoModal) return;
+                          if (esOcultar) {
+                            setConfirmOcultar({ open: true, estado });
+                          } else {
+                            setOpenEstadoModal(false);
+                            const data = sanitizeDeep({
+                              ...vehiculoEstadoModal,
+                              status: estado.nombre,
+                            });
+                            actualizarVehiculo(
+                              vehiculoEstadoModal.id,
+                              data
+                            ).then(async () => {
+                              const actualizados = await obtenerVehiculos();
+                              setVehiculos(actualizados);
+                            });
                           }
-                          color={buttonColor}
-                          onClick={() => {
-                            if (!vehiculoEstadoModal) return;
-                            if (esOcultar) {
-                              setConfirmOcultar({ open: true, estado });
-                            } else {
-                              setOpenEstadoModal(false);
-                              const data = sanitizeDeep({ ...vehiculoEstadoModal, status: estado.nombre });
-                              actualizarVehiculo(vehiculoEstadoModal.id, data).then(async () => {
-                                const actualizados = await obtenerVehiculos();
-                                setVehiculos(actualizados);
-                              });
+                        }}
+                        sx={sxButton}
+                      >
+                        {estado.label}
+                      </Button>
+                      {/* Modal de confirmación para dejar de mostrar */}
+                      {esOcultar &&
+                        confirmOcultar?.open &&
+                        confirmOcultar.estado?.nombre === estado.nombre && (
+                          <Dialog
+                            open={true}
+                            onClose={() =>
+                              setConfirmOcultar({ open: false, estado: null })
                             }
-                          }}
-                          sx={sxButton}
-                        >
-                          {estado.label}
-                        </Button>
-                        {/* Modal de confirmación para dejar de mostrar */}
-                        {esOcultar && confirmOcultar?.open && confirmOcultar.estado?.nombre === estado.nombre && (
-                          <Dialog open={true} onClose={() => setConfirmOcultar({ open: false, estado: null })}>
+                          >
                             <DialogTitle>Confirmar acción</DialogTitle>
                             <DialogContent>
-                              <Typography>Este servicio desaparecerá del Dashboard. ¿Desea continuar?</Typography>
+                              <Typography>
+                                Este servicio desaparecerá del Dashboard. ¿Desea
+                                continuar?
+                              </Typography>
                             </DialogContent>
                             <DialogActions>
-                              <Button onClick={() => setConfirmOcultar({ open: false, estado: null })} color="primary">Cancelar</Button>
-                              <Button onClick={async () => {
-                                setConfirmOcultar({ open: false, estado: null });
-                                setOpenEstadoModal(false);
-                                const data = sanitizeDeep({ ...vehiculoEstadoModal, status: estado.nombre });
-                                await actualizarVehiculo(vehiculoEstadoModal.id, data);
-                                const actualizados = await obtenerVehiculos();
-                                setVehiculos(actualizados);
-                              }} color="error" variant="contained">Confirmar</Button>
+                              <Button
+                                onClick={() =>
+                                  setConfirmOcultar({
+                                    open: false,
+                                    estado: null,
+                                  })
+                                }
+                                color="primary"
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                onClick={async () => {
+                                  setConfirmOcultar({
+                                    open: false,
+                                    estado: null,
+                                  });
+                                  setOpenEstadoModal(false);
+                                  const data = sanitizeDeep({
+                                    ...vehiculoEstadoModal,
+                                    status: estado.nombre,
+                                  });
+                                  await actualizarVehiculo(
+                                    vehiculoEstadoModal.id,
+                                    data
+                                  );
+                                  const actualizados = await obtenerVehiculos();
+                                  setVehiculos(actualizados);
+                                }}
+                                color="error"
+                                variant="contained"
+                              >
+                                Confirmar
+                              </Button>
                             </DialogActions>
                           </Dialog>
                         )}
-                      </>
-                    );
-                  })}
+                    </>
+                  );
+                })}
               </Box>
             </DialogContent>
             <DialogActions>
@@ -1165,7 +1267,7 @@ export default function Dashboard() {
                   sx={{ mb: 1.5 }}
                   InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                 />
-                <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+                <Box sx={{ display: "flex", gap: 2, mb: 1.5 }}>
                   <TextField
                     margin="none"
                     label="Precio en $"
@@ -1264,16 +1366,26 @@ export default function Dashboard() {
                     {form.observaciones}
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+                <Box sx={{ display: "flex", gap: 2, mb: 1.5 }}>
                   <Typography
                     variant="caption"
-                    sx={{ fontSize: '1rem', color: 'text.secondary', minWidth: 60, flexShrink: 0 }}
+                    sx={{
+                      fontSize: "1rem",
+                      color: "text.secondary",
+                      minWidth: 60,
+                      flexShrink: 0,
+                    }}
                   >
                     Precio:
                   </Typography>
                   <Typography
                     variant="caption"
-                    sx={{ fontSize: '1rem', fontWeight: 500, wordBreak: 'break-word', maxWidth: '100%' }}
+                    sx={{
+                      fontSize: "1rem",
+                      fontWeight: 500,
+                      wordBreak: "break-word",
+                      maxWidth: "100%",
+                    }}
                   >
                     ${form.precio} / Bs {form.precioBs || "-"}
                   </Typography>
@@ -1331,7 +1443,7 @@ export default function Dashboard() {
                   value={null}
                   inputValue={form.customerName}
                   onInputChange={(e, newInputValue, reason) => {
-                    if (reason === 'input') {
+                    if (reason === "input") {
                       setForm({ ...form, customerName: newInputValue });
                       setIsEditing(true);
                     }
@@ -1545,66 +1657,9 @@ export default function Dashboard() {
                 </>
               ) : (
                 <>
-                  {/* WhatsApp button: en una fila separada en móvil, inline en desktop */}
-                  <Box
-                    sx={{
-                      width: "100%",
-                      display: { xs: "flex", sm: "inline-flex" },
-                      flexDirection: { xs: "row", sm: "row" },
-                      justifyContent: { xs: "center", sm: "flex-start" },
-                      mb: { xs: 1, sm: 0 },
-                    }}
-                  >
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="success"
-                      startIcon={<WhatsAppIcon />}
-                      onClick={() => {
-                        if (form.customerPhone) {
-                          // Formato esperado: +58-424-6065449
-                          let phone = form.customerPhone.trim();
-                          // Eliminar espacios y guiones
-                          phone = phone.replace(/[-\s]/g, "");
-                          // Eliminar el símbolo + si existe
-                          phone = phone.replace(/^\+/, "");
-                          // Si comienza con 58, dejarlo así; si comienza con 0, convertir a 58
-                          if (phone.startsWith("58")) {
-                            // ya está en formato internacional
-                          } else if (phone.startsWith("0")) {
-                            phone = "58" + phone.slice(1);
-                          }
-                          window.open(`https://wa.me/${phone}`, "_blank");
-                        }
-                      }}
-                      disabled={!form.customerPhone}
-                      sx={{
-                        minWidth: 120,
-                        justifyContent: "center",
-                        textAlign: "center",
-                        px: 2,
-                      }}
-                    >
-                      <Box sx={{ display: { xs: "inline", sm: "none" } }}>
-                        Enviar
-                      </Box>
-                      <Box sx={{ display: { xs: "none", sm: "inline" } }}>
-                        Enviar WhatsApp
-                      </Box>
-                    </Button>
-                  </Box>
-                  {/* Botones Facturar y Volver juntos en la esquina inferior derecha */}
+                  {/* WhatsApp button: siempre en una fila separada, por encima del grupo de botones */}
                   {editId && !editSection && !isRegistering && (
-                    <Box
-                      sx={{
-                        width: "100%",
-                        display: "flex",
-                        flexDirection: "row",
-                        justifyContent: { xs: "center", sm: "flex-end" },
-                        gap: 1,
-                        pb: 0,
-                      }}
-                    >
+                    <>
                       <Button
                         onClick={handleClose}
                         variant="outlined"
@@ -1612,6 +1667,63 @@ export default function Dashboard() {
                         color="primary"
                       >
                         Volver
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="success"
+                        endIcon={<WhatsAppIcon />}
+                        onClick={() => {
+                          if (form.customerPhone) {
+                            let phone = form.customerPhone.trim();
+                            phone = phone.replace(/[-\s]/g, "");
+                            phone = phone.replace(/^\+/, "");
+                            if (phone.startsWith("58")) {
+                            } else if (phone.startsWith("0")) {
+                              phone = "58" + phone.slice(1);
+                            }
+                            window.open(`https://wa.me/${phone}`, "_blank");
+                          }
+                        }}
+                        disabled={!form.customerPhone}
+                        sx={{
+                          minWidth: 120,
+                          justifyContent: "center",
+                          textAlign: "center",
+                          px: 2,
+                        }}
+                      >
+                        Enviar
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="warning"
+                        size="small"
+                        sx={{ ml: 1 }}
+                        onClick={async () => {
+                          // Enviar servicio a cuentas por cobrar
+                          const { db } = await import('../firebase');
+                          const { addDoc, collection } = await import('firebase/firestore');
+                          // Construir objeto para cuentasPorCobrar modalidad servicio
+                          const nuevaCuenta = {
+                            modalidad: 'servicio',
+                            vehiculo: form.vehiculo || '',
+                            servicio: form.servicio || '',
+                            precio: parseFloat(form.precio) || 0,
+                            precioBs: parseFloat(form.precioBs) || 0,
+                            observaciones: `${form.customerName || ''} - ${form.customerPhone || ''}`
+                          };
+                          await addDoc(collection(db, 'cuentasPorCobrar'), nuevaCuenta);
+                          // Eliminar el vehículo del estado local para que desaparezca del dashboard
+                          if (editId) {
+                            setVehiculos(prev => prev.filter(v => v.id !== editId));
+                          }
+                          setSnackbarMsg('Servicio enviado a cuentas por cobrar');
+                          setSnackbarOpen(true);
+                          setOpen(false);
+                        }}
+                      >
+                        Por Cobrar
                       </Button>
                       <Button
                         variant="contained"
@@ -1622,7 +1734,7 @@ export default function Dashboard() {
                       >
                         Facturar
                       </Button>
-                    </Box>
+                    </>
                   )}
                 </>
               )}
@@ -1635,8 +1747,13 @@ export default function Dashboard() {
           form={form}
           onRegister={async (facturaData) => {
             // Validar que exista al menos un precio
-            if ((form.precio === "" || form.precio === null) && (form.precioBs === "" || form.precioBs === null)) {
-              setSnackbarMsg("No se ha definido un precio para este servicio. No se puede registrar el pago.");
+            if (
+              (form.precio === "" || form.precio === null) &&
+              (form.precioBs === "" || form.precioBs === null)
+            ) {
+              setSnackbarMsg(
+                "No se ha definido un precio para este servicio. No se puede registrar el pago."
+              );
               setSnackbarOpen(true);
               return;
             }
@@ -1646,22 +1763,46 @@ export default function Dashboard() {
               factura: facturaData.numeroFactura,
               fecha: new Date().toLocaleDateString("es-VE"),
               vehiculoId: editId || null,
-              montoBs: form.precioBs !== undefined && form.precioBs !== "" && form.precioBs !== null ? Number(form.precioBs) : null,
-              monto2: form.precio !== undefined && form.precio !== "" && form.precio !== null ? Number(form.precio) : null,
+              montoBs:
+                form.precioBs !== undefined &&
+                form.precioBs !== "" &&
+                form.precioBs !== null
+                  ? Number(form.precioBs)
+                  : null,
+              monto2:
+                form.precio !== undefined &&
+                form.precio !== "" &&
+                form.precio !== null
+                  ? Number(form.precio)
+                  : null,
             };
             // monto2 SIEMPRE debe crearse con el input precio en $
-            nuevoIngreso.monto2 = form.precio !== undefined && form.precio !== "" && form.precio !== null ? Number(form.precio) : null;
-            if (Array.isArray(facturaData.formasPago) && facturaData.formasPago.length > 0) {
+            nuevoIngreso.monto2 =
+              form.precio !== undefined &&
+              form.precio !== "" &&
+              form.precio !== null
+                ? Number(form.precio)
+                : null;
+            if (
+              Array.isArray(facturaData.formasPago) &&
+              facturaData.formasPago.length > 0
+            ) {
               nuevoIngreso.formasPago = facturaData.formasPago;
             } else {
               // Lógica anterior para una sola forma de pago
-              let monto = facturaData.monto !== undefined && facturaData.monto !== null && facturaData.monto !== ""
-                ? Number(facturaData.monto)
-                : (facturaData.formaPago && /pago[ _-]?movil/i.test(facturaData.formaPago)
-                    ? Number(form.precioBs) || 0
-                    : (facturaData.formaPago && (/zelle/i.test(facturaData.formaPago) || /efectivo/i.test(facturaData.formaPago))
-                        ? Number(form.precio) || 0
-                        : Number(form.precio) || Number(form.precioBs) || 0));
+              let monto =
+                facturaData.monto !== undefined &&
+                facturaData.monto !== null &&
+                facturaData.monto !== ""
+                  ? Number(facturaData.monto)
+                  : facturaData.formaPago &&
+                    /pago[ _-]?movil/i.test(facturaData.formaPago)
+                  ? Number(form.precioBs) || 0
+                  : facturaData.formaPago &&
+                    (/zelle/i.test(facturaData.formaPago) ||
+                      /efectivo/i.test(facturaData.formaPago))
+                  ? Number(form.precio) || 0
+                  : Number(form.precio) || Number(form.precioBs) || 0;
               nuevoIngreso.monto = monto;
               nuevoIngreso.formaPago = facturaData.formaPago;
               nuevoIngreso.referencia = facturaData.referencia;
@@ -1696,7 +1837,7 @@ export default function Dashboard() {
                   null,
                 precioBs: Number(form.precioBs) || null,
               };
-              Object.keys(vehiculoUpdate).forEach(k => {
+              Object.keys(vehiculoUpdate).forEach((k) => {
                 if (vehiculoUpdate[k] === undefined) vehiculoUpdate[k] = null;
               });
               await actualizarVehiculo(editId, vehiculoUpdate);

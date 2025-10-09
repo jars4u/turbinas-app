@@ -31,6 +31,8 @@ import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import CajaChica from "../components/CajaChica";
 import Ingresos from "../components/Ingresos";
 import Egresos from "../components/Egresos";
+import CuentasPorPagar from "../components/CuentasPorPagar";
+import CuentasPorCobrar from "../components/CuentasPorCobrar";
 
 import ResumenContable from "../components/ResumenContable";
 import { guardarCierreDiario } from "../lib/cierresDiariosFirebase";
@@ -521,6 +523,7 @@ export default function CierreDia() {
               <Tab label="Egresos" />
               <Tab label="Caja Chica" />
               <Tab label="Por Pagar" />
+              <Tab label="Por Cobrar" />
             </Tabs>
             {tabIndex === 0 && (
               <Box sx={{ p: 2 }}>
@@ -538,6 +541,11 @@ export default function CierreDia() {
                 ) : (
                   <ResumenContable tasaBCV={tasaBCV} />
                 )}
+              </Box>
+            )}
+            {tabIndex === 5 && (
+              <Box sx={{ p: 2 }}>
+                <CuentasPorCobrar />
               </Box>
             )}
             {tabIndex === 1 && (
@@ -596,22 +604,8 @@ export default function CierreDia() {
             )}
             {tabIndex === 4 && (
               <Box sx={{ p: 2 }}>
-                {loadingTasa || !vehiculos.length ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      minHeight: 120,
-                    }}
-                  >
-                    <CircularProgress color="primary" size={40} />
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Aquí se mostrarán los datos de la pestaña "Por Pagar".
-                  </Typography>
-                )}
+                {/* Aquí se implementa el componente CuentasPorPagar */}
+                <CuentasPorPagar cuentas={[]} />
               </Box>
             )}
           </Box>

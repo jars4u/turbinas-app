@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useCuentasPorCobrarServicios } from "../lib/useCuentasPorCobrarServicios";
 import { auth } from "../firebase";
 import { guardarColumnasUsuario, obtenerColumnasUsuario } from "../lib/columnasUsuario";
 
@@ -96,6 +97,8 @@ function ServicioHistorialModal({ open, onClose, servicio }) {
 }
 
 export default function HistorialVehiculos() {
+  // Hook para cuentas por cobrar de servicios
+  const cuentasPorCobrarServicios = useCuentasPorCobrarServicios();
   // Estados y refs al inicio
   const [loadingColumnas, setLoadingColumnas] = React.useState(false);
   const [busqueda, setBusqueda] = React.useState("");
@@ -106,7 +109,7 @@ export default function HistorialVehiculos() {
   const [openHistorial, setOpenHistorial] = React.useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = React.useState(null);
   const [openColumnModal, setOpenColumnModal] = React.useState(false);
-  const defaultColumnas = {
+  const defaultColumnas = React.useMemo(() => ({
     arrivalTime: true,
     fechaEntrega: true,
     vehiculo: true,
@@ -122,7 +125,7 @@ export default function HistorialVehiculos() {
     status: true,
     registradoPor: true,
     entregadoPor: true,
-  };
+  }), []);
   const [columnasVisibles, setColumnasVisibles] = React.useState(defaultColumnas);
   const columnasRef = React.useRef(columnasVisibles);
   React.useEffect(() => {
@@ -147,7 +150,7 @@ export default function HistorialVehiculos() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [defaultColumnas]);
 
   // Estados para el rango de fechas
   const [fechaInicio, setFechaInicio] = React.useState(null);
@@ -251,11 +254,30 @@ export default function HistorialVehiculos() {
         };
       });
 
-      // Combinar ambos: primero vehículos, luego ingresos manuales
-      setVehiculos([...vehiculosConPagos, ...ingresosManualesAdaptados]);
+      // Adaptar cuentas por cobrar de servicios para la tabla
+      const cuentasPorCobrarAdaptadas = cuentasPorCobrarServicios.map((c) => ({
+        id: c.id,
+        vehiculo: c.vehiculo || '-',
+        servicio: c.servicio || '-',
+        customerName: c.observaciones?.split(' - ')[0] || '-',
+        customerPhone: c.observaciones?.split(' - ')[1] || '-',
+        precio: c.precio || '-',
+        factura: '-',
+        formaPago: '-',
+        referencia: '-',
+        montoUSD: '-',
+        montoBs: c.precioBs || '-',
+        fechaEntrega: '-',
+        arrivalTime: c.fechaRegistro || '-',
+        status: 'Por Cobrar',
+        registradoPor: '-',
+        entregadoPor: '-',
+      }));
+      // Combinar todos: vehículos, ingresos manuales y cuentas por cobrar de servicios
+      setVehiculos([...vehiculosConPagos, ...ingresosManualesAdaptados, ...cuentasPorCobrarAdaptadas]);
       setLoading(false);
     });
-  }, []);
+  }, [cuentasPorCobrarServicios]);
 
   return (
     <>
