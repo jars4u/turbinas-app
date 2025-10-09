@@ -112,7 +112,7 @@ export default function Dashboard() {
     });
     await actualizarVehiculo(id, data);
     const actualizados = await obtenerVehiculos();
-    setVehiculos(actualizados);
+  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
   };
   const [vehiculosRaw, setVehiculosRaw] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
@@ -269,11 +269,11 @@ export default function Dashboard() {
     if (editId) {
       await actualizarVehiculo(editId, vehiculoData);
       const actualizados = await obtenerVehiculos();
-      setVehiculos(actualizados);
+  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
     } else {
       await crearVehiculo(vehiculoData);
       const actualizados = await obtenerVehiculos();
-      setVehiculos(actualizados);
+  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
     }
     setActionLoading(false);
     setOpen(false);
@@ -291,7 +291,7 @@ export default function Dashboard() {
     try {
       await eliminarVehiculo(editId);
       const actualizados = await obtenerVehiculos();
-      setVehiculos(actualizados);
+  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
       setActionLoading(false);
       handleClose();
       setConfirmDeleteOpen(false);
@@ -1013,7 +1013,7 @@ export default function Dashboard() {
                               data
                             ).then(async () => {
                               const actualizados = await obtenerVehiculos();
-                              setVehiculos(actualizados);
+                              setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
                             });
                           }
                         }}
@@ -1066,7 +1066,7 @@ export default function Dashboard() {
                                     data
                                   );
                                   const actualizados = await obtenerVehiculos();
-                                  setVehiculos(actualizados);
+                                  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
                                 }}
                                 color="error"
                                 variant="contained"
@@ -1844,7 +1844,7 @@ export default function Dashboard() {
               });
               await actualizarVehiculo(editId, vehiculoUpdate);
               const actualizados = await obtenerVehiculos();
-              setVehiculos(actualizados);
+              setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
             }
             setSnackbarMsg("Pago registrado exitosamente");
             setSnackbarOpen(true);

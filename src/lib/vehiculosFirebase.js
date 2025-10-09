@@ -1,6 +1,6 @@
 
 import { db } from "../firebase";
-import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc, deleteDoc, onSnapshot, getDocs, getDoc } from "firebase/firestore";
 
 // Sanitiza cualquier undefined en null, recursivamente
 function sanitizeDeep(obj) {
@@ -22,8 +22,35 @@ function sanitizeDeep(obj) {
 }
 
 // Crear vehículo
+
+// ...existing code...
+
 export async function crearVehiculo(data) {
-  return await addDoc(collection(db, "vehiculos"), data);
+  const res = await addDoc(collection(db, "vehiculos"), data);
+  // Actualizar modelosServicios en el cliente correspondiente
+  const nombreMayus = (data.customerName || "").toUpperCase();
+  if (nombreMayus) {
+    const { collection: collClientes, doc: docCliente } = await import("firebase/firestore");
+    const clientesSnap = await getDocs(collClientes(db, "clientes"));
+    let clienteDoc = null;
+    clientesSnap.forEach(doc => {
+      const nombreCliente = (doc.data().nombre || "").toUpperCase();
+      if (nombreCliente === nombreMayus) {
+        clienteDoc = doc;
+      }
+    });
+    if (clienteDoc) {
+      const prev = clienteDoc.data().modelosServicios || [];
+      const nuevo = {
+        modelo: data.vehiculo || "",
+        servicio: data.servicio || "",
+        fecha: data.arrivalTime || ""
+      };
+      const actualizados = [...prev, nuevo].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+      await updateDoc(docCliente(db, "clientes", clienteDoc.id), { modelosServicios: actualizados });
+    }
+  }
+  return res;
 }
 
 // Leer vehículos
@@ -44,7 +71,6 @@ export function escucharVehiculos(callback) {
 export async function actualizarVehiculo(id, data, usuario = "") {
   const ref = doc(db, "vehiculos", id);
   // Leer el documento actual
-  const { getDoc, arrayUnion } = await import("firebase/firestore");
   const snap = await getDoc(ref);
   if (!snap.exists()) {
     // Si no existe, solo actualiza

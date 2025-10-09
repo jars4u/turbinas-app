@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Accordion, AccordionSummary, AccordionDetails, TextField } from "@mui/material";
+import { Button, TextField } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SavingsIcon from '@mui/icons-material/Savings';
 import { Box, Typography } from "@mui/material";
@@ -25,11 +25,7 @@ export default function ConfiguracionCajaChica({ isOwner }) {
           Configuración caja chica
         </Typography>
       </Box>
-      <Accordion elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0, py: 0, minHeight: 36 }}>
-          <Typography variant="subtitle2">Mostrar configuraciones de caja chica</Typography>
-        </AccordionSummary>
-        <AccordionDetails sx={{ px: 0, py: 0 }}>
+      {/* Mostrar configuración de caja chica */}
           <Box
             sx={{
               display: { xs: 'block', sm: 'flex' },
@@ -92,8 +88,7 @@ export default function ConfiguracionCajaChica({ isOwner }) {
               </Box>
             )}
           </Typography>
-        </AccordionDetails>
-      </Accordion>
+      {/* Fin configuración de caja chica */}
     </Box>
   );
 }

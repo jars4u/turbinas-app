@@ -18,9 +18,6 @@ import {
   TextField,
   IconButton,
   CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Tooltip,
   Chip,
   Checkbox
@@ -172,139 +169,134 @@ export default function EstadosServicios() {
           </span>
         </Button>
       </Box>
-      <Accordion elevation={0} sx={{ boxShadow: 'none', border: 'none', background: 'transparent', mt: 1 }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0, py: 0, minHeight: 36 }}>
-          <Typography variant="subtitle2">Mostrar estados de servicio</Typography>
-        </AccordionSummary>
-        <AccordionDetails sx={{ px: 0, py: 0 }}>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
-              <CircularProgress color="primary" size={40} />
-            </Box>
-          ) : (
-            <Box sx={{ width: '100%', overflowX: 'auto', maxWidth: '100vw' }}>
-              <Table sx={{ border: 'none', minWidth: 700 }} size="small">
-                <TableHead>
-                  <TableRow sx={{ height: 28 }}>
-                    <TableCell sx={{
-                      py: 0.5,
-                      px: 1,
-                      fontSize: 12,
-                      position: 'sticky',
-                      left: 0,
-                      background: '#fff',
-                      zIndex: 2,
-                      minWidth: 120
-                    }}>Nombre</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Etiqueta</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Default Registro</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Default Facturar</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Dejar de mostrar</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Color</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Acción Timer</TableCell>
-                    <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }} align="right">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {estados.map((estado) => (
-                    <TableRow key={estado.id} sx={{ border: 'none', background: 'transparent', height: 28 }}>
-                      <TableCell sx={{
-                        py: 0.5,
-                        px: 1,
-                        fontSize: 12,
-                        position: 'sticky',
-                        left: 0,
-                        background: '#fff',
-                        zIndex: 1,
-                        minWidth: 120
-                      }}>{estado.nombre}</TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{estado.label}</TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
-                        <Checkbox
-                          checked={!!estado.defaultEstado}
-                          onChange={() => handleDefaultChange(estado.id)}
-                          color="primary"
-                          inputProps={{ 'aria-label': 'Estado predeterminado' }}
-                          disabled={savingDefaultId === estado.id}
-                          sx={{ mx: 'auto', display: 'block' }}
-                        />
-                        {savingDefaultId === estado.id && (
-                          <CircularProgress size={16} sx={{ ml: 1 }} />
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
-                        <Checkbox
-                          checked={!!estado.defaultFacturar}
-                          onChange={() => handleDefaultFacturarChange(estado.id)}
-                          color="success"
-                          inputProps={{ 'aria-label': 'Estado default de facturación' }}
-                          disabled={savingDefaultFacturarId === estado.id}
-                          sx={{ mx: 'auto', display: 'block' }}
-                        />
-                        {savingDefaultFacturarId === estado.id && (
-                          <CircularProgress size={16} sx={{ ml: 1 }} />
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
-                        <Checkbox
-                          checked={!!estado.dejarDeMostrar}
-                          onChange={() => handleDejarDeMostrarChange(estado.id)}
-                          color="warning"
-                          inputProps={{ 'aria-label': 'Estado dejar de mostrar' }}
-                          sx={{ mx: 'auto', display: 'block' }}
-                        />
-                        {dejarDeMostrarId === estado.id && (
-                          <CircularProgress size={16} sx={{ ml: 1 }} />
-                        )}
-      <Dialog open={confirmDejarDeMostrar.open} onClose={() => setConfirmDejarDeMostrar({ open: false, id: null })}>
-        <DialogTitle>¿Ocultar este estado en el dashboard?</DialogTitle>
-        <DialogContent>
-          <Typography>Si confirmas, el estado dejará de mostrarse en el dashboard y no podrá ser seleccionado por los usuarios.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDejarDeMostrar({ open: false, id: null })} color="inherit">Cancelar</Button>
-          <Button color="warning" variant="contained" onClick={async () => {
-            const id = confirmDejarDeMostrar.id;
-            setDejarDeMostrarId(id);
-            const nuevosEstados = estados.map(e => ({ ...e, dejarDeMostrar: e.id === id }));
-            setEstados(nuevosEstados);
-            try {
-              await Promise.all(estados.map(e => e.id !== id ? actualizarEstadoServicio(e.id, { ...e, dejarDeMostrar: false }) : null));
-              await actualizarEstadoServicio(id, { ...estados.find(e => e.id === id), dejarDeMostrar: true });
-              const actualizados = await obtenerEstadosServicio();
-              setEstados(actualizados);
-            } catch (err) {
-              setEstados(estados);
-            }
-            setDejarDeMostrarId(null);
-            setConfirmDejarDeMostrar({ open: false, id: null });
-          }}>Confirmar</Button>
-        </DialogActions>
-      </Dialog>
-                      </TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>
-                        {estado.color === "grey"
-                          ? <Chip size="small" sx={{ minWidth: 15, height: 15, bgcolor: 'grey.500' }} />
-                          : <Chip color={estado.color || "default"} size="small" sx={{ minWidth: 15, height: 15 }} />
-                        }
-                      </TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{estado.accionTimer === "pausar" ? "Pausar" : "Continuar"}</TableCell>
-                      <TableCell sx={{ py: 0.5, px: 1 }} align="right">
-                        <Tooltip title="Editar">
-                          <IconButton size="small" onClick={() => handleOpen(estado)} sx={{ p: 0.5 }}><EditIcon fontSize="small" /></IconButton>
-                        </Tooltip>
-                        <Tooltip title="Eliminar">
-                          <IconButton size="small" color="error" onClick={() => handleDelete(estado.id)} sx={{ p: 0.5 }}><DeleteIcon fontSize="small" /></IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          )}
-        </AccordionDetails>
-      </Accordion>
+      {/* Mostrar tabla de estados directamente */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+          <CircularProgress color="primary" size={40} />
+        </Box>
+      ) : (
+        <Box sx={{ width: '100%', overflowX: 'auto', maxWidth: '100vw', mt: 1 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>Estados de servicio</Typography>
+          <Table sx={{ border: 'none', minWidth: 700 }} size="small">
+            <TableHead>
+              <TableRow sx={{ height: 28 }}>
+                <TableCell sx={{
+                  py: 0.5,
+                  px: 1,
+                  fontSize: 12,
+                  position: 'sticky',
+                  left: 0,
+                  background: '#fff',
+                  zIndex: 2,
+                  minWidth: 120
+                }}>Nombre</TableCell>
+                <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Etiqueta</TableCell>
+                <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Default Registro</TableCell>
+                <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Default Facturar</TableCell>
+                <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>Dejar de mostrar</TableCell>
+                <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Color</TableCell>
+                <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>Acción Timer</TableCell>
+                <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }} align="right">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {estados.map((estado) => (
+                <TableRow key={estado.id} sx={{ border: 'none', background: 'transparent', height: 28 }}>
+                  <TableCell sx={{
+                    py: 0.5,
+                    px: 1,
+                    fontSize: 12,
+                    position: 'sticky',
+                    left: 0,
+                    background: '#fff',
+                    zIndex: 1,
+                    minWidth: 120
+                  }}>{estado.nombre}</TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{estado.label}</TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
+                    <Checkbox
+                      checked={!!estado.defaultEstado}
+                      onChange={() => handleDefaultChange(estado.id)}
+                      color="primary"
+                      inputProps={{ 'aria-label': 'Estado predeterminado' }}
+                      disabled={savingDefaultId === estado.id}
+                      sx={{ mx: 'auto', display: 'block' }}
+                    />
+                    {savingDefaultId === estado.id && (
+                      <CircularProgress size={16} sx={{ ml: 1 }} />
+                    )}
+                  </TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
+                    <Checkbox
+                      checked={!!estado.defaultFacturar}
+                      onChange={() => handleDefaultFacturarChange(estado.id)}
+                      color="success"
+                      inputProps={{ 'aria-label': 'Estado default de facturación' }}
+                      disabled={savingDefaultFacturarId === estado.id}
+                      sx={{ mx: 'auto', display: 'block' }}
+                    />
+                    {savingDefaultFacturarId === estado.id && (
+                      <CircularProgress size={16} sx={{ ml: 1 }} />
+                    )}
+                  </TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12, textAlign: 'center' }}>
+                    <Checkbox
+                      checked={!!estado.dejarDeMostrar}
+                      onChange={() => handleDejarDeMostrarChange(estado.id)}
+                      color="warning"
+                      inputProps={{ 'aria-label': 'Estado dejar de mostrar' }}
+                      sx={{ mx: 'auto', display: 'block' }}
+                    />
+                    {dejarDeMostrarId === estado.id && (
+                      <CircularProgress size={16} sx={{ ml: 1 }} />
+                    )}
+                    <Dialog open={confirmDejarDeMostrar.open} onClose={() => setConfirmDejarDeMostrar({ open: false, id: null })}>
+                      <DialogTitle>¿Ocultar este estado en el dashboard?</DialogTitle>
+                      <DialogContent>
+                        <Typography>Si confirmas, el estado dejará de mostrarse en el dashboard y no podrá ser seleccionado por los usuarios.</Typography>
+                      </DialogContent>
+                      <DialogActions>
+                        <Button onClick={() => setConfirmDejarDeMostrar({ open: false, id: null })} color="inherit">Cancelar</Button>
+                        <Button color="warning" variant="contained" onClick={async () => {
+                          const id = confirmDejarDeMostrar.id;
+                          setDejarDeMostrarId(id);
+                          const nuevosEstados = estados.map(e => ({ ...e, dejarDeMostrar: e.id === id }));
+                          setEstados(nuevosEstados);
+                          try {
+                            await Promise.all(estados.map(e => e.id !== id ? actualizarEstadoServicio(e.id, { ...e, dejarDeMostrar: false }) : null));
+                            await actualizarEstadoServicio(id, { ...estados.find(e => e.id === id), dejarDeMostrar: true });
+                            const actualizados = await obtenerEstadosServicio();
+                            setEstados(actualizados);
+                          } catch (err) {
+                            setEstados(estados);
+                          }
+                          setDejarDeMostrarId(null);
+                          setConfirmDejarDeMostrar({ open: false, id: null });
+                        }}>Confirmar</Button>
+                      </DialogActions>
+                    </Dialog>
+                  </TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>
+                    {estado.color === "grey"
+                      ? <Chip size="small" sx={{ minWidth: 15, height: 15, bgcolor: 'grey.500' }} />
+                      : <Chip color={estado.color || "default"} size="small" sx={{ minWidth: 15, height: 15 }} />
+                    }
+                  </TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1, fontSize: 12 }}>{estado.accionTimer === "pausar" ? "Pausar" : "Continuar"}</TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1 }} align="right">
+                    <Tooltip title="Editar">
+                      <IconButton size="small" onClick={() => handleOpen(estado)} sx={{ p: 0.5 }}><EditIcon fontSize="small" /></IconButton>
+                    </Tooltip>
+                    <Tooltip title="Eliminar">
+                      <IconButton size="small" color="error" onClick={() => handleDelete(estado.id)} sx={{ p: 0.5 }}><DeleteIcon fontSize="small" /></IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+      )}
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>{editId ? "Editar estado" : "Agregar estado"}</DialogTitle>
         <DialogContent sx={{ minWidth: 320, position: 'relative' }}>
