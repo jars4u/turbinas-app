@@ -140,6 +140,7 @@ export default function Dashboard() {
       const filtrados = vehiculosRaw.filter(
         (v) =>
           (v.status || v.estado) !== nombreOcultar &&
+          (v.status !== 'por_cobrar') &&
           (!ordenEstado || (v.status || v.estado) === ordenEstado)
       );
       setVehiculos(filtrados);
@@ -1711,7 +1712,8 @@ export default function Dashboard() {
                             servicio: form.servicio || '',
                             precio: parseFloat(form.precio) || 0,
                             precioBs: parseFloat(form.precioBs) || 0,
-                            observaciones: `${form.customerName || ''} - ${form.customerPhone || ''}`
+                            observaciones: `${form.customerName || ''} - ${form.customerPhone || ''}`,
+                            status: 'por_cobrar'
                           };
                           await addDoc(collection(db, 'cuentasPorCobrar'), nuevaCuenta);
                           // Eliminar el vehículo del estado local para que desaparezca del dashboard
