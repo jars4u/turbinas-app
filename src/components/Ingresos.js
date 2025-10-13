@@ -39,7 +39,10 @@ export default function Ingresos({ tasaBCV }) {
   // El ingreso manual no debe tener vehiculoId
   const [ingresos, setIngresos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  // Establecer el día actual como valor por defecto
+  const hoy = new Date();
+  const hoyStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(hoyStr);
   // Estado para guardar el ingreso original antes de editar
   const [originalIngreso, setOriginalIngreso] = useState(null);
 
@@ -56,33 +59,8 @@ export default function Ingresos({ tasaBCV }) {
       // Seleccionar el día de hoy por defecto si existe
       const hoy = new Date();
       const hoyStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
-      const fechas = data.map(i => {
-        if (i.fecha && typeof i.fecha === 'string') {
-          const parts = i.fecha.split(/[/-]/);
-          if (parts.length === 3) {
-            return `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
-          }
-          return i.fecha;
-        }
-        if (i.fecha && i.fecha.seconds) {
-          const d = String(new Date(i.fecha.seconds * 1000).getDate()).padStart(2, '0');
-          const m = String(new Date(i.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
-          const y = new Date(i.fecha.seconds * 1000).getFullYear();
-          return `${d}/${m}/${y}`;
-        }
-        return null;
-      }).filter(Boolean);
-      if (fechas.includes(hoyStr)) {
-        setTimeout(() => setFechaSeleccionada(hoyStr), 0);
-      } else if (fechas.length > 0) {
-        // Seleccionar el día más reciente (mayor fecha) con información
-        const fechasOrdenadas = fechas.sort((a, b) => {
-          const fa = Date.parse(a.split('/').reverse().join('-'));
-          const fb = Date.parse(b.split('/').reverse().join('-'));
-          return fb - fa;
-        });
-        setTimeout(() => setFechaSeleccionada(fechasOrdenadas[0]), 0);
-      }
+      // Siempre mostrar el día de hoy en el selector, aunque no haya ingresos
+      setTimeout(() => setFechaSeleccionada(hoyStr), 0);
     });
   }, []);
 
@@ -490,11 +468,11 @@ export default function Ingresos({ tasaBCV }) {
             >
               <option value="" disabled hidden>Selecciona una forma</option>
               <option value="efectivo">Efectivo</option>
-              <option value="transferencia">Transferencia</option>
+              {/* <option value="transferencia">Transferencia</option> */}
               <option value="pago movil">Pago móvil</option>
               <option value="zelle">Zelle</option>
-              <option value="divisas">Divisas</option>
-              <option value="otro">Otro</option>
+              {/* <option value="divisas">Divisas</option>
+              <option value="otro">Otro</option> */}
             </TextField>
             <TextField
               label="Monto ($)"
@@ -688,9 +666,20 @@ export default function Ingresos({ tasaBCV }) {
                     : (ing.formaPago ? ing.formaPago.toUpperCase() : '-')}
                 </TableCell>
                 <TableCell>
-                  {Array.isArray(ing.formasPago) && ing.formasPago.length > 0
-                    ? ing.formasPago.map(fp => fp.referencia || '-').join(' + ')
-                    : (ing.referencia || '-')}
+                  {(() => {
+                    // Si es ingreso manual y tiene descripción, mostrarla junto con la referencia
+                    if (!ing.vehiculoId || (ing.vehiculoId && ing.vehiculoId.startsWith('manual'))) {
+                      let desc = ing.descripcion ? ing.descripcion : '';
+                      let ref = Array.isArray(ing.formasPago) && ing.formasPago.length > 0
+                        ? ing.formasPago.map(fp => fp.referencia || '-').join(' + ')
+                        : (ing.referencia || '-');
+                      return desc ? `${desc} ${ref !== '-' ? '| ' + ref : ''}` : ref;
+                    }
+                    // Si no es manual, mostrar referencia normal
+                    return Array.isArray(ing.formasPago) && ing.formasPago.length > 0
+                      ? ing.formasPago.map(fp => fp.referencia || '-').join(' + ')
+                      : (ing.referencia || '-');
+                  })()}
                 </TableCell>
                 {isOwner && (
                   <TableCell>

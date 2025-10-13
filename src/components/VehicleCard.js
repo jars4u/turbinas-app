@@ -171,9 +171,9 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
         },
       }}
       onClick={(e) => {
-        // Evitar que el click en el chip o el botón de precio abra el modal de edición
-        if (e.target.closest(".MuiChip-root") || e.target.closest(".ver-precio-btn")) return;
-        onEdit();
+  // Evitar que el click en el chip, el botón de precio o el cambio de estado abra el modal de edición
+  if (e.target.closest(".MuiChip-root") || e.target.closest(".ver-precio-btn") || e.preventEdit) return;
+  onEdit();
       }}
     >
       {/* ...contenido de la tarjeta... */}
@@ -256,6 +256,8 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
                 selected={estado.nombre === currentStatus}
                 onClick={(event) => {
                   event.stopPropagation();
+                  // Marcar el evento para evitar que el Card lo procese como edición
+                  event.preventEdit = true;
                   const estadoObj = estadosServicio.find(e => e.nombre === estado.nombre);
                   if (estadoObj && estadoObj.dejarDeMostrar) {
                     setPopoverConfirm({ open: true, anchorEl: event.currentTarget, estado: estadoObj, newStatus: estado.nombre });

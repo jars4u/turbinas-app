@@ -32,7 +32,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
 export default function Egresos({ tasaBCV, isOwner }) {
-  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  // Establecer el día actual como valor por defecto
+  const hoy = new Date();
+  const hoyStr = `${String(hoy.getDate()).padStart(2, "0")}/${String(hoy.getMonth() + 1).padStart(2, "0")}/${hoy.getFullYear()}`;
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(hoyStr);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [descripcion, setDescripcion] = useState("");
@@ -100,12 +103,8 @@ export default function Egresos({ tasaBCV, isOwner }) {
       const hoyStr = `${String(hoy.getDate()).padStart(2, "0")}/${String(
         hoy.getMonth() + 1
       ).padStart(2, "0")}/${hoy.getFullYear()}`;
-      const fechas = egresosConFecha.map((e) => e._fechaStr).filter(Boolean);
-      if (fechas.includes(hoyStr)) {
-        setTimeout(() => setFechaSeleccionada(hoyStr), 0);
-      } else if (fechas.length > 0) {
-        setTimeout(() => setFechaSeleccionada(fechas[0]), 0);
-      }
+      // Siempre mostrar el día de hoy en el selector, aunque no haya egresos
+      setTimeout(() => setFechaSeleccionada(hoyStr), 0);
     });
   }, []);
 
