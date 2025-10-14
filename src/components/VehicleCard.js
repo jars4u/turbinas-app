@@ -15,8 +15,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-    Popover,
-    Button,
+  Popover,
+  Button,
 } from "@mui/material";
 import Divider from '@mui/material/Divider';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -44,11 +44,11 @@ function sanitizeDeep(obj) {
 
 const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
   const {
-  // id,
+    // id,
     arrivalTime = Date.now(),
-  vehiculo: nombreVehiculo = "",
-  // observaciones = "",
-  // customer,
+    vehiculo: nombreVehiculo = "",
+    // observaciones = "",
+    // customer,
     servicio,
     precio,
   } = vehiculo;
@@ -58,7 +58,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [currentStatus, setCurrentStatus] = useState(vehiculo.status || "servicio");
   const [estadosServicio, setEstadosServicio] = useState([]);
-    const [popoverConfirm, setPopoverConfirm] = useState({ open: false, anchorEl: null, estado: null, newStatus: null });
+  const [popoverConfirm, setPopoverConfirm] = useState({ open: false, anchorEl: null, estado: null, newStatus: null });
 
   // Cargar estados dinámicos desde Firestore
   useEffect(() => {
@@ -171,9 +171,9 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
         },
       }}
       onClick={(e) => {
-  // Evitar que el click en el chip, el botón de precio o el cambio de estado abra el modal de edición
-  if (e.target.closest(".MuiChip-root") || e.target.closest(".ver-precio-btn") || e.preventEdit) return;
-  onEdit();
+        // Evitar que el click en el chip, el botón de precio o el cambio de estado abra el modal de edición
+        if (e.target.closest(".MuiChip-root") || e.target.closest(".ver-precio-btn") || e.preventEdit) return;
+        onEdit();
       }}
     >
       {/* ...contenido de la tarjeta... */}
@@ -272,18 +272,21 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
             ))}
           </Menu>
         </div>
-        <Typography variant="caption" color="secondary" my={1}>
+        {/* <Typography variant="caption" color="secondary" my={1}>
           {`Tiempo: ${formatElapsed(currentStatus === "servicio" ? elapsed : stoppedElapsed ?? elapsed)}`}
-        </Typography>
+        </Typography> */}
         <Divider sx={{ my: 1 }} />
-      {/* Cliente y teléfono en una sola línea, abajo antes del precio */}
-      {vehiculo.customerName && vehiculo.customerPhone && (
-        <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', mt: 1, mb: 0.2 }}>
-          <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
-            {vehiculo.customerName}
-          </Typography>
-        </Box>
-      )}
+        {/* Cliente y teléfono en una sola línea, abajo antes del precio */}
+        {vehiculo.customerName && vehiculo.customerPhone && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'left', justifyContent: 'flex-start', mt: 1, mb: 0.2 }}>
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
+              {vehiculo.customerName}
+            </Typography>
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+              {vehiculo.customerPhone}
+            </Typography>
+          </Box>
+        )}
         <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
           Datos de la turbina
         </Typography>
@@ -299,9 +302,9 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
             <b>Obs:</b> {vehiculo.observaciones}
           </Typography>
         )}
-        <Divider sx={{ my: 1 }} />
+        {/* <Divider sx={{ my: 1 }} /> */}
       </CardContent>
-      <div style={{ position: "absolute", bottom: 12, right: 16 }}>
+      {/* <div style={{ position: "absolute", bottom: 12, right: 16 }}>
         <button
           className="ver-precio-btn"
           style={{
@@ -328,7 +331,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
             ? (precio !== undefined && precio !== null ? `$${precio}` : "-")
             : <VisibilityOutlinedIcon fontSize="small" />}
         </button>
-      </div>
+      </div> */}
     </Card>
   );
 }
