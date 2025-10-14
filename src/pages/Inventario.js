@@ -12,8 +12,27 @@ import { Box, Divider, Container, Button, Tabs, Tab, Typography } from "@mui/mat
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import ResumenInventario from "../components/ResumenInventario";
+import MovimientosInventario from "../components/MovimientosInventario";
 
-export default function Inventario() {
+export default function Inventario({ usuarioActivo }) {
+  const [movimientos, setMovimientos] = React.useState([]);
+  // Sincronización en tiempo real con Firestore para movimientos
+  React.useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "movimientos"),
+      (snapshot) => {
+        const movs = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setMovimientos(movs);
+      },
+      (err) => {
+        console.error("Error en tiempo real movimientos:", err);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
   const [tab, setTab] = React.useState(0);
   const [inventario, setInventario] = React.useState([]);
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -133,6 +152,7 @@ export default function Inventario() {
       <Divider sx={{ mb: 2 }} />
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Resumen" />
+        <Tab label="Movimientos" />
       </Tabs>
       {tab === 0 && (
         <ResumenInventario
@@ -149,6 +169,9 @@ export default function Inventario() {
           editandoItem={editandoItem}
           handleGuardarEdicion={handleGuardarEdicion}
         />
+      )}
+      {tab === 1 && (
+        <MovimientosInventario movimientos={movimientos} inventario={inventario} usuarioActivo={usuarioActivo} />
       )}
     </Container>
   );

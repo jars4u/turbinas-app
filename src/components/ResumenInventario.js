@@ -23,17 +23,39 @@ export default function ResumenInventario({ inventario, modalOpen, setModalOpen,
   async function handleRegistrarMovimiento() {
     if (!nuevoMovimiento.itemId || !nuevoMovimiento.cantidad) return;
     const { db } = await import('../firebase');
-    const { addDoc, collection } = await import('firebase/firestore');
+    const { addDoc, collection, doc, getDoc, updateDoc } = await import('firebase/firestore');
+    // Registrar movimiento en la colección movimientos (guardar todos los campos)
+    let usuarioActivo = window.usuarioActivo || '';
+    let usuarioNombre = usuarioActivo ? usuarioActivo.split('@')[0] : '';
     await addDoc(collection(db, 'movimientos'), {
       itemId: nuevoMovimiento.itemId,
       tipo: nuevoMovimiento.tipo,
       cantidad: Number(nuevoMovimiento.cantidad),
       depositoId: nuevoMovimiento.depositoId,
-      observaciones: nuevoMovimiento.observaciones
+      observaciones: nuevoMovimiento.observaciones,
+      usuario: usuarioNombre,
+      fecha: new Date(),
     });
+    // Actualizar cantidad en inventario
+    const itemRef = doc(db, 'inventario', nuevoMovimiento.itemId);
+    const itemSnap = await getDoc(itemRef);
+    if (itemSnap.exists()) {
+      const itemData = itemSnap.data();
+      let cantidadActual = Number(itemData.cantidad) || 0;
+      let cantidadMov = Number(nuevoMovimiento.cantidad) || 0;
+      let nuevaCantidad = cantidadActual;
+      if (nuevoMovimiento.tipo === 'entrada') {
+        nuevaCantidad = cantidadActual + cantidadMov;
+      } else if (nuevoMovimiento.tipo === 'salida') {
+        nuevaCantidad = cantidadActual - cantidadMov;
+        if (nuevaCantidad < 0) nuevaCantidad = 0;
+      }
+      await updateDoc(itemRef, { cantidad: nuevaCantidad });
+    }
     setModalMovimientoOpen(false);
     setNuevoMovimiento({ itemId: '', tipo: 'entrada', cantidad: '', depositoId: '', observaciones: '' });
-    alert('Movimiento registrado correctamente');
+    setSnackbarMsg('Movimiento registrado y stock actualizado');
+    setSnackbarOpen(true);
   }
   const [depositos, setDepositos] = React.useState([]);
   React.useEffect(() => {
@@ -51,15 +73,15 @@ export default function ResumenInventario({ inventario, modalOpen, setModalOpen,
   const [nuevoDeposito, setNuevoDeposito] = React.useState({ nombre: '' });
 
   async function handleCrearDeposito() {
-     if (!nuevoDeposito.nombre.trim()) return;
-     const { db } = await import('../firebase');
-     const { addDoc, collection } = await import('firebase/firestore');
-     // Generar un UUID simple para depositoId
-     const depositoId = 'dep_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-     await addDoc(collection(db, 'depositos'), { nombre: nuevoDeposito.nombre.trim(), depositoId });
-     setModalDepositoOpen(false);
-     setNuevoDeposito({ nombre: '' });
-     alert(`Depósito creado correctamente con depositoId: ${depositoId}`);
+    if (!nuevoDeposito.nombre.trim()) return;
+    const { db } = await import('../firebase');
+    const { addDoc, collection } = await import('firebase/firestore');
+    // Generar un UUID simple para depositoId
+    const depositoId = 'dep_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    await addDoc(collection(db, 'depositos'), { nombre: nuevoDeposito.nombre.trim(), depositoId });
+    setModalDepositoOpen(false);
+    setNuevoDeposito({ nombre: '' });
+    alert(`Depósito creado correctamente con depositoId: ${depositoId}`);
   }
   const [ordenColumna, setOrdenColumna] = React.useState("modelo");
   const [ordenAsc, setOrdenAsc] = React.useState(true);
@@ -99,73 +121,78 @@ export default function ResumenInventario({ inventario, modalOpen, setModalOpen,
           style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', minWidth: 340, fontFamily: 'Poppins, sans-serif' }}
         />
         <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button variant="outlined" color="success" size="small" onClick={() => setModalMovimientoOpen(true)}>
-              + Crear movimiento
-            </Button>
-      {/* Modal para registrar movimiento */}
-      {modalMovimientoOpen && (
-        <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', bgcolor: 'rgba(0,0,0,0.15)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Box sx={{ bgcolor: 'background.paper', p: 3, borderRadius: 2, minWidth: 320, boxShadow: 3, fontFamily: 'Poppins, sans-serif' }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 2, fontFamily: 'Poppins, sans-serif' }}>
-              Registrar movimiento
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <select value={nuevoMovimiento.itemId} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, itemId: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }}>
-                <option value="">Selecciona ítem...</option>
-                {inventario
-                  .slice()
-                  .sort((a, b) => (a.modelo || '').localeCompare(b.modelo || ''))
-                  .map(item => (
-                    <option key={item.id} value={item.id}>{item.modelo} - {item.codigo}</option>
-                  ))}
-              </select>
-              <select value={nuevoMovimiento.depositoId || (inventario.find(i => i.id === nuevoMovimiento.itemId)?.depositoId || '')} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, depositoId: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }}>
-                <option value="">Selecciona depósito...</option>
-                {depositos.map(dep => (
-                  <option key={dep.id} value={dep.id}>{dep.nombre}</option>
-                ))}
-              </select>
-              <input type="text" placeholder="Observaciones" value={nuevoMovimiento.observaciones} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, observaciones: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }} />
-              <select value={nuevoMovimiento.tipo} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, tipo: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }}>
-                <option value="entrada">Entrada</option>
-                <option value="salida">Salida</option>
-              </select>
-              <input type="number" placeholder="Cantidad" value={nuevoMovimiento.cantidad} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, cantidad: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }} />
+          <Button variant="outlined" color="success" size="small" onClick={() => setModalMovimientoOpen(true)}>
+            + Crear movimiento
+          </Button>
+          {/* Modal para registrar movimiento */}
+          {modalMovimientoOpen && (
+            <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', bgcolor: 'rgba(0,0,0,0.15)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Box sx={{ bgcolor: 'background.paper', p: 3, borderRadius: 2, minWidth: 320, boxShadow: 3, fontFamily: 'Poppins, sans-serif' }}>
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 2, fontFamily: 'Poppins, sans-serif' }}>
+                  Registrar movimiento
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <select value={nuevoMovimiento.itemId} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, itemId: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }}>
+                    <option value="">Selecciona ítem...</option>
+                    {inventario
+                      .slice()
+                      .sort((a, b) => (a.modelo || '').localeCompare(b.modelo || ''))
+                      .map(item => (
+                        <option key={item.id} value={item.id}>
+                          {item.modelo ? item.modelo : ''}
+                          {item.descripcion ? ' - ' + item.descripcion : ''}
+                        </option>
+                      ))}
+                  </select>
+                  <select value={nuevoMovimiento.depositoId || (inventario.find(i => i.id === nuevoMovimiento.itemId)?.depositoId || '')} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, depositoId: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }}>
+                    <option value="">Selecciona depósito...</option>
+                    {depositos.map(dep => (
+                      <option key={dep.id} value={dep.id}>{dep.nombre}</option>
+                    ))}
+                  </select>
+                  <input type="text" placeholder="Observaciones" value={nuevoMovimiento.observaciones} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, observaciones: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }} />
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <select value={nuevoMovimiento.tipo} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, tipo: e.target.value })} style={{ flex: 1, padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }}>
+                      <option value="entrada">Entrada</option>
+                      <option value="salida">Salida</option>
+                    </select>
+                    <input type="number" placeholder="Cantidad" value={nuevoMovimiento.cantidad} onChange={e => setNuevoMovimiento({ ...nuevoMovimiento, cantidad: e.target.value })} style={{ flex: 1, padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }} />
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
+                  <Button onClick={() => setModalMovimientoOpen(false)} variant="outlined" color="primary" size="small" sx={{ fontFamily: 'Poppins, sans-serif' }}>Cancelar</Button>
+                  <Button onClick={handleRegistrarMovimiento} variant="contained" color="success" size="small" sx={{ fontFamily: 'Poppins, sans-serif' }}>Registrar</Button>
+                </Box>
+              </Box>
             </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
-              <Button onClick={() => setModalMovimientoOpen(false)} variant="outlined" color="primary" size="small" sx={{ fontFamily: 'Poppins, sans-serif' }}>Cancelar</Button>
-              <Button onClick={handleRegistrarMovimiento} variant="contained" color="success" size="small" sx={{ fontFamily: 'Poppins, sans-serif' }}>Registrar</Button>
-            </Box>
-          </Box>
-        </Box>
-      )}
+          )}
           <Button variant="outlined" color="secondary" size="small" onClick={() => setModalDepositoOpen(true)}>
             Crear depósito
           </Button>
-      {/* Modal para crear depósito */}
-      {modalDepositoOpen && (
-        <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', bgcolor: 'rgba(0,0,0,0.15)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Box sx={{ bgcolor: 'background.paper', p: 3, borderRadius: 2, minWidth: 320, boxShadow: 3, fontFamily: 'Poppins, sans-serif' }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 2, fontFamily: 'Poppins, sans-serif' }}>
-              Crear depósito
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <input type="text" placeholder="Nombre del depósito" value={nuevoDeposito.nombre} onChange={e => setNuevoDeposito({ nombre: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }} />
+          {/* Modal para crear depósito */}
+          {modalDepositoOpen && (
+            <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', bgcolor: 'rgba(0,0,0,0.15)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Box sx={{ bgcolor: 'background.paper', p: 3, borderRadius: 2, minWidth: 320, boxShadow: 3, fontFamily: 'Poppins, sans-serif' }}>
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 2, fontFamily: 'Poppins, sans-serif' }}>
+                  Crear depósito
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <input type="text" placeholder="Nombre del depósito" value={nuevoDeposito.nombre} onChange={e => setNuevoDeposito({ nombre: e.target.value })} style={{ padding: 8, fontSize: 15, borderRadius: 4, border: '1px solid #ccc', fontFamily: 'Poppins, sans-serif' }} />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
+                  <Button onClick={() => setModalDepositoOpen(false)} variant="outlined" color="primary" size="small" sx={{ fontFamily: 'Poppins, sans-serif' }}>Cancelar</Button>
+                  <Button onClick={handleCrearDeposito} variant="contained" color="secondary" size="small" sx={{ fontFamily: 'Poppins, sans-serif' }}>Crear</Button>
+                </Box>
+              </Box>
             </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
-              <Button onClick={() => setModalDepositoOpen(false)} variant="outlined" color="primary" size="small" sx={{ fontFamily: 'Poppins, sans-serif' }}>Cancelar</Button>
-              <Button onClick={handleCrearDeposito} variant="contained" color="secondary" size="small" sx={{ fontFamily: 'Poppins, sans-serif' }}>Crear</Button>
-            </Box>
-          </Box>
-        </Box>
-      )}
+          )}
           <Button variant="outlined" color="primary" size="small" onClick={abrirModalAgregar}>
             + Agregar item
           </Button>
         </Box>
       </Box>
       <Box sx={{ mt: 2 }}>
-  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#f5f5f5', height: 32 }}>
               <th style={{ padding: '4px', border: '1px solid #e0e0e0', cursor: 'pointer' }} onClick={() => handleOrdenar('codigo')}>

@@ -74,7 +74,7 @@ function AppRoutes() {
         } />
         <Route path="/inventario" element={
           <ProtectedRoute>
-            <Inventario />
+            <Inventario usuarioActivo={usuario} />
           </ProtectedRoute>
         } />
         <Route path="/nomina" element={
