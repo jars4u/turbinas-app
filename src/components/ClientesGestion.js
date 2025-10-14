@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Typography, Box, Table, TableBody, TableCell, TableHead, TableRow, Divider, CircularProgress, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, List, ListItem, ListItemText } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import GroupIcon from "@mui/icons-material/Group";
+import ContactPhoneIcon from "@mui/icons-material/ContactPhone";
 import { obtenerClientes, actualizarCliente, eliminarCliente } from "../lib/clientesFirebase";
 
 export default function ClientesGestion() {
@@ -12,13 +12,13 @@ export default function ClientesGestion() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [clienteEdit, setClienteEdit] = useState(null);
   const [clienteDelete, setClienteDelete] = useState(null);
-  const [editForm, setEditForm] = useState({ nombre: "", telefono: "" });
+  const [editForm, setEditForm] = useState({ nombre: "", telefono: "", etiqueta: "" });
   // Estados para el modal de modelos y servicios
   const [modelosDialogOpen, setModelosDialogOpen] = useState(false);
   const [modelosCliente, setModelosCliente] = useState([]);
   const [modelosLoading, setModelosLoading] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  const [addForm, setAddForm] = useState({ nombre: "", telefono: "" });
+  const [addForm, setAddForm] = useState({ nombre: "", telefono: "", etiqueta: "" });
   const [editLoading, setEditLoading] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -45,12 +45,12 @@ export default function ClientesGestion() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-        <GroupIcon fontSize="small" sx={{ mb: "2px" }} />
+        <ContactPhoneIcon fontSize="small" sx={{ mb: "2px" }} />
         <Typography variant="h6" fontWeight={600}>
-          Gestión de clientes
+          Agenda de contactos
         </Typography>
       </Box>
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 1 }}>
         <TextField
           size="small"
           placeholder="Buscar cliente..."
@@ -91,6 +91,13 @@ export default function ClientesGestion() {
               fullWidth
               disabled={addLoading}
             />
+            <TextField
+              label="Etiqueta"
+              value={addForm.etiqueta}
+              onChange={e => setAddForm({ ...addForm, etiqueta: e.target.value })}
+              fullWidth
+              disabled={addLoading}
+            />
             {addError && <Typography color="error">{addError}</Typography>}
           </Box>
         </DialogContent>
@@ -112,6 +119,7 @@ export default function ClientesGestion() {
                 await addDoc(collection(db, "clientes"), {
                   nombre: addForm.nombre.trim().toUpperCase(),
                   telefono: addForm.telefono.trim().toUpperCase(),
+                  etiqueta: addForm.etiqueta.trim(),
                 });
                 const data = await obtenerClientes();
                 setClientes(data);
@@ -137,6 +145,7 @@ export default function ClientesGestion() {
             <TableRow>
               <TableCell sx={{ fontWeight: 600, fontSize: 14 }}>Nombre</TableCell>
               <TableCell sx={{ fontWeight: 600, fontSize: 14 }}>Teléfono</TableCell>
+              <TableCell sx={{ fontWeight: 600, fontSize: 14 }}>Etiqueta</TableCell>
               <TableCell sx={{ fontWeight: 600, fontSize: 14, textAlign: 'right' }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
@@ -169,10 +178,11 @@ export default function ClientesGestion() {
                 }}>
                   <TableCell>{(c.nombre || "").toUpperCase()}</TableCell>
                   <TableCell>{(c.telefono || "").toUpperCase()}</TableCell>
+                  <TableCell>{c.etiqueta || "-"}</TableCell>
                   <TableCell align="right" onClick={e => e.stopPropagation()}>
                     <IconButton size="small" color="primary" sx={{ mr: 1 }} onClick={() => {
                       setClienteEdit(c);
-                      setEditForm({ nombre: c.nombre, telefono: c.telefono });
+                      setEditForm({ nombre: c.nombre, telefono: c.telefono, etiqueta: c.etiqueta || "" });
                       setEditDialogOpen(true);
                       setEditError("");
                     }}>
@@ -239,6 +249,13 @@ export default function ClientesGestion() {
               fullWidth
               disabled={editLoading}
             />
+            <TextField
+              label="Etiqueta"
+              value={editForm.etiqueta}
+              onChange={e => setEditForm({ ...editForm, etiqueta: e.target.value })}
+              fullWidth
+              disabled={editLoading}
+            />
             {editError && <Typography color="error">{editError}</Typography>}
           </Box>
         </DialogContent>
@@ -256,7 +273,8 @@ export default function ClientesGestion() {
               try {
                 await actualizarCliente(clienteEdit.id, {
                   nombre: editForm.nombre.trim().toUpperCase(),
-                  telefono: editForm.telefono.trim().toUpperCase()
+                  telefono: editForm.telefono.trim().toUpperCase(),
+                  etiqueta: editForm.etiqueta.trim(),
                 });
                 const data = await obtenerClientes();
                 setClientes(data);

@@ -33,7 +33,7 @@ export default function Configuracion() {
   const [selectedSection, setSelectedSection] = useState('usuarios');
   const menuItems = [
   { key: 'usuarios', label: 'Usuarios', icon: <BadgeIcon /> },
-    { key: 'clientes', label: 'Clientes', icon: <GroupIcon /> },
+    { key: 'clientes', label: 'Contactos', icon: <GroupIcon /> },
     { key: 'estados', label: 'Estados de Servicio', icon: <SettingsIcon /> },
     { key: 'nomina', label: 'Nómina', icon: <WorkIcon /> },
     { key: 'caja', label: 'Caja Chica', icon: <AccountBalanceWalletIcon /> },

@@ -266,14 +266,50 @@ export default function Dashboard() {
     Object.keys(vehiculoData).forEach((k) => {
       if (vehiculoData[k] === undefined) vehiculoData[k] = null;
     });
+    // Guardar cliente en la colección 'clientes' si no existe
+    try {
+      const nombreCliente = vehiculoData.customerName?.trim().toUpperCase();
+      const telefonoCliente = vehiculoData.customerPhone?.trim();
+      if (nombreCliente && telefonoCliente) {
+        const { getFirestore, collection, getDocs, query, where, addDoc, updateDoc, doc } = await import("firebase/firestore");
+        const db = getFirestore();
+        const clientesRef = collection(db, "clientes");
+        const q = query(clientesRef, where("nombre", "==", nombreCliente), where("telefono", "==", telefonoCliente));
+        const snapshot = await getDocs(q);
+        // Nuevo registro de modelo/servicio
+        const nuevoModeloServicio = {
+          fecha: Date.now(),
+          modelo: vehiculoData.vehiculo,
+          servicio: vehiculoData.servicio,
+          nombre: nombreCliente,
+          telefono: telefonoCliente
+        };
+        if (snapshot.empty) {
+          await addDoc(clientesRef, {
+            nombre: nombreCliente,
+            telefono: telefonoCliente,
+            modelosServicios: [nuevoModeloServicio]
+          });
+        } else {
+          // Actualizar el historial del cliente existente
+          const clienteDoc = snapshot.docs[0];
+          const modelosServiciosPrevios = clienteDoc.data().modelosServicios || [];
+          await updateDoc(doc(db, "clientes", clienteDoc.id), {
+            modelosServicios: [...modelosServiciosPrevios, nuevoModeloServicio]
+          });
+        }
+      }
+    } catch (e) {
+      // No bloquear el registro si falla el guardado del cliente
+    }
     if (editId) {
       await actualizarVehiculo(editId, vehiculoData);
       const actualizados = await obtenerVehiculos();
-  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
+      setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
     } else {
       await crearVehiculo(vehiculoData);
       const actualizados = await obtenerVehiculos();
-  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
+      setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
     }
     setActionLoading(false);
     setOpen(false);
