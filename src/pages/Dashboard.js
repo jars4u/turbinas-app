@@ -124,7 +124,7 @@ export default function Dashboard() {
     });
     await actualizarVehiculo(id, data);
     const actualizados = await obtenerVehiculos();
-  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
+    setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
   };
   const [vehiculosRaw, setVehiculosRaw] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
@@ -339,7 +339,7 @@ export default function Dashboard() {
     try {
       await eliminarVehiculo(editId);
       const actualizados = await obtenerVehiculos();
-  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
+      setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
       setActionLoading(false);
       handleClose();
       setConfirmDeleteOpen(false);
@@ -487,8 +487,8 @@ export default function Dashboard() {
                     estado.color === "grey"
                       ? "#757575"
                       : (theme) =>
-                          theme.palette[estado.color]?.main ||
-                          theme.palette.text.primary,
+                        theme.palette[estado.color]?.main ||
+                        theme.palette.text.primary,
                 }}
               >
                 {estado.label}:{" "}
@@ -1048,8 +1048,8 @@ export default function Dashboard() {
                         key={estado.nombre}
                         variant={
                           vehiculoEstadoModal &&
-                          (vehiculoEstadoModal.status === estado.nombre ||
-                            vehiculoEstadoModal.estado === estado.nombre)
+                            (vehiculoEstadoModal.status === estado.nombre ||
+                              vehiculoEstadoModal.estado === estado.nombre)
                             ? "contained"
                             : "outlined"
                         }
@@ -1423,7 +1423,17 @@ export default function Dashboard() {
                     {form.observaciones}
                   </Typography>
                 </Box>
-                <Box sx={{ display: "flex", gap: 2, mb: 1.5 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: { xs: "row", sm: "column" },
+                    alignItems: { xs: "flex-start", sm: "flex-start" },
+                    gap: { xs: 0.5, sm: 0 },
+                    width: "100%",
+                    mb: 0.5,
+                    flexWrap: { xs: "wrap", sm: "nowrap" },
+                  }}
+                >
                   <Typography
                     variant="caption"
                     sx={{
@@ -1722,9 +1732,9 @@ export default function Dashboard() {
                         variant="outlined"
                         size="small"
                         color="primary"
-                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2, mb: 1 }}
+                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
                       >
-                        Volver
+                        Cancelar
                       </Button>
                       <Button
                         variant="outlined"
@@ -1744,7 +1754,7 @@ export default function Dashboard() {
                           }
                         }}
                         disabled={!form.customerPhone}
-                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2, mb: 1 }}
+                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
                       >
                         Enviar
                       </Button>
@@ -1752,7 +1762,7 @@ export default function Dashboard() {
                         variant="contained"
                         color="warning"
                         size="small"
-                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2, mb: 1 }}
+                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
                         onClick={async () => {
                           // Enviar servicio a cuentas por cobrar
                           const { db } = await import('../firebase');
@@ -1784,7 +1794,7 @@ export default function Dashboard() {
                         color="success"
                         size="small"
                         startIcon={<PointOfSaleIcon />}
-                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2, mb: 1 }}
+                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
                         onClick={() => setFacturaOpen(true)}
                       >
                         Facturar
@@ -1820,22 +1830,22 @@ export default function Dashboard() {
               vehiculoId: editId || null,
               montoBs:
                 form.precioBs !== undefined &&
-                form.precioBs !== "" &&
-                form.precioBs !== null
+                  form.precioBs !== "" &&
+                  form.precioBs !== null
                   ? Number(form.precioBs)
                   : null,
               monto2:
                 form.precio !== undefined &&
-                form.precio !== "" &&
-                form.precio !== null
+                  form.precio !== "" &&
+                  form.precio !== null
                   ? Number(form.precio)
                   : null,
             };
             // monto2 SIEMPRE debe crearse con el input precio en $
             nuevoIngreso.monto2 =
               form.precio !== undefined &&
-              form.precio !== "" &&
-              form.precio !== null
+                form.precio !== "" &&
+                form.precio !== null
                 ? Number(form.precio)
                 : null;
             if (
@@ -1847,17 +1857,17 @@ export default function Dashboard() {
               // Lógica anterior para una sola forma de pago
               let monto =
                 facturaData.monto !== undefined &&
-                facturaData.monto !== null &&
-                facturaData.monto !== ""
+                  facturaData.monto !== null &&
+                  facturaData.monto !== ""
                   ? Number(facturaData.monto)
                   : facturaData.formaPago &&
                     /pago[ _-]?movil/i.test(facturaData.formaPago)
-                  ? Number(form.precioBs) || 0
-                  : facturaData.formaPago &&
-                    (/zelle/i.test(facturaData.formaPago) ||
-                      /efectivo/i.test(facturaData.formaPago))
-                  ? Number(form.precio) || 0
-                  : Number(form.precio) || Number(form.precioBs) || 0;
+                    ? Number(form.precioBs) || 0
+                    : facturaData.formaPago &&
+                      (/zelle/i.test(facturaData.formaPago) ||
+                        /efectivo/i.test(facturaData.formaPago))
+                      ? Number(form.precio) || 0
+                      : Number(form.precio) || Number(form.precioBs) || 0;
               nuevoIngreso.monto = monto;
               nuevoIngreso.formaPago = facturaData.formaPago;
               nuevoIngreso.referencia = facturaData.referencia;
