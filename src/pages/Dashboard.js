@@ -1722,6 +1722,7 @@ export default function Dashboard() {
                         variant="outlined"
                         size="small"
                         color="primary"
+                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2, mb: 1 }}
                       >
                         Volver
                       </Button>
@@ -1743,12 +1744,7 @@ export default function Dashboard() {
                           }
                         }}
                         disabled={!form.customerPhone}
-                        sx={{
-                          minWidth: 120,
-                          justifyContent: "center",
-                          textAlign: "center",
-                          px: 2,
-                        }}
+                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2, mb: 1 }}
                       >
                         Enviar
                       </Button>
@@ -1756,7 +1752,7 @@ export default function Dashboard() {
                         variant="contained"
                         color="warning"
                         size="small"
-                        sx={{ ml: 1 }}
+                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2, mb: 1 }}
                         onClick={async () => {
                           // Enviar servicio a cuentas por cobrar
                           const { db } = await import('../firebase');
@@ -1788,6 +1784,7 @@ export default function Dashboard() {
                         color="success"
                         size="small"
                         startIcon={<PointOfSaleIcon />}
+                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2, mb: 1 }}
                         onClick={() => setFacturaOpen(true)}
                       >
                         Facturar
