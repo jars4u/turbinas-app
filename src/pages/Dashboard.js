@@ -738,7 +738,12 @@ export default function Dashboard() {
                           fontSize: "0.80rem",
                         }}
                       >
-                        {(v.customerName || "") + (v.customerPhone ? ` - ${v.customerPhone}` : "")}
+                        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+                          <span style={{ fontWeight: 500 }}>{v.customerName || ""}</span>
+                          {v.customerPhone && (
+                            <span style={{ fontSize: '0.75em', color: '#666' }}>{v.customerPhone}</span>
+                          )}
+                        </div>
                       </td>
                       <td
                         style={{
