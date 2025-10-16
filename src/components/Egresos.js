@@ -521,8 +521,15 @@ export default function Egresos({ tasaBCV, isOwner }) {
                   <span>
                     {(() => {
                       const egresosFiltrados = egresos.filter(e => e._fechaStr === fechaSeleccionada);
-                      const totalUSD = egresosFiltrados.reduce((acc, eg) => acc + (typeof eg.montoUSD === 'number' && !isNaN(eg.montoUSD) ? eg.montoUSD : 0), 0);
-                      const totalBs = egresosFiltrados.reduce((acc, eg) => acc + (typeof eg.montoBs === 'number' && !isNaN(eg.montoBs) ? eg.montoBs : 0), 0);
+                      let totalUSD = 0;
+                      let totalBs = 0;
+                      egresosFiltrados.forEach(eg => {
+                        if (typeof eg.montoUSD === 'number' && !isNaN(eg.montoUSD)) {
+                          totalUSD += eg.montoUSD;
+                        } else if (typeof eg.montoBs === 'number' && !isNaN(eg.montoBs)) {
+                          totalBs += eg.montoBs;
+                        }
+                      });
                       return `$ ${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`;
                     })()}
                   </span>
