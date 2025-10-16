@@ -140,7 +140,6 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
       onStatusChange(newStatus);
     }
   };
-  // ...existing code...
 
   return (
     <Card
@@ -192,8 +191,9 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
             <Button size="small" onClick={() => setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null })} color="primary" variant="outlined">Cancelar</Button>
             <Button size="small" color="error" variant="contained" onClick={async () => {
               // Evitar que el click se propague y abra el modal de edición
-              if (typeof window !== "undefined" && window.event) {
+              if (window.event) {
                 window.event.stopPropagation();
+                window.event.preventDefault();
               }
               setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null });
               setCurrentStatus(popoverConfirm.newStatus);
@@ -226,7 +226,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
               {new Date(arrivalTimeNum).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "2-digit" })}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 400, letterSpacing: 0.1, lineHeight: 2 }}>
-              {new Date(arrivalTimeNum).toLocaleTimeString()}
+              {new Date(arrivalTimeNum).toLocaleTimeString("es-VE", { timeZone: "America/Caracas" })}
             </Typography>
           </div>
           <Chip

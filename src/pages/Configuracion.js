@@ -1,4 +1,6 @@
 import GroupIcon from "@mui/icons-material/Group";
+import MessageIcon from '@mui/icons-material/Message';
+import PlantillaMensajes from "../components/PlantillaMensajes";
 import ClientesGestion from "../components/ClientesGestion";
 import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -32,12 +34,13 @@ export default function Configuracion() {
   const navigate = useNavigate();
   const [selectedSection, setSelectedSection] = useState('usuarios');
   const menuItems = [
-  { key: 'usuarios', label: 'Usuarios', icon: <BadgeIcon /> },
+    { key: 'usuarios', label: 'Usuarios', icon: <BadgeIcon /> },
     { key: 'clientes', label: 'Contactos', icon: <GroupIcon /> },
     { key: 'estados', label: 'Estados de Servicio', icon: <SettingsIcon /> },
     { key: 'nomina', label: 'Nómina', icon: <WorkIcon /> },
     { key: 'caja', label: 'Caja Chica', icon: <AccountBalanceWalletIcon /> },
     { key: 'factor', label: 'Factor de Conversión', icon: <PriceChangeIcon /> },
+    { key: 'plantillas', label: 'Plantilla de Mensajes', icon: <MessageIcon /> },
   ];
 
   // Renderiza el contenido según la sección seleccionada
@@ -55,6 +58,8 @@ export default function Configuracion() {
         return <ConfiguracionCajaChica />;
       case 'factor':
         return <FactorConversionPrecios />;
+      case 'plantillas':
+        return <PlantillaMensajes />;
       default:
         return null;
     }
