@@ -605,9 +605,9 @@ export default function Dashboard() {
           >
             <table
               style={{
-                minWidth: 600,
+                minWidth: 350,
                 borderCollapse: "collapse",
-                fontSize: "0.95rem",
+                fontSize: "0.80rem",
                 width: "100%",
               }}
             >
@@ -615,9 +615,10 @@ export default function Dashboard() {
                 <tr style={{ background: "#f5f5f5" }}>
                   <th
                     style={{
-                      padding: "8px",
+                      padding: "4px",
                       border: "1px solid #ddd",
                       whiteSpace: "nowrap",
+                      fontSize: "0.80rem",
                     }}
                   >
                     Fecha
@@ -638,6 +639,15 @@ export default function Dashboard() {
                       whiteSpace: "nowrap",
                     }}
                   >
+                    Cliente
+                  </th>
+                  <th
+                    style={{
+                      padding: "8px",
+                      border: "1px solid #ddd",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     Servicio
                   </th>
                   <th
@@ -648,15 +658,6 @@ export default function Dashboard() {
                     }}
                   >
                     Estado
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Obs
                   </th>
                   <th
                     style={{
@@ -701,10 +702,11 @@ export default function Dashboard() {
                     >
                       <td
                         style={{
-                          padding: "8px",
+                          padding: "4px",
                           border: "1px solid #ddd",
                           textAlign: "center",
                           whiteSpace: "nowrap",
+                          fontSize: "0.80rem",
                         }}
                       >
                         {new Date(
@@ -726,6 +728,17 @@ export default function Dashboard() {
                         }}
                       >
                         {v.vehiculo && v.vehiculo.toUpperCase()}
+                      </td>
+                      <td
+                        style={{
+                          padding: "4px",
+                          border: "1px solid #ddd",
+                          textAlign: "left",
+                          whiteSpace: "nowrap",
+                          fontSize: "0.80rem",
+                        }}
+                      >
+                        {(v.customerName || "") + (v.customerPhone ? ` - ${v.customerPhone}` : "")}
                       </td>
                       <td
                         style={{
@@ -773,16 +786,6 @@ export default function Dashboard() {
                           size="small"
                           sx={{ fontSize: "0.80rem", height: 24 }}
                         />
-                      </td>
-                      <td
-                        style={{
-                          padding: "8px",
-                          border: "1px solid #ddd",
-                          textAlign: "center",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {v.observaciones || "-"}
                       </td>
                       <td
                         style={{
