@@ -61,6 +61,18 @@ function sanitizeDeep(obj) {
 }
 
 export default function Dashboard() {
+  // Bloqueo de navegación atrás en móviles
+  useEffect(() => {
+    const handlePopState = (e) => {
+      // Evita salir del dashboard, redirige a la misma página
+      window.history.pushState(null, '', window.location.pathname);
+    };
+    window.history.pushState(null, '', window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
   // Estado para el modal de confirmación de ocultar servicio
   const [confirmOcultar, setConfirmOcultar] = useState({
     open: false,
