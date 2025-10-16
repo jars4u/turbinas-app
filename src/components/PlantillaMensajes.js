@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import WhatsAppEnvioModal from "./WhatsAppEnvioModal";
 import { Box, Typography, TextField, Button, List, ListItem, ListItemText, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -11,6 +12,8 @@ export default function PlantillaMensajes({ onSelect }) {
   const [nombre, setNombre] = useState("");
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [envioModalOpen, setEnvioModalOpen] = useState(false);
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState(null);
 
   useEffect(() => {
     async function fetchPlantillas() {
@@ -68,16 +71,28 @@ export default function PlantillaMensajes({ onSelect }) {
             <Box>
               <IconButton color="primary" onClick={() => handleEditar(p)}><EditIcon /></IconButton>
               <IconButton color="error" onClick={() => handleEliminar(p.id)}><DeleteIcon /></IconButton>
-              <Button size="small" variant="outlined" sx={{ ml: 1 }} onClick={() => onSelect && onSelect(p.mensaje)}>Usar</Button>
+              <Button size="small" variant="outlined" sx={{ ml: 1 }} onClick={() => {
+                setPlantillaSeleccionada(p);
+                setEnvioModalOpen(true);
+              }}>Usar</Button>
             </Box>
           }>
             <ListItemText
-              primary={<><b>{p.nombre || "Sin nombre"}</b><br />{p.mensaje.replace(/\{nombre\}/g, "{nombre}")}</>}
-              secondary={<span style={{ color: '#888', fontSize: 13 }}>Puedes usar <b>{'{nombre}'}</b> para insertar el nombre del cliente.</span>}
+              primary={p.nombre || "Sin nombre"}
+              secondary={
+                <span style={{ color: '#888', fontSize: 13 }}>
+                  {p.mensaje.replace(/\{nombre\}/g, "{nombre}").slice(0, 60)}{p.mensaje.length > 60 ? '...' : ''}
+                </span>
+              }
             />
           </ListItem>
         ))}
       </List>
+      <WhatsAppEnvioModal
+        open={envioModalOpen}
+        onClose={() => setEnvioModalOpen(false)}
+        plantillaDefault={plantillaSeleccionada}
+      />
       <Dialog open={openDialog} onClose={() => { setOpenDialog(false); setMensaje(""); setNombre(""); setEditId(null); }} maxWidth="sm" fullWidth>
         <DialogTitle>{editId ? "Editar plantilla" : "Nueva plantilla"}</DialogTitle>
         <DialogContent>

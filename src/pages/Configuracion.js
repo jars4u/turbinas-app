@@ -32,7 +32,9 @@ import UsuariosGestion from "../components/UsuariosGestion";
 export default function Configuracion() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [selectedSection, setSelectedSection] = useState('usuarios');
+  const [selectedSection, setSelectedSection] = useState(() => {
+    return localStorage.getItem('configSelectedSection') || 'usuarios';
+  });
   const menuItems = [
     { key: 'usuarios', label: 'Usuarios', icon: <BadgeIcon /> },
     { key: 'clientes', label: 'Contactos', icon: <GroupIcon /> },
@@ -43,6 +45,11 @@ export default function Configuracion() {
     { key: 'plantillas', label: 'Plantilla de Mensajes', icon: <MessageIcon /> },
   ];
 
+  // Guardar la sección seleccionada en localStorage
+  const handleSectionChange = (key) => {
+    setSelectedSection(key);
+    localStorage.setItem('configSelectedSection', key);
+  };
   // Renderiza el contenido según la sección seleccionada
   const renderSection = () => {
     switch (selectedSection) {
@@ -88,7 +95,7 @@ export default function Configuracion() {
                 <ListItem key={item.key} disablePadding>
                   <ListItemButton
                     selected={selectedSection === item.key}
-                    onClick={() => setSelectedSection(item.key)}
+                    onClick={() => handleSectionChange(item.key)}
                   >
                     <ListItemIcon>{item.icon}</ListItemIcon>
                     <ListItemText primary={item.label} />
