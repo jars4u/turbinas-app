@@ -447,7 +447,7 @@ export default function Dashboard() {
             sx={{ borderColor: '#bdbdbd', color: '#616161', minWidth: 120 }}
             onClick={() => setOpenReporteDia(true)}
           >
-            Ver reporte
+            Reporte del día
           </Button>
           <Button
             variant="outlined"
