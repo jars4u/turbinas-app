@@ -1,4 +1,5 @@
 import GroupIcon from "@mui/icons-material/Group";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import MessageIcon from '@mui/icons-material/Message';
 import PlantillaMensajes from "../components/PlantillaMensajes";
 import ClientesGestion from "../components/ClientesGestion";
@@ -26,6 +27,7 @@ import EstadosServicios from "./EstadosServicios";
 import FactorConversionPrecios from "../components/FactorConversionPrecios";
 import NominaEmpleados from "../components/NominaEmpleados";
 import ConfiguracionCajaChica from "../components/ConfiguracionCajaChica";
+import ConfiguracionReporte from "../components/ConfiguracionReporte";
 import UsuariosGestion from "../components/UsuariosGestion";
 
 
@@ -39,6 +41,7 @@ export default function Configuracion() {
     { key: 'usuarios', label: 'Usuarios', icon: <BadgeIcon /> },
     { key: 'clientes', label: 'Contactos', icon: <GroupIcon /> },
     { key: 'estados', label: 'Estados de Servicio', icon: <SettingsIcon /> },
+    // { key: 'reporte', label: 'Reporte del día', icon: <AssignmentIcon /> },
     { key: 'nomina', label: 'Nómina', icon: <WorkIcon /> },
     { key: 'caja', label: 'Caja Chica', icon: <AccountBalanceWalletIcon /> },
     { key: 'factor', label: 'Factor de Conversión', icon: <PriceChangeIcon /> },
@@ -59,6 +62,8 @@ export default function Configuracion() {
         return <ClientesGestion />;
       case 'estados':
         return <EstadosServicios />;
+      case 'reporte':
+        return <ConfiguracionReporte />;
       case 'nomina':
         return <NominaEmpleados />;
       case 'caja':

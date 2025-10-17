@@ -467,13 +467,8 @@ export default function Dashboard() {
       <ReporteDia
         open={openReporteDia}
         onClose={() => setOpenReporteDia(false)}
-        fecha={new Date().toLocaleDateString("es-VE")}
-        resumen={{
-          inicio: 10,
-          registrados: 3,
-          entregados: 2,
-          pendientes: 11,
-        }}
+        servicios={vehiculosRaw}
+        fecha={new Date().toISOString().slice(0, 10)}
       />
       </Box>
       {/* Resumen de trabajos por estado sincronizado */}
