@@ -22,6 +22,8 @@ import {
 } from "@mui/material";
 import Skeleton from "@mui/material/Skeleton";
 import PaymentModal from "../components/PaymentModal";
+import ReporteDia from "../components/ReporteDia";
+// ...otros imports...
 import CircularProgress from "@mui/material/CircularProgress";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -61,6 +63,7 @@ function sanitizeDeep(obj) {
 }
 
 export default function Dashboard() {
+  const [openReporteDia, setOpenReporteDia] = useState(false);
   // Bloqueo de navegación atrás en móviles
   useEffect(() => {
     const handlePopState = (e) => {
@@ -435,19 +438,38 @@ export default function Dashboard() {
             )
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          color="primary"
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpen()}
-          sx={{
-            width: { xs: "100%", sm: "auto" },
-            maxWidth: { xs: 320, sm: "none" },
-          }}
-        >
-          Registrar servicio
-        </Button>
+
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            sx={{ borderColor: '#bdbdbd', color: '#616161', minWidth: 120 }}
+            onClick={() => setOpenReporteDia(true)}
+          >
+            Ver reporte
+          </Button>
+          <Button
+            variant="outlined"
+            color="primary"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpen()}
+            sx={{
+              width: { xs: "100%", sm: "auto" },
+              maxWidth: { xs: 320, sm: "none" },
+            }}
+          >
+            Registrar servicio
+          </Button>
+        </Box>
+      {/* Modal ReporteDia */}
+      <ReporteDia
+        open={openReporteDia}
+        onClose={() => setOpenReporteDia(false)}
+        servicios={vehiculosRaw}
+        fecha={new Date().toISOString().slice(0, 10)}
+      />
       </Box>
       {/* Resumen de trabajos por estado sincronizado */}
       <Box

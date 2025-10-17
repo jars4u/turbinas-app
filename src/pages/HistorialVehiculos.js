@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useCuentasPorCobrarServicios } from "../lib/useCuentasPorCobrarServicios";
 import { auth } from "../firebase";
 import { guardarColumnasUsuario, obtenerColumnasUsuario } from "../lib/columnasUsuario";
+import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 
 import {
   Box,
@@ -131,6 +132,19 @@ export default function HistorialVehiculos() {
   React.useEffect(() => {
     columnasRef.current = columnasVisibles;
   }, [columnasVisibles]);
+
+  const [estadosServicio, setEstadosServicio] = React.useState([]);
+
+  React.useEffect(() => {
+    // Cargar lista de estados para mostrar labels legibles en la tabla
+    obtenerEstadosServicio()
+      .then((data) => {
+        if (Array.isArray(data)) setEstadosServicio(data);
+      })
+      .catch((err) => {
+        console.warn('No se pudieron cargar los estados de servicio:', err);
+      });
+  }, []);
 
   useEffect(() => {
     // Si el usuario ya está autenticado, carga la config
@@ -942,7 +956,12 @@ export default function HistorialVehiculos() {
                               textOverflow: "ellipsis",
                             }}
                           >
-                            {v.status || "-"}
+                            {(() => {
+                              const codigo = v.status || v.estado || v.estadoActual || v.currentStatus || "";
+                              if (!codigo) return "-";
+                              const estadoObj = estadosServicio.find((e) => e.nombre === codigo || e.id === codigo || e.value === codigo);
+                              return estadoObj ? estadoObj.label || estadoObj.nombre || codigo : codigo;
+                            })()}
                           </TableCell>
                         )}
                         {columnasVisibles.registradoPor && (
