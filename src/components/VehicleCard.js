@@ -11,15 +11,12 @@ import {
   Menu,
   MenuItem,
   Box,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Popover,
   Button,
 } from "@mui/material";
 import Divider from '@mui/material/Divider';
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+// VisibilityOutlinedIcon removed because price button is commented out
+import WarningIcon from '@mui/icons-material/Warning';
 
 // Sanitiza cualquier undefined en null, recursivamente
 function sanitizeDeep(obj) {
@@ -49,10 +46,8 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
     vehiculo: nombreVehiculo = "",
     // observaciones = "",
     // customer,
-    servicio,
-    precio,
+  servicio,
   } = vehiculo;
-  const [showPrecio, setShowPrecio] = useState(false);
   // arrivalTime puede venir como string desde la API, convertir a número
   const arrivalTimeNum = typeof arrivalTime === "string" ? Number(arrivalTime) : arrivalTime;
   const [anchorEl, setAnchorEl] = useState(null);
@@ -73,38 +68,8 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
   useEffect(() => {
     setCurrentStatus(vehiculo.status || "servicio");
   }, [vehiculo.status]);
-  const [elapsed, setElapsed] = useState(Date.now() - arrivalTime);
-  const [stoppedElapsed, setStoppedElapsed] = useState(null);
 
-  // Contador en vivo según accionTimer del estado actual
-  useEffect(() => {
-    let timer;
-    // Buscar el estado actual en la lista de estadosServicio
-    const estadoActual = estadosServicio.find(e => e.nombre === currentStatus);
-    const accionTimer = estadoActual?.accionTimer || "continuar";
-    if (accionTimer === "continuar") {
-      timer = setInterval(() => {
-        setElapsed(Date.now() - arrivalTime);
-      }, 1000);
-      setStoppedElapsed(null);
-    } else {
-      setStoppedElapsed(elapsed);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [currentStatus, arrivalTime, elapsed, estadosServicio]);
-
-  // Formatear tiempo en hh:mm:ss
-  const formatElapsed = (ms) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${hours.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-  };
+  // (Tiempo dinámico y formateo removidos para evitar variables sin uso en esta tarjeta)
   // Mostrar hora de registro estática
   // const formatHoraRegistro = (timestamp) => {
   //   const date = new Date(timestamp);
@@ -293,13 +258,12 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
         <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
           {nombreVehiculo && nombreVehiculo.toUpperCase()}
         </Typography>
-        {/* Placa eliminada por requerimiento */}
         <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
           {servicio}
         </Typography>
         {vehiculo.observaciones && (
           <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '0.85rem', color: 'text.secondary' }}>
-            <b>Obs:</b> {vehiculo.observaciones}
+            <b><WarningIcon sx={{ color: 'warning.light', verticalAlign: 'middle', fontSize: '1rem' }} /> Obs:</b> {vehiculo.observaciones}
           </Typography>
         )}
         {/* <Divider sx={{ my: 1 }} /> */}
