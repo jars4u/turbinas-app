@@ -14,5 +14,5 @@ export async function obtenerConfiguracionReporte() {
     return snap.data();
   }
   // valores por defecto vacíos
-  return { inicio: [], registrados: [], entregados: [], pendientes: [] };
+  return { inicio: [], registrados: [], entregados: [], pendientes: [], inicioModo: 'timestamp' };
 }

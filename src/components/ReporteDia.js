@@ -9,6 +9,8 @@ import {
   Grid,
   Paper,
   Divider,
+  Chip,
+  Button,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -16,8 +18,9 @@ import AddTaskIcon from "@mui/icons-material/AddTask";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
 // PendingActionsIcon eliminado: no se usa actualmente
 import { obtenerConfiguracionReporte } from "../lib/configuracionReporteFirebase";
-import { guardarSnapshotInicio, obtenerSnapshotInicio } from "../lib/reportesSnapshotsFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
+import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste, actualizarInicioSnapshot } from "../lib/reporteDiaSnapshotFirebase";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
 // props: servicios (array de servicios), fecha (string 'YYYY-MM-DD' o Date)
 export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
@@ -69,23 +72,6 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
   }, [fecha]);
 
   // Calcular resumen del día
-  const [snapshotInicio, setSnapshotInicio] = React.useState(null);
-  // Cargar snapshot desde Firestore cuando cambie la fecha
-  React.useEffect(() => {
-    if (!fechaStr) return;
-    let mounted = true;
-    (async () => {
-      try {
-        const snap = await obtenerSnapshotInicio(fechaStr);
-        if (!mounted) return;
-        setSnapshotInicio(snap || null);
-      } catch (e) {
-        console.warn('No se pudo cargar snapshotInicio:', e);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [fechaStr]);
-
   const resumen = useMemo(() => {
     if (!Array.isArray(servicios) || !fechaStr) return { inicio: 0, registrados: 0, entregados: 0, pendientes: 0 };
     // Cargar configuración de estados: prioridad a configReporte (Firestore), luego localStorage como fallback
@@ -101,13 +87,13 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
       }
     }
 
-    const estadosInicio = Array.isArray(config.inicio) ? config.inicio : [];
+  const estadosInicio = Array.isArray(config.inicio) ? config.inicio : [];
     const estadosRegistrados = Array.isArray(config.registrados) ? config.registrados : [];
     const estadosEntregados = Array.isArray(config.entregados) ? config.entregados : [];
     const estadosPendientes = Array.isArray(config.pendientes) ? config.pendientes : [];
 
     // Helpers
-    // Convierte distintos formatos a milisegundos epoch (Number) o null
+  // Convierte distintos formatos a milisegundos epoch (Number) o null
     const toMillis = (v) => {
       if (!v) return null;
       // Firestore timestamp
@@ -141,7 +127,7 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
     const millisToDateOnly = (ms) => {
       if (!ms && ms !== 0) return null;
       const d = new Date(ms);
-      return `${String(d.getFullYear()).padStart(4, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return `${String(d.getFullYear()).padStart(4,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     };
 
     const extractHistorialTransitions = (s) => {
@@ -169,7 +155,7 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
       // If no transitions but we have currentState and arrival, infer
       if (!arr.length && currentState && regMillis) arr.push({ ts: regMillis, state: currentState, type: 'inferred' });
       // sort by timestamp asc
-      return arr.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      return arr.sort((a,b) => (a.ts || 0) - (b.ts || 0));
     };
 
     const stateAt = (s, target, preferTransitions = true) => {
@@ -203,13 +189,13 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
     };
 
     // registrados: arrivalTime == fechaStr OR state transition into any estadosRegistrados on fechaStr
-    let registradosCount = 0;
-    let entregadosCount = 0;
-    let inicioCount = 0;
-    let pendientesCount = 0;
+  let registradosCount = 0;
+  let entregadosCount = 0;
+  let inicioCount = 0;
+  let pendientesCount = 0;
 
-    const inicioServices = [];
-    servicios.forEach(s => {
+  const inicioServices = [];
+  servicios.forEach(s => {
       const regDate = millisToDateOnly(toMillis(s.arrivalTime));
       let countedAsRegistrado = false;
       if (regDate === fechaStr) {
@@ -244,55 +230,23 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
         entregadosCount++;
       }
 
-      // inicio: state at (fechaStr - 1 day end) OR at start of fechaStr? We'll evaluate state at date prior to fechaStr (previous day)
-      // calcular el final del día anterior (23:59:59) como referencia para el inicio del día
-      const prevDayEnd = (() => {
-        const d = new Date(fechaStr + 'T00:00:00');
-        d.setSeconds(d.getSeconds() - 1); // 23:59:59 del día anterior
-        return d;
-      })();
-      const prevDayEndMillis = prevDayEnd.getTime();
-
-      // Determinar si el servicio ya existía al cierre del día anterior (basado en timestamps inmutables)
-      const arrivalMillis = toMillis(s.arrivalTime);
-      const entMillis = toMillis(s.fechaEntrega);
-      const existedAtPrevEnd = (arrivalMillis && arrivalMillis <= prevDayEndMillis) && (!(entMillis) || entMillis > prevDayEndMillis);
-
-      if (estadosInicio.length > 0) {
-        // Cuando hay configuración explícita, preferimos usar transiciones fechadas previas al prevDayEnd.
-        // Sólo si hay transiciones anteriores al prevDayEnd determinamos el estado con ellas.
-        const transitions = extractHistorialTransitions(s).filter(t => t.ts && t.ts <= prevDayEndMillis);
-        if (transitions.length > 0) {
-          const lastBefore = transitions[transitions.length - 1].state;
-          const lastLabel = resolveStateLabel(lastBefore);
-          if (lastLabel && estadosInicio.includes(lastLabel)) {
-            inicioCount++;
-            inicioServices.push({ id: s.id || s._id || s.vehiculo || '(no-id)', arrivalTime: s.arrivalTime, fechaEntrega: s.fechaEntrega, stateAtStart: lastLabel });
-          }
-        } else {
-          // No hay transiciones previas: use sólo arrival/entrega para decidir existencia en pantalla al inicio del día.
-          if (existedAtPrevEnd) {
-            inicioCount++;
-            inicioServices.push({ id: s.id || s._id || s.vehiculo || '(no-id)', arrivalTime: s.arrivalTime, fechaEntrega: s.fechaEntrega, stateAtStart: null });
-          }
-        }
-      } else {
-        // fallback: contar si registrado antes de fecha y no entregado antes de fecha (determinista)
-        const ent = millisToDateOnly(entMillis);
-        if (regDate && regDate < fechaStr && (!ent || ent >= fechaStr)) {
-          inicioCount++;
-          inicioServices.push({ id: s.id || s._id || s.vehiculo || '(no-id)', arrivalTime: s.arrivalTime, fechaEntrega: s.fechaEntrega, stateAtStart: null });
-        }
+      // inicio (criterio requerido): contar servicios cuyo status (código) NO sea 'entregado' NI 'por_cobrar'.
+      // Ignora timestamps; se basa únicamente en el atributo status/estado almacenado en el documento.
+      const normalize = (v) => (v == null ? '' : String(v)).trim().toLowerCase().replace(/\s+/g, '_');
+      const currentStatusCode = normalize(s.status || s.estado);
+      if (currentStatusCode !== 'entregado' && currentStatusCode !== 'por_cobrar') {
+        inicioCount++;
+        inicioServices.push({ id: s.id || s._id || s.vehiculo || '(no-id)', status: currentStatusCode, criterio: 'status!=entregado|por_cobrar' });
       }
 
 
-      // Log para depuración: servicios contados como inicio
-      try {
-        console.log('[ReporteDia] fecha:', fechaStr, 'estadosInicio:', estadosInicio, 'inicioServicesCount:', inicioServices.length);
-        console.table(inicioServices.slice(0, 200));
-      } catch (e) {
-        console.warn('No se pudo imprimir inicioServices', e);
-      }
+    // Log para depuración: servicios contados como inicio
+    try {
+      console.log('[ReporteDia] fecha:', fechaStr, 'estadosInicio:', estadosInicio, 'inicioServicesCount:', inicioServices.length);
+      console.table(inicioServices.slice(0, 200));
+    } catch (e) {
+      console.warn('No se pudo imprimir inicioServices', e);
+    }
       // pendientes: state at end of fechaStr (i.e., stateAt with fechaStr) in estadosPendientes or no entrega yet
       const stateEnd = stateAt(s, fechaStr);
       if (estadosPendientes.length > 0) {
@@ -304,71 +258,65 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
       }
     });
 
-    // Antes de devolver, verificar si existe un snapshot persistido para este fecha
-    // Si ya cargamos un snapshot desde Firestore úsalo como inicio inmutable
-    if (snapshotInicio && typeof snapshotInicio.count === 'number') {
-      return {
-        inicio: snapshotInicio.count,
-        registrados: registradosCount,
-        entregados: entregadosCount,
-        pendientes: pendientesCount,
-        inicioServices,
-      };
-    }
-
     return {
-      inicio: inicioCount,
+      inicioCalculado: inicioCount,
       registrados: registradosCount,
       entregados: entregadosCount,
       pendientes: pendientesCount,
-      inicioServices,
     };
-  }, [servicios, fechaStr, configReporte, resolveStateLabel, snapshotInicio]);
+  }, [servicios, fechaStr, configReporte, resolveStateLabel]);
 
-  // Persistir snapshot inmutable del conteo 'inicio' la primera vez que se abra el reporte para la fecha
+  // Estado para fijar el valor de "inicio" desde Firestore (snapshot diario)
+  const [inicioFijo, setInicioFijo] = React.useState(null);
+
+  // Cargar snapshot al cambiar la fecha
   React.useEffect(() => {
-    if (!fechaStr) return;
-    if (!open) return;
-    (async () => {
+    let mounted = true;
+    async function cargarSnapshot() {
+      if (!fechaStr) return;
       try {
-        const existing = await obtenerSnapshotInicio(fechaStr);
-        if (!existing) {
-          // Calcular de forma determinista el conteo de inicio basándonos únicamente en arrivalTime y fechaEntrega
-          const prevDayEnd = (() => {
-            const d = new Date(fechaStr + 'T00:00:00');
-            d.setSeconds(d.getSeconds() - 1);
-            return d.getTime();
-          })();
-          const toMillis = (v) => {
-            if (!v) return null;
-            if (v && typeof v === 'object' && typeof v.seconds === 'number') return v.seconds * 1000;
-            if (v instanceof Date) return v.getTime();
-            if (typeof v === 'number') return v;
-            if (typeof v === 'string') {
-              const t = Date.parse(v.includes('T') ? v : (v.length === 10 ? v + 'T00:00:00' : v));
-              return Number.isNaN(t) ? null : t;
-            }
-            return null;
-          };
-          let deterministicCount = 0;
-          const deterministicIds = [];
-          servicios.forEach(s => {
-            const arrival = toMillis(s.arrivalTime);
-            const ent = toMillis(s.fechaEntrega);
-            const existedAtPrevEnd = (arrival && arrival <= prevDayEnd) && (!(ent) || ent > prevDayEnd);
-            if (existedAtPrevEnd) {
-              deterministicCount++;
-              deterministicIds.push(s.id || s._id || s.vehiculo || '(no-id)');
-            }
-          });
-          const payload = { count: deterministicCount, ids: deterministicIds, createdAt: Date.now() };
-          await guardarSnapshotInicio(fechaStr, payload);
+        const snap = await obtenerInicioSnapshot(fechaStr);
+        if (!mounted) return;
+        if (snap && typeof snap.inicio === 'number') {
+          setInicioFijo(snap.inicio);
+        } else {
+          setInicioFijo(null);
         }
       } catch (e) {
-        console.warn('No se pudo persistir snapshot de inicio en Firestore:', e);
+        console.warn('No se pudo cargar snapshot de inicio para', fechaStr, e);
+        setInicioFijo(null);
       }
+    }
+    setInicioFijo(null);
+    cargarSnapshot();
+    return () => { mounted = false; };
+  }, [fechaStr]);
+
+  // Si no existe snapshot, crearlo una vez con el valor calculado
+  React.useEffect(() => {
+    // Obtener hoy en formato YYYY-MM-DD usando hora local
+    const todayStr = (() => {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     })();
-  }, [open, fechaStr, resumen.inicio, resumen.inicioServices, servicios]);
+    async function asegurarSnapshot() {
+      if (!fechaStr) return;
+      // Solo crear snapshot para el día actual
+      if (fechaStr !== todayStr) return;
+      if (inicioFijo !== null) return; // ya fijado
+      if (!resumen || typeof resumen.inicioCalculado !== 'number') return;
+      try {
+        const definitivo = await crearInicioSnapshotSiNoExiste(fechaStr, resumen.inicioCalculado, { fuente: 'auto' });
+        setInicioFijo(definitivo);
+      } catch (e) {
+        console.warn('No se pudo crear snapshot de inicio para', fechaStr, e);
+      }
+    }
+    asegurarSnapshot();
+  }, [fechaStr, resumen, inicioFijo]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -397,11 +345,39 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
               </Box>
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="h4" fontWeight={800} color="text.primary">
-                  {resumen.inicio}
+                  {inicioFijo !== null ? inicioFijo : (resumen?.inicioCalculado ?? 0)}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                  Al inicio del día
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                    Al inicio del día
+                  </Typography>
+                  {inicioFijo !== null && (
+                    <Chip size="small" variant="outlined" color="default" icon={<LockOutlinedIcon sx={{ fontSize: 14 }} />} label="fijado" sx={{ height: 22 }} />
+                  )}
+                </Box>
+                {/* Botón para recalcular solo si la fecha es hoy */}
+                {(() => {
+                  const d = new Date();
+                  const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                  if (fechaStr === todayStr) {
+                    return (
+                      <Button size="small" variant="text" sx={{ mt: 1 }} onClick={async () => {
+                        const nuevo = resumen?.inicioCalculado ?? 0;
+                        const ok = window.confirm(`Recalcular y fijar el inicio de hoy a ${nuevo}?`);
+                        if (!ok) return;
+                        try {
+                          await actualizarInicioSnapshot(fechaStr, nuevo, { fuente: 'manual' });
+                          setInicioFijo(nuevo);
+                          console.log('Snapshot de inicio actualizado a', nuevo);
+                        } catch (e) {
+                          console.warn('No se pudo actualizar snapshot', e);
+                          alert('No se pudo actualizar el valor. Revisa la consola.');
+                        }
+                      }}>Recalcular inicio</Button>
+                    );
+                  }
+                  return null;
+                })()}
               </Box>
             </Paper>
           </Grid>

@@ -42,6 +42,7 @@ import {
 } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
+import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/reporteDiaSnapshotFirebase";
 
 // Sanitiza cualquier undefined en null, recursivamente
 function sanitizeDeep(obj) {
@@ -146,6 +147,62 @@ export default function Dashboard() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Helper: normaliza status a código en minúsculas con underscores
+  const normalizeStatus = (v) => (v == null ? '' : String(v)).trim().toLowerCase().replace(/\s+/g, '_');
+  // Calcula "inicio" según criterio: status distinto de 'entregado' y 'por_cobrar'
+  const calcularInicioHoy = React.useCallback((arr) => {
+    if (!Array.isArray(arr)) return 0;
+    return arr.reduce((acc, s) => {
+      const code = normalizeStatus(s.status || s.estado);
+      return acc + (code !== 'entregado' && code !== 'por_cobrar' ? 1 : 0);
+    }, 0);
+  }, []);
+
+  // Fallback: si el snapshot de HOY no existe cuando se cargan los vehículos, créalo una vez
+  useEffect(() => {
+    async function ensureTodaySnapshot() {
+      try {
+        const d = new Date();
+        const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const snap = await obtenerInicioSnapshot(todayStr);
+        if (!snap) {
+          const valor = calcularInicioHoy(vehiculosRaw);
+          await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'auto-dashboard' });
+        }
+      } catch (e) {
+        console.warn('No se pudo asegurar snapshot de hoy', e);
+      }
+    }
+    if (!loadingVehiculos && vehiculosRaw.length >= 0) {
+      ensureTodaySnapshot();
+    }
+  }, [vehiculosRaw, loadingVehiculos, calcularInicioHoy]);
+
+  // Programar creación automática del snapshot a las 00:00 (si la app queda abierta)
+  useEffect(() => {
+    function msHastaProximaMedianoche() {
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(24, 0, 3, 0); // 00:00:03 del día siguiente (3s de colchón)
+      return next.getTime() - now.getTime();
+    }
+    let timerId = setTimeout(async function fire() {
+      try {
+        const d = new Date();
+        const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const valor = calcularInicioHoy(vehiculosRaw);
+        await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'auto-midnight' });
+      } catch (e) {
+        console.warn('No se pudo crear snapshot en medianoche', e);
+      }
+      // Reprogramar para la siguiente medianoche
+      timerId = setTimeout(fire, 24 * 60 * 60 * 1000);
+    }, msHastaProximaMedianoche());
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [vehiculosRaw, calcularInicioHoy]);
 
   // Filtrar vehículos solo cuando ambos estados estén listos
   useEffect(() => {
