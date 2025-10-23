@@ -1835,6 +1835,21 @@ export default function Dashboard() {
                             status: 'por_cobrar'
                           };
                           await addDoc(collection(db, 'cuentasPorCobrar'), nuevaCuenta);
+                          // Cambiar estado del vehículo a 'por_cobrar' en la colección 'vehiculo'
+                          try {
+                            if (editId) {
+                              const vehiculoActual = vehiculos.find(v => v.id === editId);
+                              if (vehiculoActual) {
+                                const data = sanitizeDeep({ ...vehiculoActual, status: 'por_cobrar' });
+                                await actualizarVehiculo(editId, data);
+                              } else {
+                                // Fallback conservador si no se encuentra en memoria
+                                await actualizarVehiculo(editId, { status: 'por_cobrar' });
+                              }
+                            }
+                          } catch (e) {
+                            console.error('Error actualizando estado a por_cobrar:', e);
+                          }
                           // Eliminar el vehículo del estado local para que desaparezca del dashboard
                           if (editId) {
                             setVehiculos(prev => prev.filter(v => v.id !== editId));
