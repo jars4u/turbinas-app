@@ -806,7 +806,7 @@ export default function ResumenContable({ tasaBCV }) {
                       if (typeof fondoCajaChica === 'undefined' || typeof movimientosCajaChica === 'undefined') {
                         return <span style={{ color: '#ed6c02', fontWeight: 500, marginLeft: 8 }}>No disponible</span>;
                       }
-                      const saldo = (fondoCajaChica !== null ? Number(fondoCajaChica) : 0) + movimientosCajaChica.reduce((acc, mov) => acc + mov.monto, 0);
+                      const saldo = (fondoCajaChica !== null ? Number(fondoCajaChica) : 0) - movimientosCajaChica.reduce((acc, mov) => acc + mov.monto, 0);
                       if (saldo === 0) {
                         return <span style={{ color: '#ed6c02', fontWeight: 500, marginLeft: 8 }}>Reponer</span>;
                       }

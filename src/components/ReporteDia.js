@@ -9,8 +9,6 @@ import {
   Grid,
   Paper,
   Divider,
-  Chip,
-  Button,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -19,8 +17,7 @@ import DoneAllIcon from "@mui/icons-material/DoneAll";
 // PendingActionsIcon eliminado: no se usa actualmente
 import { obtenerConfiguracionReporte } from "../lib/configuracionReporteFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
-import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste, actualizarInicioSnapshot } from "../lib/reporteDiaSnapshotFirebase";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/reporteDiaSnapshotFirebase";
 
 // props: servicios (array de servicios), fecha (string 'YYYY-MM-DD' o Date)
 export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
@@ -347,37 +344,9 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
                 <Typography variant="h4" fontWeight={800} color="text.primary">
                   {inicioFijo !== null ? inicioFijo : (resumen?.inicioCalculado ?? 0)}
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                    Al inicio del día
-                  </Typography>
-                  {inicioFijo !== null && (
-                    <Chip size="small" variant="outlined" color="default" icon={<LockOutlinedIcon sx={{ fontSize: 14 }} />} label="fijado" sx={{ height: 22 }} />
-                  )}
-                </Box>
-                {/* Botón para recalcular solo si la fecha es hoy */}
-                {(() => {
-                  const d = new Date();
-                  const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                  if (fechaStr === todayStr) {
-                    return (
-                      <Button size="small" variant="text" sx={{ mt: 1 }} onClick={async () => {
-                        const nuevo = resumen?.inicioCalculado ?? 0;
-                        const ok = window.confirm(`Recalcular y fijar el inicio de hoy a ${nuevo}?`);
-                        if (!ok) return;
-                        try {
-                          await actualizarInicioSnapshot(fechaStr, nuevo, { fuente: 'manual' });
-                          setInicioFijo(nuevo);
-                          console.log('Snapshot de inicio actualizado a', nuevo);
-                        } catch (e) {
-                          console.warn('No se pudo actualizar snapshot', e);
-                          alert('No se pudo actualizar el valor. Revisa la consola.');
-                        }
-                      }}>Recalcular inicio</Button>
-                    );
-                  }
-                  return null;
-                })()}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                  Al inicio del día
+                </Typography>
               </Box>
             </Paper>
           </Grid>

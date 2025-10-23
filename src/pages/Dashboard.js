@@ -167,42 +167,20 @@ export default function Dashboard() {
         const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const snap = await obtenerInicioSnapshot(todayStr);
         if (!snap) {
-          const valor = calcularInicioHoy(vehiculosRaw);
+          // Fetch directo para evitar condiciones de carrera con el estado local
+          const arr = await obtenerVehiculos();
+          const valor = calcularInicioHoy(Array.isArray(arr) ? arr : vehiculosRaw);
           await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'auto-dashboard' });
+          console.log('[Snapshot inicio creado]', todayStr, valor);
         }
       } catch (e) {
         console.warn('No se pudo asegurar snapshot de hoy', e);
       }
     }
-    if (!loadingVehiculos && vehiculosRaw.length >= 0) {
+    if (!loadingVehiculos) {
       ensureTodaySnapshot();
     }
-  }, [vehiculosRaw, loadingVehiculos, calcularInicioHoy]);
-
-  // Programar creación automática del snapshot a las 00:00 (si la app queda abierta)
-  useEffect(() => {
-    function msHastaProximaMedianoche() {
-      const now = new Date();
-      const next = new Date(now);
-      next.setHours(24, 0, 3, 0); // 00:00:03 del día siguiente (3s de colchón)
-      return next.getTime() - now.getTime();
-    }
-    let timerId = setTimeout(async function fire() {
-      try {
-        const d = new Date();
-        const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        const valor = calcularInicioHoy(vehiculosRaw);
-        await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'auto-midnight' });
-      } catch (e) {
-        console.warn('No se pudo crear snapshot en medianoche', e);
-      }
-      // Reprogramar para la siguiente medianoche
-      timerId = setTimeout(fire, 24 * 60 * 60 * 1000);
-    }, msHastaProximaMedianoche());
-    return () => {
-      if (timerId) clearTimeout(timerId);
-    };
-  }, [vehiculosRaw, calcularInicioHoy]);
+  }, [loadingVehiculos, calcularInicioHoy, vehiculosRaw]);
 
   // Filtrar vehículos solo cuando ambos estados estén listos
   useEffect(() => {
