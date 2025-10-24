@@ -63,6 +63,15 @@ function sanitizeDeep(obj) {
   return obj;
 }
 
+// Log condicional para depuración del Reporte del Día
+const debugReporte = (...args) => {
+  try {
+    if (typeof window !== 'undefined' && localStorage.getItem('debugReporteDia') === '1') {
+      console.debug('[ReporteDia][DBG]', ...args);
+    }
+  } catch (_) { /* noop */ }
+};
+
 export default function Dashboard() {
   const [openReporteDia, setOpenReporteDia] = useState(false);
   // Bloqueo de navegación atrás en móviles
@@ -165,15 +174,20 @@ export default function Dashboard() {
       try {
         const d = new Date();
         const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        debugReporte('ensureTodaySnapshot: checking', { todayStr });
         const snap = await obtenerInicioSnapshot(todayStr);
         if (!snap) {
           // Fetch directo para evitar condiciones de carrera con el estado local
           const arr = await obtenerVehiculos();
           const valor = calcularInicioHoy(Array.isArray(arr) ? arr : vehiculosRaw);
+          debugReporte('ensureTodaySnapshot: creating snapshot', { totalVehiculosFetched: Array.isArray(arr) ? arr.length : 'n/a', totalVehiculosLocal: vehiculosRaw?.length ?? 'n/a', inicioCalculado: valor });
           await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'auto-dashboard' });
-          console.log('[Snapshot inicio creado]', todayStr, valor);
+          debugReporte('ensureTodaySnapshot: snapshot creado', { fecha: todayStr, valor });
+        } else {
+          debugReporte('ensureTodaySnapshot: snapshot ya existe', { fecha: todayStr, inicio: snap?.inicio });
         }
       } catch (e) {
+        debugReporte('ensureTodaySnapshot: error', e?.message || e);
         console.warn('No se pudo asegurar snapshot de hoy', e);
       }
     }

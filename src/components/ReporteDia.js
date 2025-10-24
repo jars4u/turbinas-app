@@ -21,6 +21,14 @@ import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/rep
 
 // props: servicios (array de servicios), fecha (string 'YYYY-MM-DD' o Date)
 export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
+  // Log condicional opcional controlado con localStorage.debugReporteDia === '1'
+  const debugReporte = React.useCallback((...args) => {
+    try {
+      if (typeof window !== 'undefined' && localStorage.getItem('debugReporteDia') === '1') {
+        console.debug('[ReporteDia][DBG]', ...args);
+      }
+    } catch (_) { /* noop */ }
+  }, []);
   // Configuración del reporte en state (se cargará desde Firestore)
   const [configReporte, setConfigReporte] = React.useState(null);
   React.useEffect(() => {
@@ -84,7 +92,6 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
       }
     }
 
-  const estadosInicio = Array.isArray(config.inicio) ? config.inicio : [];
     const estadosRegistrados = Array.isArray(config.registrados) ? config.registrados : [];
     const estadosEntregados = Array.isArray(config.entregados) ? config.entregados : [];
     const estadosPendientes = Array.isArray(config.pendientes) ? config.pendientes : [];
@@ -237,12 +244,14 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
       }
 
 
-    // Log para depuración: servicios contados como inicio
+    // Log opcional de depuración
     try {
-      console.log('[ReporteDia] fecha:', fechaStr, 'estadosInicio:', estadosInicio, 'inicioServicesCount:', inicioServices.length);
-      console.table(inicioServices.slice(0, 200));
+      if (typeof window !== 'undefined' && localStorage.getItem('debugReporteDia') === '1') {
+        console.debug('[ReporteDia][DBG] fecha:', fechaStr, 'inicioServicesCount:', inicioServices.length);
+        if (console.table) console.table(inicioServices.slice(0, 200));
+      }
     } catch (e) {
-      console.warn('No se pudo imprimir inicioServices', e);
+      // silencio
     }
       // pendientes: state at end of fechaStr (i.e., stateAt with fechaStr) in estadosPendientes or no entrega yet
       const stateEnd = stateAt(s, fechaStr);
@@ -276,18 +285,21 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
         if (!mounted) return;
         if (snap && typeof snap.inicio === 'number') {
           setInicioFijo(snap.inicio);
+          debugReporte('snapshot cargado', { fecha: fechaStr, inicio: snap.inicio });
         } else {
           setInicioFijo(null);
+          debugReporte('snapshot no encontrado', { fecha: fechaStr });
         }
       } catch (e) {
         console.warn('No se pudo cargar snapshot de inicio para', fechaStr, e);
         setInicioFijo(null);
+        debugReporte('error al cargar snapshot', { fecha: fechaStr, error: e?.message || e });
       }
     }
     setInicioFijo(null);
     cargarSnapshot();
     return () => { mounted = false; };
-  }, [fechaStr]);
+  }, [fechaStr, debugReporte]);
 
   // Si no existe snapshot, crearlo una vez con el valor calculado
   React.useEffect(() => {
@@ -306,14 +318,17 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
       if (inicioFijo !== null) return; // ya fijado
       if (!resumen || typeof resumen.inicioCalculado !== 'number') return;
       try {
+        debugReporte('asegurar snapshot HOY', { fecha: fechaStr, servicios: servicios?.length ?? 'n/a', inicioCalculado: resumen.inicioCalculado });
         const definitivo = await crearInicioSnapshotSiNoExiste(fechaStr, resumen.inicioCalculado, { fuente: 'auto' });
         setInicioFijo(definitivo);
+        debugReporte('snapshot creado/confirmado', { fecha: fechaStr, inicio: definitivo });
       } catch (e) {
         console.warn('No se pudo crear snapshot de inicio para', fechaStr, e);
+        debugReporte('error al crear snapshot', { fecha: fechaStr, error: e?.message || e });
       }
     }
     asegurarSnapshot();
-  }, [fechaStr, resumen, inicioFijo]);
+  }, [fechaStr, resumen, inicioFijo, debugReporte, servicios]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>

@@ -345,30 +345,35 @@ export default function ResumenContable({ tasaBCV }) {
             // Usar la tasa histórica del último cierre del rango, si existe
             const cierre =
               cierres.length > 0 ? cierres[cierres.length - 1] : undefined;
-            const tasaHistorica = cierre?.tasa ?? tasaBCV;
-            // Sumar todos los montos de formasPago en los ingresos
-            let totalIngresosUSD = ingresos.reduce((acc, i) => {
-              if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
-                return (
-                  acc +
-                  i.formasPago.reduce(
-                    (sum, fp) =>
-                      sum +
-                      (fp.monto !== undefined &&
-                        fp.monto !== null &&
-                        !isNaN(Number(fp.monto))
-                        ? Number(fp.monto)
-                        : 0),
-                    0
-                  )
-                );
-              }
-              return acc + Number(i.montoUSD || i.monto || 0);
-            }, 0);
-            let totalEgresosUSD = egresos.reduce(
-              (acc, e) => acc + (Number(e.montoUSD) || 0),
-              0
-            );
+            // (Nota) tasaHistorica y totales globales no se usan más en este bloque; se mantienen los cálculos específicos más abajo
+            // DEBUG: Mostrar montos en efectivo (USD) en consola
+            try {
+              const pagosEfectivo = [];
+              ingresos.forEach((i) => {
+                if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                  i.formasPago.forEach((fp) => {
+                    const forma = (fp.formaPago || "").trim().toLowerCase();
+                    const monto = fp?.monto;
+                    if (
+                      forma === "efectivo" &&
+                      monto !== undefined &&
+                      monto !== null &&
+                      !isNaN(Number(monto))
+                    ) {
+                      pagosEfectivo.push({ descripcion: i.descripcion, monto: Number(monto) });
+                    }
+                  });
+                }
+              });
+              const totalEfectivoUSD = pagosEfectivo.reduce((acc, p) => acc + p.monto, 0);
+              // Mostrar array de montos y el total
+              console.log(
+                "[ResumenContable] Montos en efectivo ($):",
+                pagosEfectivo.map((p) => p.monto),
+                "Total:",
+                totalEfectivoUSD
+              );
+            } catch (_) { /* noop */ }
             // ...existing code...
             return (
               <Box key={fechasFiltradas.join("-")} sx={{ mb: 4 }}>
