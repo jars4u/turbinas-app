@@ -17,7 +17,7 @@ import DoneAllIcon from "@mui/icons-material/DoneAll";
 // PendingActionsIcon eliminado: no se usa actualmente
 import { obtenerConfiguracionReporte } from "../lib/configuracionReporteFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
-import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/reporteDiaSnapshotFirebase";
+import { obtenerInicioSnapshot } from "../lib/reporteDiaSnapshotFirebase";
 
 // props: servicios (array de servicios), fecha (string 'YYYY-MM-DD' o Date)
 export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
@@ -299,37 +299,9 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
     setInicioFijo(null);
     cargarSnapshot();
     return () => { mounted = false; };
-  }, [fechaStr, debugReporte]);
+  }, [fechaStr, debugReporte, open]);
 
-  // Si no existe snapshot, crearlo una vez con el valor calculado
-  React.useEffect(() => {
-    // Obtener hoy en formato YYYY-MM-DD usando hora local
-    const todayStr = (() => {
-      const d = new Date();
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    })();
-    async function asegurarSnapshot() {
-      if (!fechaStr) return;
-      // Solo crear snapshot para el día actual
-      if (fechaStr !== todayStr) return;
-      if (inicioFijo !== null) return; // ya fijado
-      if (!resumen || typeof resumen.inicioCalculado !== 'number') return;
-      try {
-        debugReporte('asegurar snapshot HOY', { fecha: fechaStr, servicios: servicios?.length ?? 'n/a', inicioCalculado: resumen.inicioCalculado });
-        const definitivo = await crearInicioSnapshotSiNoExiste(fechaStr, resumen.inicioCalculado, { fuente: 'auto' });
-        setInicioFijo(definitivo);
-        debugReporte('snapshot creado/confirmado', { fecha: fechaStr, inicio: definitivo });
-      } catch (e) {
-        console.warn('No se pudo crear snapshot de inicio para', fechaStr, e);
-        debugReporte('error al crear snapshot', { fecha: fechaStr, error: e?.message || e });
-      }
-    }
-    asegurarSnapshot();
-  }, [fechaStr, resumen, inicioFijo, debugReporte, servicios]);
-
+  // Ya no se crea snapshot automáticamente desde el reporte; sólo se lee el valor fijado
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 0 }}>

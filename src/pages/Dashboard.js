@@ -74,6 +74,11 @@ const debugReporte = (...args) => {
 
 export default function Dashboard() {
   const [openReporteDia, setOpenReporteDia] = useState(false);
+  // Modal para fijar manualmente "servicios al inicio" al comenzar el día
+  const [openInicioModal, setOpenInicioModal] = useState(false);
+  const [inicioSugerido, setInicioSugerido] = useState(0);
+  const [inicioManual, setInicioManual] = useState("");
+  const [hasInicioHoy, setHasInicioHoy] = useState(false);
   // Bloqueo de navegación atrás en móviles
   useEffect(() => {
     const handlePopState = (e) => {
@@ -168,33 +173,81 @@ export default function Dashboard() {
     }, 0);
   }, []);
 
-  // Fallback: si el snapshot de HOY no existe cuando se cargan los vehículos, créalo una vez
+  // Si el snapshot de HOY no existe al cargar los vehículos, abrir modal para fijarlo manualmente
   useEffect(() => {
-    async function ensureTodaySnapshot() {
+    async function checkTodayInicio() {
       try {
         const d = new Date();
         const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        debugReporte('ensureTodaySnapshot: checking', { todayStr });
+        debugReporte('inicio-manual: checking snapshot', { todayStr });
         const snap = await obtenerInicioSnapshot(todayStr);
+        setHasInicioHoy(!!snap);
         if (!snap) {
-          // Fetch directo para evitar condiciones de carrera con el estado local
+          // Calcular un valor sugerido (no se fija automáticamente)
           const arr = await obtenerVehiculos();
           const valor = calcularInicioHoy(Array.isArray(arr) ? arr : vehiculosRaw);
-          debugReporte('ensureTodaySnapshot: creating snapshot', { totalVehiculosFetched: Array.isArray(arr) ? arr.length : 'n/a', totalVehiculosLocal: vehiculosRaw?.length ?? 'n/a', inicioCalculado: valor });
-          await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'auto-dashboard' });
-          debugReporte('ensureTodaySnapshot: snapshot creado', { fecha: todayStr, valor });
+          setInicioSugerido(valor);
+          setInicioManual(String(valor));
+          setOpenInicioModal(true);
+          debugReporte('inicio-manual: abrir modal', { sugerido: valor, totalVehiculosFetched: Array.isArray(arr) ? arr.length : 'n/a', totalVehiculosLocal: vehiculosRaw?.length ?? 'n/a' });
         } else {
-          debugReporte('ensureTodaySnapshot: snapshot ya existe', { fecha: todayStr, inicio: snap?.inicio });
+          debugReporte('inicio-manual: snapshot ya existe', { fecha: todayStr, inicio: snap?.inicio });
         }
       } catch (e) {
-        debugReporte('ensureTodaySnapshot: error', e?.message || e);
-        console.warn('No se pudo asegurar snapshot de hoy', e);
+        debugReporte('inicio-manual: error', e?.message || e);
+        console.warn('No se pudo verificar snapshot de hoy', e);
       }
     }
     if (!loadingVehiculos) {
-      ensureTodaySnapshot();
+      checkTodayInicio();
     }
   }, [loadingVehiculos, calcularInicioHoy, vehiculosRaw]);
+
+  const confirmarInicioDia = async () => {
+    try {
+      const d = new Date();
+      const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const valor = Math.max(0, parseInt(String(inicioManual).replace(/[^\d-]/g, ''), 10) || 0);
+      const snap = await obtenerInicioSnapshot(todayStr);
+      if (snap && typeof snap.inicio === 'number') {
+        setHasInicioHoy(true);
+        setOpenInicioModal(false);
+        setSnackbarMsg('El inicio del día ya estaba fijado');
+        setSnackbarOpen(true);
+        debugReporte('inicio-manual: ya existía snapshot hoy', { fecha: todayStr, inicio: snap.inicio });
+        return;
+      }
+      // Crear solo si no existe (fijo por todo el día)
+      const definitivo = await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'manual', usuario: usuarioActivo || null });
+      setHasInicioHoy(true);
+      setOpenInicioModal(false);
+      setSnackbarMsg('Inicio del día fijado');
+      setSnackbarOpen(true);
+      debugReporte('inicio-manual: snapshot creado', { fecha: todayStr, valor: definitivo });
+    } catch (e) {
+      console.warn('No se pudo fijar el inicio del día', e);
+      debugReporte('inicio-manual: error al crear snapshot', e?.message || e);
+    }
+  };
+
+  const abrirInicioManual = async () => {
+    try {
+      const arr = await obtenerVehiculos();
+      const valor = calcularInicioHoy(Array.isArray(arr) ? arr : vehiculosRaw);
+      setInicioSugerido(valor);
+      setInicioManual(String(valor));
+      setOpenInicioModal(true);
+      debugReporte('inicio-manual: abrir modal (manual)', { sugerido: valor, totalVehiculosFetched: Array.isArray(arr) ? arr.length : 'n/a', totalVehiculosLocal: vehiculosRaw?.length ?? 'n/a' });
+    } catch (e) {
+      // En caso de error, abrir igualmente con el conteo local
+      const valorLocal = calcularInicioHoy(vehiculosRaw);
+      setInicioSugerido(valorLocal);
+      setInicioManual(String(valorLocal));
+      setOpenInicioModal(true);
+      console.warn('No se pudo preparar el valor sugerido (manual)', e);
+      debugReporte('inicio-manual: error al preparar sugerido (manual)', e?.message || e);
+    }
+  };
 
   // Filtrar vehículos solo cuando ambos estados estén listos
   useEffect(() => {
@@ -491,6 +544,17 @@ export default function Dashboard() {
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             variant="outlined"
+            color="warning"
+            size="small"
+            sx={{ minWidth: 140, opacity: hasInicioHoy ? 0.6 : 1 }}
+            onClick={abrirInicioManual}
+            title={hasInicioHoy ? "El inicio de hoy ya está fijado" : "Definir manualmente el inicio del día"}
+            disabled={hasInicioHoy}
+          >
+            Fijar inicio hoy
+          </Button>
+          <Button
+            variant="outlined"
             color="inherit"
             size="small"
             sx={{ borderColor: '#bdbdbd', color: '#616161', minWidth: 120 }}
@@ -517,8 +581,40 @@ export default function Dashboard() {
         open={openReporteDia}
         onClose={() => setOpenReporteDia(false)}
         servicios={vehiculosRaw}
-        fecha={new Date().toISOString().slice(0, 10)}
+        fecha={(() => { const d = new Date(); const yyyy = d.getFullYear(); const mm = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0'); return `${yyyy}-${mm}-${dd}`; })()}
       />
+      {/* Modal: Fijar servicios al inicio del día (manual) */}
+      <Dialog
+        open={openInicioModal}
+        onClose={() => setOpenInicioModal(false)}
+      >
+        <DialogTitle>Servicios al inicio del día</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body2" sx={{ mb: 1.5 }}>
+            Puedes fijar manualmente el número de servicios al inicio del día.
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            Sugerido: {inicioSugerido}
+          </Typography>
+          <TextField
+            label="Servicios al inicio"
+            type="number"
+            fullWidth
+            size="small"
+            value={inicioManual}
+            onChange={(e) => setInicioManual(e.target.value)}
+            inputProps={{ min: 0, step: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenInicioModal(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button onClick={confirmarInicioDia} variant="contained" color="primary">
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
       </Box>
       {/* Resumen de trabajos por estado sincronizado */}
       <Box
