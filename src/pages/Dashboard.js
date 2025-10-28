@@ -128,6 +128,7 @@ export default function Dashboard() {
   const [estadosServicio, setEstadosServicio] = useState([]);
   const [ordenEstado, setOrdenEstado] = useState("");
   const [ordenAsc, setOrdenAsc] = useState(true);
+  const [busqueda, setBusqueda] = useState("");
   // Cambiar status y guardar en la base de datos
   const navigate = useNavigate();
   // usuario.email está disponible desde el contexto
@@ -172,6 +173,26 @@ export default function Dashboard() {
       return acc + (code !== 'entregado' && code !== 'por_cobrar' ? 1 : 0);
     }, 0);
   }, []);
+
+  // Normalizador y coincidencia para el buscador (acentos-insensible, minúsculas)
+  const normalizarTexto = (s) =>
+    s ? String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+  const coincideBusqueda = (v, q) => {
+    const t = normalizarTexto(q);
+    if (!t) return true;
+    const blob = [
+      v.vehiculo,
+      v.placa,
+      v.servicio,
+      v.customerName,
+      v.customerPhone,
+      v.observaciones,
+      v.status || v.estado,
+    ]
+      .map(normalizarTexto)
+      .join(' ');
+    return blob.includes(t);
+  };
 
   // Si el snapshot de HOY no existe al cargar los vehículos, abrir modal para fijarlo manualmente
   useEffect(() => {
@@ -485,6 +506,8 @@ export default function Dashboard() {
           navigate("/");
         }}
         navigate={navigate}
+        searchValue={busqueda}
+        onSearchChange={setBusqueda}
       />
       <Divider sx={{ mb: 2 }} />
       <Box
@@ -534,19 +557,25 @@ export default function Dashboard() {
               [...vehiculos].filter(
                 (v) =>
                   (v.status || v.estado) !== nombreOcultar &&
-                  (!ordenEstado || (v.status || v.estado) === ordenEstado)
+                  (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
+                  coincideBusqueda(v, busqueda)
               ).length
             }
             )
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'center', sm: 'flex-end' } }}>
           <Button
             variant="outlined"
             color="warning"
             size="small"
-            sx={{ minWidth: 140, opacity: hasInicioHoy ? 0.6 : 1 }}
+            sx={{
+              minWidth: 140,
+              opacity: hasInicioHoy ? 0.6 : 1,
+              width: { xs: '100%', sm: 'auto' },
+              display: { xs: 'none', sm: 'inline-flex' }
+            }}
             onClick={abrirInicioManual}
             title={hasInicioHoy ? "El inicio de hoy ya está fijado" : "Definir manualmente el inicio del día"}
             disabled={hasInicioHoy}
@@ -557,7 +586,7 @@ export default function Dashboard() {
             variant="outlined"
             color="inherit"
             size="small"
-            sx={{ borderColor: '#bdbdbd', color: '#616161', minWidth: 120 }}
+            sx={{ borderColor: '#bdbdbd', color: '#616161', minWidth: 120, width: { xs: '100%', sm: 'auto' } }}
             onClick={() => setOpenReporteDia(true)}
           >
             Reporte del día
@@ -629,7 +658,7 @@ export default function Dashboard() {
       >
         <Box
           sx={{
-            display: "flex",
+            display: { xs: "none", sm: "flex" },
             flexDirection: { xs: "row", sm: "row" },
             flexWrap: { xs: "wrap", sm: "nowrap" },
             gap: { xs: 1, sm: 4 },
@@ -681,7 +710,7 @@ export default function Dashboard() {
           <Select
             size="small"
             value={ordenEstado}
-            onChange={(e) => setOrdenEstado(e.target.value)}
+    Box     onChange={(e) => setOrdenEstado(e.target.value)}
             displayEmpty
             sx={{
               minWidth: 120,
@@ -842,7 +871,8 @@ export default function Dashboard() {
                   .filter(
                     (v) =>
                       (v.status || v.estado) !== nombreOcultar &&
-                      (!ordenEstado || (v.status || v.estado) === ordenEstado)
+                      (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
+                      coincideBusqueda(v, busqueda)
                   )
                   .sort((a, b) => {
                     if (!ordenEstado)
@@ -992,7 +1022,8 @@ export default function Dashboard() {
                 .filter(
                   (v) =>
                     (v.status || v.estado) !== nombreOcultar &&
-                    (!ordenEstado || (v.status || v.estado) === ordenEstado)
+                    (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
+                    coincideBusqueda(v, busqueda)
                 )
                 .map((v) => {
                   // Estimar el alto por cantidad de líneas de texto
@@ -1007,7 +1038,8 @@ export default function Dashboard() {
                 .filter(
                   (v) =>
                     (v.status || v.estado) !== nombreOcultar &&
-                    (!ordenEstado || (v.status || v.estado) === ordenEstado)
+                    (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
+                    coincideBusqueda(v, busqueda)
                 )
                 .sort((a, b) => {
                   if (!ordenEstado)

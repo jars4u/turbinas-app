@@ -1,13 +1,15 @@
 import React from "react";
-import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton } from "@mui/material";
+import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton, TextField, InputAdornment } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HistoryIcon from "@mui/icons-material/History";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonIcon from "@mui/icons-material/Person";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import GroupIcon from "@mui/icons-material/Group";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
 
-export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
+export default function AppHeader({ usuarioActivo, onLogout, navigate, searchValue = "", onSearchChange, searchPlaceholder = "Buscar cliente, modelo, servicio..." }) {
 
   return (
     <AppBar
@@ -45,11 +47,76 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate }) {
             flexDirection: { xs: "column", sm: "row" },
             alignItems: { xs: "center", sm: "center" },
             justifyContent: { xs: "center", sm: "flex-end" },
-            gap: { xs: 1.5, sm: 0 },
+            gap: { xs: 1.5, sm: 1 },
             width: { xs: "100%", sm: "auto" },
           }}
         >
+          {/* Buscador en su propia fila para móviles */}
+          <Box sx={{ display: { xs: 'block', sm: 'none' }, width: '100%' }}>
+            <TextField
+              fullWidth
+              size="small"
+              value={searchValue}
+              onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+              placeholder={searchPlaceholder}
+              sx={{ mb: 1 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  searchValue ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        aria-label="Limpiar búsqueda"
+                        title="Borrar"
+                        edge="end"
+                        onClick={() => onSearchChange && onSearchChange("")}
+                      >
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null
+                ),
+              }}
+            />
+          </Box>
           <Box sx={{ display: "flex", flexDirection: { xs: "row" }, alignItems: "center", justifyContent: { xs: "center", sm: "flex-end" }, gap: 1, width: { xs: "100%", sm: "auto" } }}>
+          {/* Buscador global (desktop/tablet) */}
+          <Box sx={{ display: { xs: 'none', sm: 'block' }, width: { sm: 320, md: 360 } }}>
+            <TextField
+              fullWidth
+              size="small"
+              value={searchValue}
+              onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+              placeholder={searchPlaceholder}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  searchValue ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        aria-label="Limpiar búsqueda"
+                        title="Borrar"
+                        edge="end"
+                        onClick={() => onSearchChange && onSearchChange("")}
+                      >
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null
+                ),
+              }}
+            />
+          </Box>
             <Tooltip title="Nómina" arrow>
               <span>
                 <IconButton

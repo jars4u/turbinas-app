@@ -94,6 +94,27 @@ export default function CuentasPorCobrar() {
     return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
+  // Normalizador de timestamps a milisegundos (soporta number, Date, Firestore Timestamp-like, ISO y 'YYYY-MM-DD')
+  const toMillis = (v) => {
+    if (!v && v !== 0) return null;
+    if (v && typeof v === 'object' && typeof v.seconds === 'number') return v.seconds * 1000;
+    if (v instanceof Date) return v.getTime();
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      if (v.includes('T')) { const t = Date.parse(v); return Number.isNaN(t) ? null : t; }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { const t = Date.parse(v + 'T00:00:00'); return Number.isNaN(t) ? null : t; }
+      // dd/mm/yyyy
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
+        const [d,m,y] = v.split('/');
+        const t = Date.parse(`${y}-${m}-${d}T00:00:00`);
+        return Number.isNaN(t) ? null : t;
+      }
+      const t = Date.parse(v);
+      return Number.isNaN(t) ? null : t;
+    }
+    return null;
+  };
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -208,7 +229,13 @@ export default function CuentasPorCobrar() {
               <TableCell colSpan={8} align="center">No hay cuentas por cobrar registradas.</TableCell>
             </TableRow>
           ) : (
-            cuentas.map((cuenta, idx) => (
+            [...cuentas]
+              .sort((a, b) => {
+                const aTs = toMillis(a.fechaRegistro) ?? toMillis(a.arrivalTime) ?? 0;
+                const bTs = toMillis(b.fechaRegistro) ?? toMillis(b.arrivalTime) ?? 0;
+                return bTs - aTs; // más recientes primero
+              })
+              .map((cuenta, idx) => (
               <TableRow key={cuenta.id || idx}>
                 {editId === cuenta.id ? (
                   <>
