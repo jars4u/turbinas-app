@@ -566,7 +566,7 @@ export default function Dashboard() {
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'center', sm: 'flex-end' } }}>
-          <Button
+          {/* <Button
             variant="outlined"
             color="warning"
             size="small"
@@ -581,7 +581,7 @@ export default function Dashboard() {
             disabled={hasInicioHoy}
           >
             Fijar inicio hoy
-          </Button>
+          </Button> */}
           <Button
             variant="outlined"
             color="inherit"

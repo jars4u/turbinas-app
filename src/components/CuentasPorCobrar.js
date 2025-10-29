@@ -20,8 +20,6 @@ export default function CuentasPorCobrar() {
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({ documento: '', cliente: '', concepto: '', montoUSD: '', montoBs: '', vencimiento: '' });
-  // Ahora el editForm incluye todos los campos posibles, menos vencimiento
-  // ...existing code...
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [confirmCobroId, setConfirmCobroId] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -330,13 +328,17 @@ export default function CuentasPorCobrar() {
               const { db } = await import('../firebase');
               const { addDoc, collection, doc, deleteDoc } = await import('firebase/firestore');
               // Trasladar a ingresos manuales
-              await addDoc(collection(db, 'ingresos'), {
+              const hoy = new Date();
+              const d = String(hoy.getDate()).padStart(2, '0');
+              const m = String(hoy.getMonth() + 1).padStart(2, '0');
+              const y = hoy.getFullYear();
+              await addDoc(collection(db, 'ingresosMovimientos'), {
                 tipo: 'manual',
                 descripcion: `${cuenta.documento?.toUpperCase() || ''} - ${cuenta.cliente?.toUpperCase() || ''}`,
                 montoUSD: cuenta.montoUSD || cuenta.precio || 0,
                 montoBs: cuenta.montoBs || cuenta.precioBs || 0,
                 concepto: cuenta.concepto?.toUpperCase() || '',
-                fecha: cuenta.vencimiento || new Date().toISOString().slice(0,10)
+                fecha: `${d}/${m}/${y}`
               });
               await deleteDoc(doc(db, 'cuentasPorCobrar', cuenta.id));
               setConfirmCobroId(null);
@@ -364,14 +366,18 @@ export default function CuentasPorCobrar() {
           const { db } = await import('../firebase');
           const { addDoc, collection, doc, deleteDoc } = await import('firebase/firestore');
           // Registrar ingreso como servicio, incluyendo datos de factura y formas de pago
-          await addDoc(collection(db, 'ingresos'), {
+          const hoy = new Date();
+          const d = String(hoy.getDate()).padStart(2, '0');
+          const m = String(hoy.getMonth() + 1).padStart(2, '0');
+          const y = hoy.getFullYear();
+          await addDoc(collection(db, 'ingresosMovimientos'), {
             tipo: 'servicio',
             vehiculo: cuentaServicio.vehiculo?.toUpperCase() || '',
             servicio: cuentaServicio.servicio?.toUpperCase() || '',
             precio: cuentaServicio.precio || 0,
             precioBs: cuentaServicio.precioBs || 0,
             observaciones: cuentaServicio.observaciones || '',
-            fecha: new Date().toISOString().slice(0,10),
+            fecha: `${d}/${m}/${y}`,
             factura: facturaData.numeroFactura || '',
             formasPago: facturaData.formasPago || [],
             salidaInventario: facturaData.formasPago?.some(fp => fp.salidaInventario) || false
