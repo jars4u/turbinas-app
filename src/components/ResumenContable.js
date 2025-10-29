@@ -932,7 +932,7 @@ export default function ResumenContable({ tasaBCV }) {
                             ingresos.map((i, idx) => (
                               <TableRow key={idx} sx={{ height: 28 }}>
                                 <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                  {i.descripcion}
+                                  {i.descripcion || i.observaciones || "-"}
                                 </TableCell>
                                 <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                   {Array.isArray(i.formasPago) &&
