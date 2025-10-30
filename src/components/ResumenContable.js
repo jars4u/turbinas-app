@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { obtenerEgresos } from "../lib/egresosFirebase";
 import { obtenerCierresDiarios } from "../lib/cierresDiariosFirebase";
+import { getFirestore, collection, onSnapshot } from "firebase/firestore";
 import {
   Box,
   Typography,
@@ -167,6 +168,102 @@ export default function ResumenContable({ tasaBCV }) {
       setFechaInicio(fechaDayjs);
       setFechaFin(fechaDayjs);
     });
+  }, []);
+
+  // Suscribirse en tiempo real a ingresosMovimientos para reflejar ediciones/borrados
+  useEffect(() => {
+    const db = getFirestore();
+    const unsub = onSnapshot(collection(db, "ingresosMovimientos"), (snap) => {
+      // Adaptar los documentos a la forma esperada (fecha dd/mm/yyyy, formasPago)
+      const ingresos = snap.docs.map((d) => {
+        const data = d.data();
+        // Normalizar fecha a dd/mm/yyyy
+        let fechaStr = "";
+        if (data.fecha && typeof data.fecha === "string") {
+          const parts = data.fecha.split(/[/-]/);
+          if (parts.length === 3) {
+            fechaStr = `${String(parts[0]).padStart(2, "0")}/${String(parts[1]).padStart(2, "0")}/${parts[2]}`;
+          } else {
+            fechaStr = data.fecha;
+          }
+        } else if (data.fecha && typeof data.fecha.toDate === "function") {
+          const f = data.fecha.toDate();
+          fechaStr = f.toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "numeric" });
+        }
+        let formasPago = Array.isArray(data.formasPago) ? data.formasPago : [];
+        if ((!formasPago || formasPago.length === 0) && data.formaPago && (data.monto !== undefined && data.monto !== null)) {
+          formasPago = [{ formaPago: data.formaPago, monto: Number(data.monto), referencia: data.referencia }];
+        }
+        return { ...data, id: d.id, fecha: fechaStr, formasPago };
+      });
+
+      // Agrupar ingresos por día y fusionar con egresos ya existentes en datosPorDia
+      const ingresosAgr = agruparPorDia(ingresos, "ingreso");
+      setDatosPorDia((prev) => {
+        const merged = {};
+        const fechas = new Set([...Object.keys(prev || {}), ...Object.keys(ingresosAgr)]);
+        fechas.forEach((f) => {
+          merged[f] = {
+            ingresos: ingresosAgr[f]?.ingresos || [],
+            egresos: prev && prev[f] ? prev[f].egresos : [],
+          };
+        });
+        return merged;
+      });
+    });
+    return () => unsub();
+  }, []);
+
+  // Suscribirse en tiempo real a egresos
+  useEffect(() => {
+    const db = getFirestore();
+    const unsub = onSnapshot(collection(db, "egresos"), (snap) => {
+      const egresos = snap.docs.map((d) => {
+        const data = d.data();
+        // Si viene Timestamp, normalizar a Date en _fechaDate
+        let _fechaDate = null;
+        if (data.fecha && typeof data.fecha.toDate === "function") {
+          _fechaDate = data.fecha.toDate();
+        }
+        return { ...data, id: d.id, _fechaDate };
+      });
+      const egresosAgr = agruparPorDia(egresos, "egreso");
+      setDatosPorDia((prev) => {
+        const merged = {};
+        const fechas = new Set([...Object.keys(prev || {}), ...Object.keys(egresosAgr)]);
+        fechas.forEach((f) => {
+          merged[f] = {
+            ingresos: prev && prev[f] ? prev[f].ingresos : [],
+            egresos: egresosAgr[f]?.egresos || [],
+          };
+        });
+        return merged;
+      });
+    });
+    return () => unsub();
+  }, []);
+
+  // Suscribirse en tiempo real a cierres diarios
+  useEffect(() => {
+    const db = getFirestore();
+    const unsub = onSnapshot(collection(db, "cierresDiarios"), (snap) => {
+      const cierresMap = {};
+      snap.docs.forEach((docu) => {
+        const cierre = { id: docu.id, ...docu.data() };
+        let fecha = "-";
+        if (cierre.fecha && cierre.fecha.seconds) {
+          const d = String(new Date(cierre.fecha.seconds * 1000).getDate()).padStart(2, "0");
+          const m = String(new Date(cierre.fecha.seconds * 1000).getMonth() + 1).padStart(2, "0");
+          const y = new Date(cierre.fecha.seconds * 1000).getFullYear();
+          fecha = `${d}/${m}/${y}`;
+        } else if (cierre.fechaStr) {
+          fecha = cierre.fechaStr;
+        }
+        cierresMap[fecha] = cierre;
+      });
+      setCierresPorDia(cierresMap);
+    });
+    return () => unsub();
   }, []);
 
   if (loading)
