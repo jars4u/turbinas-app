@@ -11,7 +11,6 @@ import MuiAlert from "@mui/material/Alert";
 import { obtenerNominas } from "../lib/obtenerNominasFirebase";
 import { guardarNomina } from "../lib/nominasFirebase";
 import { obtenerConfiguracionNomina } from "../lib/configuracionNominaFirebase";
-import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { useState, useEffect } from "react";
 import {
   Button,
@@ -130,12 +129,11 @@ export default function CalculoNomina() {
         setServiciosPorEmpleado(serviciosInit);
       }
     });
-  }, [totalServicios]);
+  }, [totalServicios, modalidad]);
 
   useEffect(() => {
     // Consultar Firestore para obtener el total de servicios facturados en el rango y con los estados seleccionados
     const cargarServicios = async () => {
-      const ingresos = await obtenerIngresos();
       const d1 = new Date(fechaInicio);
       const d2 = new Date(fechaFin);
       // Filtrar por rango de fechas y estados seleccionados
@@ -209,9 +207,9 @@ export default function CalculoNomina() {
       <Typography variant="h4" gutterBottom>
         <span style={{ fontWeight: 600 }}>Cálculo de nómina</span>
       </Typography>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+      <Box sx={{ display: "flex", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 2, mb: 2 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>Modalidad de cálculo:</Typography>
-        <FormGroup row>
+        <FormGroup row sx={{ flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
           <FormControlLabel
             control={<Checkbox checked={modalidad === "automatico"} onChange={() => setModalidad("automatico")} />}
             label="Automático"
@@ -225,7 +223,7 @@ export default function CalculoNomina() {
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
         Selecciona el rango de fechas para calcular la nómina a pagar.
       </Typography>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: { xs: "stretch", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 2, mb: 3 }}>
         <TextField
           label="Desde"
           type="date"
@@ -233,6 +231,7 @@ export default function CalculoNomina() {
           onChange={(e) => setFechaInicio(e.target.value)}
           size="small"
           InputLabelProps={{ shrink: true }}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         />
         <TextField
           label="Hasta"
@@ -241,6 +240,7 @@ export default function CalculoNomina() {
           onChange={(e) => setFechaFin(e.target.value)}
           size="small"
           InputLabelProps={{ shrink: true }}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         />
       </Box>
       {modalidad === "automatico" && (
@@ -248,10 +248,10 @@ export default function CalculoNomina() {
           <Box
             sx={{
               display: "flex",
-              flexDirection: "row",
+              flexDirection: { xs: 'column', sm: 'row' },
               minWidth: 220,
               justifyContent: "space-between",
-              alignItems: "flex-end",
+              alignItems: { xs: 'stretch', sm: 'flex-end' },
               gap: 2,
               mb: 2,
             }}
@@ -297,7 +297,7 @@ export default function CalculoNomina() {
             </Box>
             <Button
               variant="outlined"
-              sx={{ ml: "auto", minWidth: 140 }}
+              sx={{ ml: { xs: 0, sm: 'auto' }, minWidth: 140, width: { xs: '100%', sm: 'auto' } }}
               disabled={loading || !fechaInicio || !fechaFin}
               onClick={() => {
                 setLoading(true);
@@ -314,7 +314,9 @@ export default function CalculoNomina() {
         </>
       )}
       {(modalidad === "manual" || mostrarTabla) && (
-        <Paper sx={{ p: 2, minWidth: 900, overflowX: "auto" }}>
+        <>
+        {/* Vista desktop/tablet: tabla completa */}
+        <Paper sx={{ p: 2, minWidth: 900, overflowX: "auto", display: { xs: 'none', sm: 'block' } }}>
           <Table size="small" sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
@@ -578,6 +580,158 @@ export default function CalculoNomina() {
             </MuiAlert>
           </Snackbar>
         </Paper>
+        {/* Vista móvil: tarjetas por empleado */}
+        <Paper sx={{ p: 2, display: { xs: 'block', sm: 'none' } }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            Empleados
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {empleados.length === 0 && (
+              <Box sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>No hay empleados registrados.</Box>
+            )}
+            {empleados.map((empleado) => {
+              const cargoObj = cargos.find((c) => c.id === empleado.cargo);
+              const monto = calcularMonto(empleado);
+              return (
+                <Box key={empleado.id} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 1.5 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{empleado.nombre}</Typography>
+                      <Typography variant="caption" color="text.secondary">CI: {empleado.cedula} • {cargoObj ? cargoObj.nombre : ''}</Typography>
+                    </Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      {monto.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                    <TextField
+                      label="Servicios"
+                      value={modalidad === 'manual' ? (serviciosPorEmpleado[empleado.id] ?? 0) : totalServicios}
+                      type="number"
+                      size="small"
+                      sx={{ width: '50%' }}
+                      inputProps={{ min: 0, step: 1, readOnly: modalidad !== 'manual' }}
+                      onChange={(e) => {
+                        if (modalidad !== 'manual') return;
+                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                        setServiciosPorEmpleado((prev) => ({ ...prev, [empleado.id]: val }));
+                      }}
+                    />
+                    <TextField
+                      label="Bono ($)"
+                      value={bonosPorEmpleado[empleado.id] ?? 0}
+                      type="number"
+                      size="small"
+                      sx={{ width: '50%' }}
+                      inputProps={{ min: 0, step: '0.01' }}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseFloat(e.target.value) || 0);
+                        setBonosPorEmpleado((prev) => ({ ...prev, [empleado.id]: val }));
+                      }}
+                    />
+                  </Box>
+                  <TextField
+                    label="Observaciones"
+                    value={observacionesPorEmpleado[empleado.id] ?? ''}
+                    size="small"
+                    fullWidth
+                    onChange={(e) => {
+                      setObservacionesPorEmpleado((prev) => ({ ...prev, [empleado.id]: e.target.value }));
+                    }}
+                  />
+                </Box>
+              );
+            })}
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2 }}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              disabled={savingNomina}
+              onClick={async (e) => {
+                if (e && e.stopPropagation) e.stopPropagation();
+                const existe = nominasGuardadas.some(
+                  (n) => n.fechaInicio === fechaInicio && n.fechaFin === fechaFin
+                );
+                const nomina = {
+                  fechaInicio,
+                  fechaFin,
+                  empleados: empleados.map((empleado) => {
+                    const cargoObj = cargos.find((c) => c.id === empleado.cargo);
+                    return {
+                      id: empleado.id,
+                      nombre: empleado.nombre,
+                      cedula: empleado.cedula,
+                      cargo: cargoObj ? cargoObj.nombre : '',
+                      servicios: serviciosPorEmpleado[empleado.id] ?? totalServicios,
+                      bono: bonosPorEmpleado[empleado.id] ?? 0,
+                      observaciones: observacionesPorEmpleado[empleado.id] ?? '',
+                      monto: calcularMonto(empleado),
+                    };
+                  }),
+                };
+                if (existe) {
+                  setNominaPendiente(nomina);
+                  setModalSobreescribir(true);
+                  return;
+                }
+                setSavingNomina(true);
+                try {
+                  const docRef = await guardarNomina(nomina);
+                  setSnackbar({ open: true, message: 'Nómina guardada correctamente en el histórico.', severity: 'success' });
+                  obtenerNominas().then((nominas) => {
+                    setNominasGuardadas(nominas);
+                    setHighlightedNominaId(docRef?.id || null);
+                    setTimeout(() => setHighlightedNominaId(null), 2200);
+                  });
+                } catch (err) {
+                  setSnackbar({ open: true, message: 'Error al guardar la nómina.', severity: 'error' });
+                }
+                setSavingNomina(false);
+              }}
+              fullWidth
+            >
+              {savingNomina ? 'Guardando...' : 'Guardar nómina'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="success"
+              onClick={() => {
+                const data = empleados.map((empleado) => {
+                  const cargoObj = cargos.find((c) => c.id === empleado.cargo);
+                  return {
+                    Nombre: empleado.nombre,
+                    Cedula: empleado.cedula,
+                    Cargo: cargoObj ? cargoObj.nombre : '',
+                    Servicios: serviciosPorEmpleado[empleado.id] ?? totalServicios,
+                    Bono: bonosPorEmpleado[empleado.id] ?? 0,
+                    Observaciones: observacionesPorEmpleado[empleado.id] ?? '',
+                    'Monto a pagar ($)': calcularMonto(empleado),
+                  };
+                });
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Nomina');
+                XLSX.writeFile(wb, `nomina_${fechaInicio}_${fechaFin}.xlsx`);
+              }}
+              startIcon={<DownloadIcon />}
+              fullWidth
+            >
+              Exportar a Excel
+            </Button>
+          </Box>
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={3500}
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <MuiAlert elevation={6} variant="filled" onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+              {snackbar.message}
+            </MuiAlert>
+          </Snackbar>
+        </Paper>
+        </>
       )}
       {/* Lista de nóminas guardadas */}
       <Divider />
@@ -585,8 +739,10 @@ export default function CalculoNomina() {
         <Typography variant="h6" sx={{ mb: 2 }}>
           Historial de nóminas guardadas
         </Typography>
+        {/* Desktop/tablet */}
         {nominasGuardadas.length > 0 ? (
-          <Table size="small" sx={{ minWidth: 700 }}>
+          <>
+          <Table size="small" sx={{ minWidth: 700, display: { xs: 'none', sm: 'table' } }}>
             <TableHead>
               <TableRow>
                 <TableCell>Fecha guardado</TableCell>
@@ -814,6 +970,97 @@ export default function CalculoNomina() {
               </Dialog>
             </TableBody>
           </Table>
+          {/* Móvil */}
+          <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+            {nominasGuardadas.map((nomina) => (
+              <Box
+                key={nomina.id}
+                sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 1.5, mb: 1 }}
+                onClick={(e) => {
+                  if (e.target.closest('.delete-nomina-icon')) return;
+                  setNominaDetalle(nomina);
+                  setModalDetalleNomina(true);
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{nomina.fechaInicio} a {nomina.fechaFin}</Typography>
+                  <Button
+                    size="small"
+                    color="error"
+                    className="delete-nomina-icon"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      setPopoverAnchor(ev.currentTarget);
+                      setNominaAEliminar(nomina);
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </Button>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Guardado: {nomina.fechaGuardado?.toDate ? nomina.fechaGuardado.toDate().toLocaleString() : ''}
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                  <Typography variant="body2">Empleados: {nomina.empleados?.length ?? 0}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    {(
+                      nomina.empleados?.reduce((acc, e) => acc + (e.monto || 0), 0) ?? 0
+                    ).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+            {/* Popover reutilizado para confirmar eliminación */}
+            <Popover
+              open={Boolean(popoverAnchor)}
+              anchorEl={popoverAnchor}
+              onClose={() => {
+                setPopoverAnchor(null);
+                setNominaAEliminar(null);
+              }}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+              <Box sx={{ p: 2, maxWidth: 260 }}>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  ¿Seguro que deseas eliminar esta nómina?
+                  <br />
+                  Esta acción no se puede deshacer.
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                  <Button size="small" onClick={(e) => { e.stopPropagation(); setPopoverAnchor(null); setNominaAEliminar(null); }} color="primary" variant="outlined">
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="contained"
+                    disabled={eliminandoNominaId === nominaAEliminar?.id}
+                    onClick={async () => {
+                      setEliminandoNominaId(nominaAEliminar.id);
+                      setPopoverAnchor(null);
+                      try {
+                        await eliminarNomina(nominaAEliminar.id);
+                        setSnackbar({ open: true, message: 'Nómina eliminada correctamente.', severity: 'success' });
+                        obtenerNominas().then(setNominasGuardadas);
+                        if (nominaDetalle?.id === nominaAEliminar.id) {
+                          setModalDetalleNomina(false);
+                          setNominaDetalle(null);
+                        }
+                      } catch (err) {
+                        setSnackbar({ open: true, message: 'Error al eliminar la nómina.', severity: 'error' });
+                      }
+                      setEliminandoNominaId(null);
+                      setNominaAEliminar(null);
+                    }}
+                  >
+                    Eliminar
+                  </Button>
+                </Box>
+              </Box>
+            </Popover>
+          </Box>
+          </>
         ) : (
           <Typography variant="body2" color="text.secondary">
             No hay nóminas guardadas en el histórico.
