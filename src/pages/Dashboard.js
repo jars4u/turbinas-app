@@ -730,50 +730,90 @@ export default function Dashboard() {
         </Box>
       </Box>
       {loadingVehiculos || loadingEstados ? (
-        <Grid container spacing={3} columns={6} sx={{ mt: 1 }}>
-          {[...Array(4)].map((_, idx) => (
-            <Grid key={idx} sx={{ mb: 3 }}>
+        isXs ? (
+          <Box sx={{ mt: 1 }}>
+            {[...Array(6)].map((_, idx) => (
               <Box
+                key={idx}
                 sx={{
-                  width: 210,
-                  minWidth: 210,
-                  maxWidth: 210,
-                  minHeight: 180,
-                  mx: 1.5,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  p: 0.8,
-                  borderRadius: 2,
-                  boxShadow: 2,
-                  bgcolor: "background.paper",
+                  mb: 1.5,
+                  p: 1,
+                  borderRadius: 1.5,
+                  boxShadow: 1,
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
                 }}
               >
-                <Skeleton
-                  variant="rectangular"
-                  width={180}
-                  height={24}
-                  sx={{ mb: 1 }}
-                />
-                <Skeleton variant="text" width={120} sx={{ mb: 1 }} />
-                <Skeleton variant="text" width={80} sx={{ mb: 1 }} />
-                <Skeleton
-                  variant="rectangular"
-                  width={180}
-                  height={18}
-                  sx={{ mb: 1 }}
-                />
-                <Skeleton variant="text" width={100} sx={{ mb: 1 }} />
-                <Skeleton
-                  variant="rectangular"
-                  width={60}
-                  height={32}
-                  sx={{ mt: 2 }}
-                />
+                {/* Encabezado: título izquierda + chip derecha */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Skeleton variant="text" width="40%" height={24} />
+                  <Skeleton variant="rounded" width={80} height={22} />
+                </Box>
+                {/* Servicio */}
+                <Skeleton variant="text" width="60%" sx={{ mb: 0.5 }} />
+                {/* Bloque datos + fecha/hora */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Skeleton variant="text" width={160} height={18} sx={{ mb: 0.5 }} />
+                    <Skeleton variant="text" width={100} height={14} />
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Skeleton variant="text" width={70} height={14} />
+                    <Skeleton variant="text" width={50} height={14} />
+                  </Box>
+                </Box>
+                {/* Observaciones */}
+                <Skeleton variant="text" width="80%" height={14} sx={{ mt: 0.5 }} />
               </Box>
-            </Grid>
-          ))}
-        </Grid>
+            ))}
+          </Box>
+        ) : (
+          <Grid container spacing={3} columns={6} sx={{ mt: 1 }}>
+            {[...Array(4)].map((_, idx) => (
+              <Grid key={idx} sx={{ mb: 3 }}>
+                <Box
+                  sx={{
+                    width: 210,
+                    minWidth: 210,
+                    maxWidth: 210,
+                    minHeight: 180,
+                    mx: 1.5,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    p: 0.8,
+                    borderRadius: 2,
+                    boxShadow: 2,
+                    bgcolor: "background.paper",
+                  }}
+                >
+                  <Skeleton
+                    variant="rectangular"
+                    width={180}
+                    height={24}
+                    sx={{ mb: 1 }}
+                  />
+                  <Skeleton variant="text" width={120} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width={80} sx={{ mb: 1 }} />
+                  <Skeleton
+                    variant="rectangular"
+                    width={180}
+                    height={18}
+                    sx={{ mb: 1 }}
+                  />
+                  <Skeleton variant="text" width={100} sx={{ mb: 1 }} />
+                  <Skeleton
+                    variant="rectangular"
+                    width={60}
+                    height={32}
+                    sx={{ mt: 2 }}
+                  />
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        )
       ) : (
         <>
           {/* Vista móvil: lista tipo tarjeta */}
