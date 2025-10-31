@@ -19,6 +19,7 @@ import {
   Snackbar,
   Alert,
   Autocomplete,
+  useMediaQuery,
 } from "@mui/material";
 import Skeleton from "@mui/material/Skeleton";
 import PaymentModal from "../components/PaymentModal";
@@ -43,6 +44,7 @@ import {
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
 import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/reporteDiaSnapshotFirebase";
+import CloseIcon from "@mui/icons-material/Close";
 
 // Sanitiza cualquier undefined en null, recursivamente
 function sanitizeDeep(obj) {
@@ -73,6 +75,7 @@ const debugReporte = (...args) => {
 };
 
 export default function Dashboard() {
+  const isXs = useMediaQuery('(max-width:600px)');
   const [openReporteDia, setOpenReporteDia] = useState(false);
   // Modal para fijar manualmente "servicios al inicio" al comenzar el día
   const [openInicioModal, setOpenInicioModal] = useState(false);
@@ -595,6 +598,8 @@ export default function Dashboard() {
       {/* Modal: Fijar servicios al inicio del día (manual) */}
       <Dialog
         open={openInicioModal}
+        fullWidth
+        maxWidth="xs"
         onClose={() => setOpenInicioModal(false)}
       >
         <DialogTitle>Servicios al inicio del día</DialogTitle>
@@ -616,10 +621,10 @@ export default function Dashboard() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenInicioModal(false)} color="inherit">
+          <Button onClick={() => setOpenInicioModal(false)} color="inherit" sx={{ width: { xs: '100%', sm: 'auto' } }}>
             Cancelar
           </Button>
-          <Button onClick={confirmarInicioDia} variant="contained" color="primary">
+          <Button onClick={confirmarInicioDia} variant="contained" color="primary" sx={{ width: { xs: '100%', sm: 'auto' } }}>
             Guardar
           </Button>
         </DialogActions>
@@ -960,6 +965,14 @@ export default function Dashboard() {
       )}
       <Dialog
         open={open}
+        fullScreen={isXs}
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: 0, sm: 1 },
+            m: { xs: 0, sm: 'auto' },
+          }
+        }}
         onClose={(event, reason) => {
           if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
             handleClose();
@@ -1035,6 +1048,14 @@ export default function Dashboard() {
                 </Button>
               </Box>
             )}
+            {/* Cerrar en móvil */}
+            <IconButton
+              aria-label="Cerrar"
+              onClick={handleClose}
+              sx={{ display: { xs: 'inline-flex', sm: 'none' }, ml: 1 }}
+            >
+              <CloseIcon />
+            </IconButton>
           </Box>
           {editId &&
             (() => {
@@ -1086,6 +1107,8 @@ export default function Dashboard() {
           <Dialog
             open={openEstadoModal}
             onClose={() => setOpenEstadoModal(false)}
+            fullWidth
+            maxWidth="xs"
           >
             <DialogTitle>Cambiar estado</DialogTitle>
             <DialogContent>
@@ -1169,6 +1192,8 @@ export default function Dashboard() {
                             onClose={() =>
                               setConfirmOcultar({ open: false, estado: null })
                             }
+                            fullWidth
+                            maxWidth="xs"
                           >
                             <DialogTitle>Confirmar acción</DialogTitle>
                             <DialogContent>
@@ -1186,6 +1211,7 @@ export default function Dashboard() {
                                   })
                                 }
                                 color="primary"
+                                sx={{ width: { xs: '100%', sm: 'auto' } }}
                               >
                                 Cancelar
                               </Button>
@@ -1209,6 +1235,7 @@ export default function Dashboard() {
                                 }}
                                 color="error"
                                 variant="contained"
+                                sx={{ width: { xs: '100%', sm: 'auto' } }}
                               >
                                 Confirmar
                               </Button>
@@ -1234,6 +1261,8 @@ export default function Dashboard() {
                 handleCancelDelete();
               }
             }}
+            fullWidth
+            maxWidth="xs"
           >
             <DialogTitle>Confirmar eliminación</DialogTitle>
             <DialogContent>
@@ -1243,10 +1272,10 @@ export default function Dashboard() {
               </Typography>
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleCancelDelete} color="primary">
+              <Button onClick={handleCancelDelete} color="primary" sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 Cancelar
               </Button>
-              <Button onClick={handleDelete} color="error" variant="contained">
+              <Button onClick={handleDelete} color="error" variant="contained" sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 Eliminar
               </Button>
             </DialogActions>
@@ -1737,9 +1766,13 @@ export default function Dashboard() {
             display: "flex",
             flexDirection: { xs: "column", sm: "row" },
             justifyContent: "space-between",
-            px: 3,
-            mb: 2,
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.5, sm: 2 },
+            mb: { xs: 0, sm: 2 },
             gap: { xs: 1, sm: 0 },
+            borderTop: { xs: '1px solid', sm: 'none' },
+            borderColor: { xs: 'divider', sm: 'transparent' },
+            bgcolor: { xs: 'background.paper', sm: 'transparent' },
           }}
         >
           {isRegistering ? (
@@ -1749,6 +1782,7 @@ export default function Dashboard() {
                 variant="outlined"
                 size="small"
                 color="error"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Cancelar
               </Button>
@@ -1762,6 +1796,7 @@ export default function Dashboard() {
                 variant="contained"
                 size="small"
                 color="primary"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
                 disabled={
                   !form.vehiculo ||
                   !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
@@ -1785,6 +1820,7 @@ export default function Dashboard() {
                     variant="outlined"
                     size="small"
                     color="error"
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Cancelar
                   </Button>
@@ -1795,6 +1831,7 @@ export default function Dashboard() {
                       size="small"
                       color="primary"
                       disabled={actionLoading}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
                       startIcon={
                         actionLoading ? (
                           <CircularProgress color="inherit" size={18} />

@@ -20,6 +20,7 @@ import {
   Paper,
   TextField,
   Button,
+  useMediaQuery,
 } from "@mui/material";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -57,6 +58,7 @@ function agruparPorDia(arr, tipo) {
 }
 
 export default function ResumenContable({ tasaBCV }) {
+  const isMobile = useMediaQuery("(max-width:600px)");
   const [fondoCajaChica, setFondoCajaChica] = useState(null);
   const [movimientosCajaChica, setMovimientosCajaChica] = useState([]);
   useEffect(() => {
@@ -471,18 +473,24 @@ export default function ResumenContable({ tasaBCV }) {
                 totalEfectivoUSD
               );
             } catch (_) { /* noop */ }
-            // ...existing code...
+
             return (
               <Box key={fechasFiltradas.join("-")} sx={{ mb: 4 }}>
                 <Box
                   sx={{
                     display: "flex",
-                    alignItems: "center",
+                    flexDirection: { xs: "column", sm: "row" },
+                    alignItems: { xs: "stretch", sm: "center" },
                     justifyContent: "space-between",
+                    gap: { xs: 1, sm: 0 },
                     mb: 1,
                   }}
                 >
-                  <Typography variant="subtitle1" fontWeight={600}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={600}
+                    sx={{ textAlign: { xs: "center", sm: "left" } }}
+                  >
                     {fechaInicio && fechaFin
                       ? `Rango: ${fechaInicio.format(
                         "DD/MM/YYYY"
@@ -492,9 +500,9 @@ export default function ResumenContable({ tasaBCV }) {
                   <Button
                     variant="outlined"
                     color="success"
-                    size="small"
+                    size={isMobile ? "medium" : "small"}
                     endIcon={<WhatsAppIcon sx={{ fontSize: 20 }} />}
-                    sx={{ minWidth: 100 }}
+                    sx={{ minWidth: 100, width: { xs: "100%", sm: "auto" } }}
                     onClick={() => {
                       // Generar el texto del resumen para WhatsApp
                       let texto = `Resumen contable\n`;
@@ -668,7 +676,7 @@ export default function ResumenContable({ tasaBCV }) {
                       window.open(url, "_blank");
                     }}
                   >
-                    Enviar
+                    {isMobile ? "Compartir" : "Enviar"}
                   </Button>
                 </Box>
                 {/* ...el resto del renderizado permanece igual... */}
@@ -682,7 +690,7 @@ export default function ResumenContable({ tasaBCV }) {
                 <Paper sx={{ p: 2, mb: 2, bgcolor: "#f5f5f5" }}>
                   {/* Tasa BCV en bloque al inicio para móviles */}
                   <Box sx={{ display: { xs: "block", sm: "none" }, mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 12, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" } }}>
                       Tasa BCV:{" "}
                       {cierre?.tasa
                         ? `${cierre.tasa.toLocaleString("de-DE", {
@@ -703,7 +711,7 @@ export default function ResumenContable({ tasaBCV }) {
                       alignItems: { xs: "flex-start", sm: "center" },
                     }}
                   >
-                    <Typography>
+                    <Typography sx={{ fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                       <b>• Ingresos totales:</b>
                       {(() => {
                         // Sumar solo los montos de pagos Zelle/Efectivo en USD y Pago Móvil en Bs
@@ -828,7 +836,7 @@ export default function ResumenContable({ tasaBCV }) {
                             <Typography
                               key={"total-" + nombreMostrar}
                               variant="body2"
-                              sx={{ mb: 0.5, pl: 2 }}
+                              sx={{ mb: 0.5, pl: 2, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}
                             >
                               <b>Total {nombreMostrar}:</b>
                               {formaNorm === "pago movil"
@@ -847,7 +855,7 @@ export default function ResumenContable({ tasaBCV }) {
                         });
                     })()}
                   </Box>
-                  <Typography sx={{ mb: 1 }}>
+                  <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Egresos totales:</b>
                     {(() => {
                       // Sumar solo los valores que se muestran en la tabla de egresos
@@ -868,7 +876,7 @@ export default function ResumenContable({ tasaBCV }) {
                       })}`;
                     })()}
                   </Typography>
-                  <Typography sx={{ mb: 1 }}>
+                  <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Utilidad:</b>
                     {(() => {
                       // Calcular utilidad por divisa: ingresos menos egresos en cada moneda
@@ -902,7 +910,7 @@ export default function ResumenContable({ tasaBCV }) {
                       return ` $ ${utilidadUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${utilidadBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
                     })()}
                   </Typography>
-                  <Typography sx={{ mb: 1 }}>
+                  <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Caja chica:</b>
                     {(() => {
                       if (typeof fondoCajaChica === 'undefined' || typeof movimientosCajaChica === 'undefined') {
@@ -915,7 +923,7 @@ export default function ResumenContable({ tasaBCV }) {
                       return ` $ ${saldo.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
                     })()}
                   </Typography>
-                  <Typography sx={{ mb: 1 }}>
+                  <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Total $ en cierre:</b>
                     {(() => {
                       // Sumar ingresos en USD + el valor en USD de los pagos movil (Bs / factorConversion)
@@ -968,7 +976,7 @@ export default function ResumenContable({ tasaBCV }) {
                     expandIcon={<ExpandMoreIcon />}
                     sx={{
                       bgcolor: "#e0f7fa",
-                      minHeight: 36,
+                      minHeight: { xs: 44, sm: 36 },
                       "& .MuiAccordionSummary-content": { my: 0.5 },
                     }}
                   >
@@ -983,178 +991,243 @@ export default function ResumenContable({ tasaBCV }) {
                         overflowX: { xs: "auto", sm: "visible" },
                       }}
                     >
-                      <Table
-                        component={Paper}
-                        size="small"
-                        sx={{ boxShadow: "none", mb: 0, minWidth: 340 }}
-                      >
-                        <TableHead>
-                          <TableRow sx={{ height: 28 }}>
-                            <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                              Descripción
-                            </TableCell>
-                            <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                              Forma de pago
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Monto ($)
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Monto (Bs)
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
+                      {isMobile ? (
+                        <Box>
                           {ingresos.length === 0 ? (
-                            <TableRow>
+                            <Typography align="center" color="text.secondary" sx={{ py: 1 }}>
+                              Sin ingresos
+                            </Typography>
+                          ) : (
+                            ingresos.map((i, idx) => {
+                              // Calcular totales por registro
+                              let totalUSD = 0;
+                              let totalBs = 0;
+                              if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                                i.formasPago.forEach((fp) => {
+                                  const forma = (fp.formaPago || "").trim().toLowerCase();
+                                  if (["zelle", "efectivo", "$", "usd"].includes(forma) && fp.monto != null && !isNaN(Number(fp.monto))) {
+                                    totalUSD += Number(fp.monto);
+                                  }
+                                  if (forma === "pago movil" && fp.monto != null && !isNaN(Number(fp.monto))) {
+                                    totalBs += Number(fp.monto);
+                                  }
+                                });
+                              }
+                              return (
+                                <Paper key={idx} sx={{ p: 1.5, mb: 1 }}>
+                                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+                                    {i.descripcion || i.observaciones || "-"}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {Array.isArray(i.formasPago) && i.formasPago.length > 0
+                                      ? i.formasPago.map((fp, fidx) => {
+                                          const nombre = (fp.formaPago || "").trim();
+                                          if (nombre.toLowerCase() === "pago movil" && fp.monto && factorConversion) {
+                                            return (
+                                              <span key={fidx}>
+                                                {nombre.charAt(0).toUpperCase() + nombre.slice(1)}
+                                                {` (Bs ${Number(fp.monto).toLocaleString("de-DE", { minimumFractionDigits: 2 })} / $ ${(Number(fp.monto) / factorConversion).toLocaleString("en-US", { minimumFractionDigits: 2 })})`}
+                                                {fidx < i.formasPago.length - 1 ? ", " : ""}
+                                              </span>
+                                            );
+                                          }
+                                          return (
+                                            <span key={fidx}>
+                                              {nombre.charAt(0).toUpperCase() + nombre.slice(1)}
+                                              {fidx < i.formasPago.length - 1 ? ", " : ""}
+                                            </span>
+                                          );
+                                        })
+                                      : "-"}
+                                  </Typography>
+                                  <Divider sx={{ my: 1 }} />
+                                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2">
+                                      <b>$</b> {totalUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      <b>Bs</b> {totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                                    </Typography>
+                                  </Box>
+                                </Paper>
+                              );
+                            })
+                          )}
+                        </Box>
+                      ) : (
+                        <Table
+                          component={Paper}
+                          size="small"
+                          sx={{ boxShadow: "none", mb: 0, minWidth: 340 }}
+                        >
+                          <TableHead>
+                            <TableRow sx={{ height: 28 }}>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                Descripción
+                              </TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                Forma de pago
+                              </TableCell>
                               <TableCell
-                                colSpan={4}
-                                align="center"
-                                sx={{
-                                  color: "text.secondary",
-                                  py: 0.5,
-                                  fontSize: 13,
-                                }}
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
                               >
-                                Sin ingresos
+                                Monto ($)
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
+                              >
+                                Monto (Bs)
                               </TableCell>
                             </TableRow>
-                          ) : (
-                            ingresos.map((i, idx) => (
-                              <TableRow key={idx} sx={{ height: 28 }}>
-                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                  {i.descripcion || i.observaciones || "-"}
+                          </TableHead>
+                          <TableBody>
+                            {ingresos.length === 0 ? (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={4}
+                                  align="center"
+                                  sx={{
+                                    color: "text.secondary",
+                                    py: 0.5,
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  Sin ingresos
                                 </TableCell>
-                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                                  {Array.isArray(i.formasPago) &&
-                                    i.formasPago.length > 0
-                                    ? i.formasPago.map((fp, fidx) => {
-                                      const nombre = (
-                                        fp.formaPago || ""
-                                      ).trim();
-                                      // Si es pago movil, mostrar el valor en $ entre paréntesis
-                                      if (
-                                        nombre.toLowerCase() ===
-                                        "pago movil" &&
-                                        fp.monto &&
-                                        factorConversion
-                                      ) {
+                              </TableRow>
+                            ) : (
+                              ingresos.map((i, idx) => (
+                                <TableRow key={idx} sx={{ height: 28 }}>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                    {i.descripcion || i.observaciones || "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                    {Array.isArray(i.formasPago) &&
+                                      i.formasPago.length > 0
+                                      ? i.formasPago.map((fp, fidx) => {
+                                        const nombre = (
+                                          fp.formaPago || ""
+                                        ).trim();
+                                        // Si es pago movil, mostrar el valor en $ entre paréntesis
+                                        if (
+                                          nombre.toLowerCase() ===
+                                          "pago movil" &&
+                                          fp.monto &&
+                                          factorConversion
+                                        ) {
+                                          return (
+                                            <span key={fidx}>
+                                              {nombre.charAt(0).toUpperCase() +
+                                                nombre.slice(1)}
+                                              {` (Bs ${Number(
+                                                fp.monto
+                                              ).toLocaleString("de-DE", {
+                                                minimumFractionDigits: 2,
+                                              })} / $ ${(
+                                                Number(fp.monto) /
+                                                factorConversion
+                                              ).toLocaleString("en-US", {
+                                                minimumFractionDigits: 2,
+                                              })})`}
+                                              {fidx < i.formasPago.length - 1
+                                                ? ", "
+                                                : ""}
+                                            </span>
+                                          );
+                                        }
                                         return (
                                           <span key={fidx}>
                                             {nombre.charAt(0).toUpperCase() +
                                               nombre.slice(1)}
-                                            {` (Bs ${Number(
-                                              fp.monto
-                                            ).toLocaleString("de-DE", {
-                                              minimumFractionDigits: 2,
-                                            })} / $ ${(
-                                              Number(fp.monto) /
-                                              factorConversion
-                                            ).toLocaleString("en-US", {
-                                              minimumFractionDigits: 2,
-                                            })})`}
                                             {fidx < i.formasPago.length - 1
                                               ? ", "
                                               : ""}
                                           </span>
                                         );
+                                      })
+                                      : "-"}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {(() => {
+                                      // Mostrar solo montos asociados a formaPago Zelle y Efectivo usando atributo monto
+                                      if (
+                                        Array.isArray(i.formasPago) &&
+                                        i.formasPago.length > 0
+                                      ) {
+                                        const montosUSD = i.formasPago
+                                          .filter(
+                                            (fp) =>
+                                              fp.formaPago &&
+                                              [
+                                                "zelle",
+                                                "efectivo",
+                                                "$",
+                                                "usd",
+                                              ].includes(
+                                                fp.formaPago.trim().toLowerCase()
+                                              ) &&
+                                              fp.monto !== undefined &&
+                                              fp.monto !== null &&
+                                              !isNaN(Number(fp.monto))
+                                          )
+                                          .map((fp) =>
+                                            Number(fp.monto).toLocaleString(
+                                              "en-US",
+                                              { minimumFractionDigits: 2 }
+                                            )
+                                          );
+                                        return montosUSD.length > 0
+                                          ? montosUSD.join(" + ")
+                                          : "-";
                                       }
-                                      return (
-                                        <span key={fidx}>
-                                          {nombre.charAt(0).toUpperCase() +
-                                            nombre.slice(1)}
-                                          {fidx < i.formasPago.length - 1
-                                            ? ", "
-                                            : ""}
-                                        </span>
-                                      );
-                                    })
-                                    : "-"}
-                                </TableCell>
-                                <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
-                                >
-                                  {(() => {
-                                    // Mostrar solo montos asociados a formaPago Zelle y Efectivo usando atributo monto
-                                    if (
-                                      Array.isArray(i.formasPago) &&
-                                      i.formasPago.length > 0
-                                    ) {
-                                      const montosUSD = i.formasPago
-                                        .filter(
-                                          (fp) =>
-                                            fp.formaPago &&
-                                            [
-                                              "zelle",
-                                              "efectivo",
-                                              "$",
-                                              "usd",
-                                            ].includes(
-                                              fp.formaPago.trim().toLowerCase()
-                                            ) &&
-                                            fp.monto !== undefined &&
-                                            fp.monto !== null &&
-                                            !isNaN(Number(fp.monto))
-                                        )
-                                        .map((fp) =>
-                                          Number(fp.monto).toLocaleString(
-                                            "en-US",
-                                            { minimumFractionDigits: 2 }
+                                      return "-";
+                                    })()}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {(() => {
+                                      // Mostrar solo montos asociados a formaPago 'pago movil'
+                                      if (
+                                        Array.isArray(i.formasPago) &&
+                                        i.formasPago.length > 0
+                                      ) {
+                                        const montosBs = i.formasPago
+                                          .filter(
+                                            (fp) =>
+                                              fp.formaPago &&
+                                              fp.formaPago
+                                                .trim()
+                                                .toLowerCase() === "pago movil" &&
+                                              fp.monto !== undefined &&
+                                              fp.monto !== null &&
+                                              !isNaN(Number(fp.monto))
                                           )
-                                        );
-                                      return montosUSD.length > 0
-                                        ? montosUSD.join(" + ")
-                                        : "-";
-                                    }
-                                    return "-";
-                                  })()}
-                                </TableCell>
-                                <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
-                                >
-                                  {(() => {
-                                    // Mostrar solo montos asociados a formaPago 'pago movil'
-                                    if (
-                                      Array.isArray(i.formasPago) &&
-                                      i.formasPago.length > 0
-                                    ) {
-                                      const montosBs = i.formasPago
-                                        .filter(
-                                          (fp) =>
-                                            fp.formaPago &&
-                                            fp.formaPago
-                                              .trim()
-                                              .toLowerCase() === "pago movil" &&
-                                            fp.monto !== undefined &&
-                                            fp.monto !== null &&
-                                            !isNaN(Number(fp.monto))
-                                        )
-                                        .map((fp) =>
-                                          Number(fp.monto).toLocaleString(
-                                            "de-DE",
-                                            { minimumFractionDigits: 2 }
-                                          )
-                                        );
-                                      return montosBs.length > 0
-                                        ? montosBs.join(" + ")
-                                        : "-";
-                                    }
-                                    return "-";
-                                  })()}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
+                                          .map((fp) =>
+                                            Number(fp.monto).toLocaleString(
+                                              "de-DE",
+                                              { minimumFractionDigits: 2 }
+                                            )
+                                          );
+                                        return montosBs.length > 0
+                                          ? montosBs.join(" + ")
+                                          : "-";
+                                      }
+                                      return "-";
+                                    })()}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      )}
                     </Box>
                   </AccordionDetails>
                 </Accordion>
@@ -1170,7 +1243,7 @@ export default function ResumenContable({ tasaBCV }) {
                     expandIcon={<ExpandMoreIcon />}
                     sx={{
                       bgcolor: "#ffe0e0",
-                      minHeight: 36,
+                      minHeight: { xs: 44, sm: 36 },
                       "& .MuiAccordionSummary-content": { my: 0.5 },
                     }}
                   >
@@ -1185,94 +1258,123 @@ export default function ResumenContable({ tasaBCV }) {
                         overflowX: { xs: "auto", sm: "visible" },
                       }}
                     >
-                      <Table
-                        component={Paper}
-                        size="small"
-                        sx={{ boxShadow: "none", mb: 0, minWidth: 400 }}
-                      >
-                        <TableHead>
-                          <TableRow sx={{ height: 28 }}>
-                            <TableCell sx={{ py: 0.5, fontSize: 13 }}>
-                              Descripción
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Monto ($)
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Monto (Bs)
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ py: 0.5, fontSize: 13 }}
-                            >
-                              Tasa
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
+                      {isMobile ? (
+                        <Box>
                           {egresos.length === 0 ? (
-                            <TableRow>
-                              <TableCell
-                                colSpan={4}
-                                align="center"
-                                sx={{
-                                  color: "text.secondary",
-                                  py: 0.5,
-                                  fontSize: 13,
-                                }}
-                              >
-                                Sin egresos
-                              </TableCell>
-                            </TableRow>
+                            <Typography align="center" color="text.secondary" sx={{ py: 1 }}>
+                              Sin egresos
+                            </Typography>
                           ) : (
                             egresos.map((e, idx) => (
-                              <TableRow key={idx} sx={{ height: 28 }}>
-                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                              <Paper key={idx} sx={{ p: 1.5, mb: 1 }}>
+                                <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
                                   {e.descripcion}
-                                </TableCell>
-                                <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
-                                >
-                                  {typeof e.montoUSD === "number" &&
-                                    e.montoUSD > 0
-                                    ? e.montoUSD.toLocaleString("en-US", {
-                                      minimumFractionDigits: 2,
-                                    })
-                                    : "-"}
-                                </TableCell>
-                                <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
-                                >
-                                  {typeof e.montoBs === "number" &&
-                                    e.montoBs > 0
-                                    ? e.montoBs.toLocaleString("de-DE", {
-                                      minimumFractionDigits: 2,
-                                    })
-                                    : "-"}
-                                </TableCell>
-                                <TableCell
-                                  align="right"
-                                  sx={{ py: 0.5, fontSize: 13 }}
-                                >
-                                  {e.tasa
-                                    ? e.tasa.toLocaleString("de-DE", {
-                                      minimumFractionDigits: 2,
-                                    })
-                                    : "-"}
-                                </TableCell>
-                              </TableRow>
+                                </Typography>
+                                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                                  <Typography variant="body2">
+                                    <b>$</b> {typeof e.montoUSD === "number" && e.montoUSD > 0 ? e.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 }) : "-"}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    <b>Bs</b> {typeof e.montoBs === "number" && e.montoBs > 0 ? e.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 }) : "-"}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  Tasa: {e.tasa ? e.tasa.toLocaleString("de-DE", { minimumFractionDigits: 2 }) : "-"}
+                                </Typography>
+                              </Paper>
                             ))
                           )}
-                        </TableBody>
-                      </Table>
+                        </Box>
+                      ) : (
+                        <Table
+                          component={Paper}
+                          size="small"
+                          sx={{ boxShadow: "none", mb: 0, minWidth: 400 }}
+                        >
+                          <TableHead>
+                            <TableRow sx={{ height: 28 }}>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                Descripción
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
+                              >
+                                Monto ($)
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
+                              >
+                                Monto (Bs)
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ py: 0.5, fontSize: 13 }}
+                              >
+                                Tasa
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {egresos.length === 0 ? (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={4}
+                                  align="center"
+                                  sx={{
+                                    color: "text.secondary",
+                                    py: 0.5,
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  Sin egresos
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              egresos.map((e, idx) => (
+                                <TableRow key={idx} sx={{ height: 28 }}>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>
+                                    {e.descripcion}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {typeof e.montoUSD === "number" &&
+                                      e.montoUSD > 0
+                                      ? e.montoUSD.toLocaleString("en-US", {
+                                        minimumFractionDigits: 2,
+                                      })
+                                      : "-"}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {typeof e.montoBs === "number" &&
+                                      e.montoBs > 0
+                                      ? e.montoBs.toLocaleString("de-DE", {
+                                        minimumFractionDigits: 2,
+                                      })
+                                      : "-"}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ py: 0.5, fontSize: 13 }}
+                                  >
+                                    {e.tasa
+                                      ? e.tasa.toLocaleString("de-DE", {
+                                        minimumFractionDigits: 2,
+                                      })
+                                      : "-"}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      )}
                     </Box>
                   </AccordionDetails>
                 </Accordion>

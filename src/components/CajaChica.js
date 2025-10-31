@@ -22,11 +22,13 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  useMediaQuery,
 } from "@mui/material";
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
 
 export default function CajaChica({ tasaBCV, isOwner }) {
+  const isMobile = useMediaQuery('(max-width:600px)');
   const [snackOpen, setSnackOpen] = useState(false);
   const [snackMsg, setSnackMsg] = useState("");
   // Reponer movimiento: eliminar de caja chica y agregar a egresos
@@ -271,171 +273,226 @@ export default function CajaChica({ tasaBCV, isOwner }) {
         </Accordion>
       </Box>
       <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
-        <Table component={Paper} size="small" sx={{ mb: 2 }}>
-          {/* Boxes para fondo y saldo fuera de la tabla */}
-          <TableHead>
-            <TableRow>
-              <TableCell
-                sx={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  maxWidth: 120,
-                }}
-              >
-                Fecha
-              </TableCell>
-              <TableCell
-                sx={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  maxWidth: 180,
-                }}
-              >
-                Descripción
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  maxWidth: 100,
-                }}
-              >
-                Monto ($)
-              </TableCell>
-              <TableCell
-                align="right"
-                sx={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  maxWidth: 120,
-                }}
-              >
-                Monto (Bs)
-              </TableCell>
-              <TableCell
-                align="center"
-                sx={{ whiteSpace: "nowrap", maxWidth: 100 }}
-              >
-                Reposición
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+        {isMobile ? (
+          <Box>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ p: 0 }}>
-                  <LinearProgress sx={{ width: "100%" }} />
-                </TableCell>
-              </TableRow>
+              <LinearProgress sx={{ width: '100%' }} />
+            ) : movimientos.length === 0 ? (
+              <Typography align="center" color="text.secondary" sx={{ py: 1 }}>
+                Sin movimientos
+              </Typography>
             ) : (
-              <>
-                {/* Fila fondo caja chica movida al TableHead */}
-                {movimientos.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      align="center"
-                      sx={{ color: "text.secondary" }}
-                    >
-                      Sin movimientos
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  movimientos.map((mov, idx) => (
-                    <TableRow key={mov.id || idx}>
-                      <TableCell
-                        sx={{
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          maxWidth: 120,
-                        }}
-                      >
-                        {mov.fecha && typeof mov.fecha === "string"
-                          ? (() => {
+              movimientos.map((mov, idx) => (
+                <Paper key={mov.id || idx} sx={{ p: 1.5, mb: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body2" fontWeight={600} sx={{ pr: 1 }}>
+                      {mov.descripcion || '-'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                      {mov.fecha && typeof mov.fecha === 'string'
+                        ? (() => {
                             const parts = mov.fecha.split(/[/-]/);
                             if (parts.length === 3) {
-                              return `${parts[0].padStart(
-                                2,
-                                "0"
-                              )}/${parts[1].padStart(2, "0")}/${parts[2]}`;
+                              return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
                             }
                             return mov.fecha;
                           })()
-                          : mov.fecha && mov.fecha.seconds
-                            ? new Date(mov.fecha.seconds * 1000).toLocaleDateString(
-                              "es-VE",
-                              {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                              }
-                            )
-                            : "-"}
-                      </TableCell>
+                        : mov.fecha && mov.fecha.seconds
+                          ? new Date(mov.fecha.seconds * 1000).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                          : '-'}
+                    </Typography>
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2">
+                      <b>$</b> {mov.divisa === 'USD' ? Math.abs(mov.monto).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
+                    </Typography>
+                    <Typography variant="body2">
+                      <b>Bs</b> {mov.divisa === 'Bs' ? Math.abs(mov.montoBs).toLocaleString('de-DE', { minimumFractionDigits: 2 }) : '-'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => isOwner && handleReponer(mov)}
+                      disabled={!isOwner}
+                      title={isOwner ? '' : 'Solo el Owner puede reponer a egresos'}
+                      sx={{ minWidth: 96 }}
+                    >
+                      Reponer
+                    </Button>
+                  </Box>
+                </Paper>
+              ))
+            )}
+          </Box>
+        ) : (
+          <Table component={Paper} size="small" sx={{ mb: 2 }}>
+            {/* Boxes para fondo y saldo fuera de la tabla */}
+            <TableHead>
+              <TableRow>
+                <TableCell
+                  sx={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: 120,
+                  }}
+                >
+                  Fecha
+                </TableCell>
+                <TableCell
+                  sx={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: 180,
+                  }}
+                >
+                  Descripción
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: 100,
+                  }}
+                >
+                  Monto ($)
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: 120,
+                  }}
+                >
+                  Monto (Bs)
+                </TableCell>
+                <TableCell
+                  align="center"
+                  sx={{ whiteSpace: "nowrap", maxWidth: 100 }}
+                >
+                  Reposición
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ p: 0 }}>
+                    <LinearProgress sx={{ width: "100%" }} />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <>
+                  {movimientos.length === 0 ? (
+                    <TableRow>
                       <TableCell
-                        sx={{
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          maxWidth: 180,
-                        }}
+                        colSpan={5}
+                        align="center"
+                        sx={{ color: "text.secondary" }}
                       >
-                        {mov.descripcion || "-"}
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{
-                          color: "text.secondary",
-                          fontWeight: 500,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          maxWidth: 100,
-                        }}
-                      >
-                        {mov.divisa === "USD"
-                          ? `${Math.abs(mov.monto).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{
-                          color: "text.secondary",
-                          fontWeight: 500,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          maxWidth: 120,
-                        }}
-                      >
-                        {mov.divisa === "Bs"
-                          ? `${Math.abs(mov.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => isOwner && handleReponer(mov)}
-                          disabled={!isOwner}
-                          title={isOwner ? '' : 'Solo el Owner puede reponer a egresos'}
-                        >
-                          Reponer
-                        </Button>
+                        Sin movimientos
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </>
-            )}
-          </TableBody>
-        </Table>
+                  ) : (
+                    movimientos.map((mov, idx) => (
+                      <TableRow key={mov.id || idx}>
+                        <TableCell
+                          sx={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: 120,
+                          }}
+                        >
+                          {mov.fecha && typeof mov.fecha === "string"
+                            ? (() => {
+                              const parts = mov.fecha.split(/[/-]/);
+                              if (parts.length === 3) {
+                                return `${parts[0].padStart(
+                                  2,
+                                  "0"
+                                )}/${parts[1].padStart(2, "0")}/${parts[2]}`;
+                              }
+                              return mov.fecha;
+                            })()
+                            : mov.fecha && mov.fecha.seconds
+                              ? new Date(mov.fecha.seconds * 1000).toLocaleDateString(
+                                "es-VE",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                }
+                              )
+                              : "-"}
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: 180,
+                          }}
+                        >
+                          {mov.descripcion || "-"}
+                        </TableCell>
+                        <TableCell
+                          align="right"
+                          sx={{
+                            color: "text.secondary",
+                            fontWeight: 500,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: 100,
+                          }}
+                        >
+                          {mov.divisa === "USD"
+                            ? `${Math.abs(mov.monto).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                            : "-"}
+                        </TableCell>
+                        <TableCell
+                          align="right"
+                          sx={{
+                            color: "text.secondary",
+                            fontWeight: 500,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: 120,
+                          }}
+                        >
+                          {mov.divisa === "Bs"
+                            ? `${Math.abs(mov.montoBs).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`
+                            : "-"}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => isOwner && handleReponer(mov)}
+                            disabled={!isOwner}
+                            title={isOwner ? '' : 'Solo el Owner puede reponer a egresos'}
+                          >
+                            Reponer
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Box>
       <Snackbar
         open={snackOpen}

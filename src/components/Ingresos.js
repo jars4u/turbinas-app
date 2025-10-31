@@ -16,6 +16,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  useMediaQuery,
 } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EditIcon from '@mui/icons-material/Edit';
@@ -28,6 +29,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 
 export default function Ingresos({ tasaBCV }) {
+  const isMobile = useMediaQuery('(max-width:600px)');
   const { isOwner } = useAuth();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editIngreso, setEditIngreso] = useState(null);
@@ -505,6 +507,156 @@ export default function Ingresos({ tasaBCV }) {
         </Box>
       </Box>
       <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
+        {isMobile ? (
+          <Box>
+            {/* Resumen total en móvil */}
+            <Paper sx={{ p: 1.5, mb: 1, bgcolor: '#e0f7fa' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                <Typography variant="body2" fontWeight={700}>Total Ingresos</Typography>
+                <Typography variant="body2" fontWeight={700}>
+                  {(() => {
+                    const ingresosFiltrados = ingresos.filter(ing => {
+                      if (!fechaSeleccionada) return false;
+                      let ingresoFecha = '';
+                      if (ing.fecha && typeof ing.fecha === 'string') {
+                        const parts = ing.fecha.split(/[/-]/);
+                        if (parts.length === 3) {
+                          ingresoFecha = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+                        } else {
+                          ingresoFecha = ing.fecha;
+                        }
+                      } else if (ing.fecha && ing.fecha.seconds) {
+                        const dd = String(new Date(ing.fecha.seconds * 1000).getDate()).padStart(2, '0');
+                        const mm = String(new Date(ing.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+                        const yy = new Date(ing.fecha.seconds * 1000).getFullYear();
+                        ingresoFecha = `${dd}/${mm}/${yy}`;
+                      }
+                      return ingresoFecha === fechaSeleccionada;
+                    });
+                    let totalUSD = 0;
+                    let totalBs = 0;
+                    ingresosFiltrados.forEach(ing => {
+                      if (Array.isArray(ing.formasPago)) {
+                        ing.formasPago.forEach(fp => {
+                          if (fp.formaPago && ["zelle", "efectivo", "$", "usd"].includes(fp.formaPago.trim().toLowerCase()) && fp.monto != null && !isNaN(Number(fp.monto))) {
+                            totalUSD += Number(fp.monto);
+                          }
+                          if (fp.formaPago && fp.formaPago.trim().toLowerCase() === "pago movil" && fp.monto != null && !isNaN(Number(fp.monto))) {
+                            totalBs += Number(fp.monto);
+                          }
+                        });
+                      }
+                    });
+                    return `$ ${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`;
+                  })()}
+                </Typography>
+              </Box>
+            </Paper>
+
+            {/* Lista de ingresos en tarjetas */}
+            <Box>
+              {loading ? (
+                <LinearProgress sx={{ width: '100%' }} />
+              ) : (
+                (() => {
+                  const filtrados = ingresos.filter(ing => {
+                    if (!fechaSeleccionada) return false;
+                    let ingresoFecha = '';
+                    if (ing.fecha && typeof ing.fecha === 'string') {
+                      const parts = ing.fecha.split(/[/-]/);
+                      if (parts.length === 3) {
+                        ingresoFecha = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+                      } else {
+                        ingresoFecha = ing.fecha;
+                      }
+                    } else if (ing.fecha && ing.fecha.seconds) {
+                      const dd = String(new Date(ing.fecha.seconds * 1000).getDate()).padStart(2, '0');
+                      const mm = String(new Date(ing.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+                      const yy = new Date(ing.fecha.seconds * 1000).getFullYear();
+                      ingresoFecha = `${dd}/${mm}/${yy}`;
+                    }
+                    return ingresoFecha === fechaSeleccionada;
+                  });
+                  if (filtrados.length === 0) {
+                    return (
+                      <Typography align="center" color="text.secondary" sx={{ py: 1 }}>
+                        Sin ingresos
+                      </Typography>
+                    );
+                  }
+                  return filtrados.map((ing, idx) => {
+                    let totalUSD = 0;
+                    let totalBs = 0;
+                    let formas = [];
+                    let refs = [];
+                    if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
+                      formas = ing.formasPago.map(fp => (fp.formaPago || fp.metodo || '-')).filter(Boolean);
+                      refs = ing.formasPago.map(fp => fp.referencia || '-');
+                      ing.formasPago.forEach(fp => {
+                        const f = (fp.formaPago || '').trim().toLowerCase();
+                        if (["zelle", "efectivo", "$", "usd"].includes(f) && fp.monto != null && !isNaN(Number(fp.monto))) {
+                          totalUSD += Number(fp.monto);
+                        }
+                        if (f === 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
+                          totalBs += Number(fp.monto);
+                        }
+                      });
+                    } else {
+                      if (ing.formaPago) formas = [ing.formaPago];
+                      if (ing.referencia) refs = [ing.referencia];
+                    }
+                    return (
+                      <Paper key={idx} sx={{ p: 1.5, mb: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                          <Typography variant="body2" fontWeight={600}>
+                            {ing.factura || ing.descripcion || '-'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {ing.fecha && typeof ing.fecha === 'string' ? ing.fecha : (ing.fecha && ing.fecha.seconds ? new Date(ing.fecha.seconds * 1000).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-')}
+                          </Typography>
+                        </Box>
+                        {ing.descripcion && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            {ing.descripcion}
+                          </Typography>
+                        )}
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {formas.length > 0 ? formas.map((f, i) => (
+                            <span key={i}>{String(f).toUpperCase()}{i < formas.length - 1 ? ', ' : ''}</span>
+                          )) : '-'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {(() => {
+                            const desc = (!ing.vehiculoId || (ing.vehiculoId && String(ing.vehiculoId).startsWith('manual'))) ? (ing.descripcion || '') : '';
+                            const ref = refs.length > 0 ? refs.join(' + ') : (ing.referencia || '-');
+                            return desc ? `${desc}${ref !== '-' ? ' | ' + ref : ''}` : ref;
+                          })()}
+                        </Typography>
+                        </Box>
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                          <Typography variant="body2"><b>$</b> {totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })}</Typography>
+                          <Typography variant="body2"><b>Bs</b> {totalBs.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</Typography>
+                        </Box>
+                        {isOwner && (
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
+                            <Button size="small" variant="text" color="primary" sx={{ p: 0, minWidth: 28 }} onClick={() => handleEditarIngreso(ing)}>
+                              <EditIcon fontSize="small" />
+                            </Button>
+                            <Button size="small" variant="text" color="error" sx={{ p: 0, minWidth: 28 }} onClick={() => handleEliminarIngreso(ing)}>
+                              <DeleteIcon fontSize="small" />
+                            </Button>
+                          </Box>
+                        )}
+                      </Paper>
+                    );
+                  });
+                })()
+              )}
+            </Box>
+          </Box>
+        ) : (
           <Table component={Paper} size="small" sx={{ mb: 2, minWidth: 400 }}>
         {/* Fila de total de ingresos al inicio */}
         <TableHead>
@@ -697,7 +849,8 @@ export default function Ingresos({ tasaBCV }) {
             ))
           )}
         </TableBody>
-      </Table>
+        </Table>
+          )}
       </Box>
     </Box>
   );

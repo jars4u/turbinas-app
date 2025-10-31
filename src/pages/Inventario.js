@@ -8,7 +8,7 @@ import {
   deleteDoc,
   onSnapshot,
 } from "firebase/firestore";
-import { Box, Divider, Container, Button, Tabs, Tab, Typography } from "@mui/material";
+import { Divider, Container, Button, Tabs, Tab, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import ResumenInventario from "../components/ResumenInventario";
@@ -150,7 +150,14 @@ export default function Inventario({ usuarioActivo }) {
         <span style={{ fontWeight: 600 }}>Inventario</span>
       </Typography>{" "}
       <Divider sx={{ mb: 2 }} />
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        sx={{ mb: 2 }}
+        variant="scrollable"
+        scrollButtons={false}
+        allowScrollButtonsMobile
+      >
         <Tab label="Resumen" />
         <Tab label="Movimientos" />
       </Tabs>

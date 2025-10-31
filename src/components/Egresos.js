@@ -21,6 +21,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  useMediaQuery,
 } from "@mui/material";
 import LinearProgress from "@mui/material/LinearProgress";
 import Dialog from "@mui/material/Dialog";
@@ -32,6 +33,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
 export default function Egresos({ tasaBCV, isOwner }) {
+  const isMobile = useMediaQuery('(max-width:600px)');
   // Establecer el día actual como valor por defecto
   const hoy = new Date();
   const hoyStr = `${String(hoy.getDate()).padStart(2, "0")}/${String(hoy.getMonth() + 1).padStart(2, "0")}/${hoy.getFullYear()}`;
@@ -502,6 +504,178 @@ export default function Egresos({ tasaBCV, isOwner }) {
         </LocalizationProvider>
       </Box>
       <Box sx={{ width: "100%", overflowX: { xs: "auto", sm: "visible" } }}>
+        {isMobile ? (
+          <Box>
+            {/* Resumen total para móvil */}
+            <Paper sx={{ p: 1.5, mb: 1, bgcolor: "#ffe0e0" }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
+                <Typography variant="body2" fontWeight={700}>Total Egresos</Typography>
+                <Typography variant="body2" fontWeight={700}>
+                  {(() => {
+                    const egresosFiltrados = egresos.filter(e => e._fechaStr === fechaSeleccionada);
+                    let totalUSD = 0;
+                    let totalBs = 0;
+                    egresosFiltrados.forEach(eg => {
+                      if (typeof eg.montoUSD === 'number' && !isNaN(eg.montoUSD)) {
+                        totalUSD += eg.montoUSD;
+                      } else if (typeof eg.montoBs === 'number' && !isNaN(eg.montoBs)) {
+                        totalBs += eg.montoBs;
+                      }
+                    });
+                    return `$ ${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })} | Bs. ${totalBs.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`;
+                  })()}
+                </Typography>
+              </Box>
+            </Paper>
+
+            {/* Lista de egresos en tarjetas */}
+            {loading ? (
+              <LinearProgress sx={{ width: '100%' }} />
+            ) : (
+              (() => {
+                const filtrados = egresos.filter((e) => e._fechaStr === fechaSeleccionada);
+                if (filtrados.length === 0) {
+                  return (
+                    <Typography align="center" color="text.secondary" sx={{ py: 1 }}>
+                      Sin egresos registrados
+                    </Typography>
+                  );
+                }
+                return filtrados.map((e) => {
+                  const idxGlobal = egresos.findIndex(x => (x.id && e.id ? x.id === e.id : x === e));
+                  const enEdicion = editIdx === idxGlobal;
+                  return (
+                    <Paper key={e.id || idxGlobal} sx={{ p: 1.5, mb: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        {enEdicion ? (
+                          <TextField
+                            value={editDescripcion}
+                            onChange={(ev) => setEditDescripcion(ev.target.value)}
+                            size="small"
+                            fullWidth
+                            sx={{ mr: 1 }}
+                          />
+                        ) : (
+                          <Typography variant="body2" fontWeight={600}>
+                            {e.descripcion}
+                          </Typography>
+                        )}
+                        <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                          {e._fechaDate
+                            ? e._fechaDate.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                            : '-'}
+                        </Typography>
+                      </Box>
+
+                      <Divider sx={{ my: 1 }} />
+
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Monto ($)</Typography>
+                            {enEdicion ? (
+                              <TextField
+                                value={editMontoUSD}
+                                onChange={(ev) => {
+                                  const val = ev.target.value.replace(/[^0-9.]/g, "");
+                                  setEditMontoUSD(val);
+                                }}
+                                size="small"
+                                sx={{ maxWidth: 110 }}
+                              />
+                            ) : (
+                              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                {(typeof e.montoUSD === 'number' && !isNaN(e.montoUSD))
+                                  ? e.montoUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })
+                                  : '-'}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Monto (Bs)</Typography>
+                            {enEdicion ? (
+                              <TextField
+                                value={editMontoBs}
+                                onChange={(ev) => {
+                                  const val = ev.target.value.replace(/[^0-9.]/g, "");
+                                  setEditMontoBs(val);
+                                }}
+                                size="small"
+                                sx={{ maxWidth: 130 }}
+                              />
+                            ) : (
+                              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                {(typeof e.montoBs === 'number' && !isNaN(e.montoBs))
+                                  ? e.montoBs.toLocaleString('de-DE', { minimumFractionDigits: 2 })
+                                  : '-'}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box sx={{ ml: 'auto', textAlign: 'right' }}>
+                            <Typography variant="caption" color="text.secondary">Tasa</Typography>
+                            {enEdicion ? (
+                              <TextField
+                                label="Tasa"
+                                type="number"
+                                value={editTasa}
+                                onChange={(ev) => {
+                                  const val = ev.target.value.replace(/[^0-9.]/g, "");
+                                  setEditTasa(val);
+                                  if (editMontoUSD && val) {
+                                    setEditMontoBs((Number(editMontoUSD) * Number(val)).toString());
+                                  } else if (editMontoBs && val) {
+                                    setEditMontoUSD((Number(editMontoBs) / Number(val)).toString());
+                                  }
+                                }}
+                                size="small"
+                                sx={{ maxWidth: 110 }}
+                              />
+                            ) : (
+                              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                {e.tasa ? e.tasa.toLocaleString('de-DE', { minimumFractionDigits: 2 }) : (tasaBCV ? tasaBCV.toLocaleString('de-DE', { minimumFractionDigits: 2 }) : '-')}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
+                        {enEdicion ? (
+                          <>
+                            <Button color="success" size="small" onClick={() => handleSaveEdit(e.id)} sx={{ minWidth: 32 }}>Guardar</Button>
+                            <Button color="error" size="small" onClick={handleCancelEdit} sx={{ minWidth: 32 }}>Cancelar</Button>
+                          </>
+                        ) : (
+                          <>
+                            {isOwner ? (
+                              <>
+                                <IconButton color="primary" size="small" onClick={() => handleEdit(idxGlobal)}>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton color="error" size="small" onClick={() => handleDelete(e.id)}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </>
+                            ) : (
+                              <>
+                                <IconButton color="primary" size="small" disabled title="Solo el Owner puede editar egresos">
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton color="error" size="small" disabled title="Solo el Owner puede eliminar egresos">
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </Box>
+                    </Paper>
+                  );
+                });
+              })()
+            )}
+          </Box>
+        ) : (
         <Table component={Paper} size="small" sx={{ mb: 2, minWidth: 400 }}>
           <TableHead>
             {/* Fila de total de egresos al inicio */}
@@ -759,6 +933,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
             )}
           </TableBody>
         </Table>
+        )}
       </Box>
     </Box>
   );
