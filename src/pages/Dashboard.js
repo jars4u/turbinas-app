@@ -78,7 +78,7 @@ export default function Dashboard() {
   const [openInicioModal, setOpenInicioModal] = useState(false);
   const [inicioSugerido, setInicioSugerido] = useState(0);
   const [inicioManual, setInicioManual] = useState("");
-  const [hasInicioHoy, setHasInicioHoy] = useState(false);
+  // Estado de 'inicio hoy' eliminado para evitar variable no usada
   // Bloqueo de navegación atrás en móviles
   useEffect(() => {
     const handlePopState = (e) => {
@@ -201,8 +201,7 @@ export default function Dashboard() {
         const d = new Date();
         const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         debugReporte('inicio-manual: checking snapshot', { todayStr });
-        const snap = await obtenerInicioSnapshot(todayStr);
-        setHasInicioHoy(!!snap);
+  const snap = await obtenerInicioSnapshot(todayStr);
         if (!snap) {
           // Calcular un valor sugerido (no se fija automáticamente)
           const arr = await obtenerVehiculos();
@@ -231,7 +230,6 @@ export default function Dashboard() {
       const valor = Math.max(0, parseInt(String(inicioManual).replace(/[^\d-]/g, ''), 10) || 0);
       const snap = await obtenerInicioSnapshot(todayStr);
       if (snap && typeof snap.inicio === 'number') {
-        setHasInicioHoy(true);
         setOpenInicioModal(false);
         setSnackbarMsg('El inicio del día ya estaba fijado');
         setSnackbarOpen(true);
@@ -239,8 +237,7 @@ export default function Dashboard() {
         return;
       }
       // Crear solo si no existe (fijo por todo el día)
-      const definitivo = await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'manual', usuario: usuarioActivo || null });
-      setHasInicioHoy(true);
+  const definitivo = await crearInicioSnapshotSiNoExiste(todayStr, valor, { fuente: 'manual', usuario: usuarioActivo || null });
       setOpenInicioModal(false);
       setSnackbarMsg('Inicio del día fijado');
       setSnackbarOpen(true);
@@ -251,24 +248,7 @@ export default function Dashboard() {
     }
   };
 
-  const abrirInicioManual = async () => {
-    try {
-      const arr = await obtenerVehiculos();
-      const valor = calcularInicioHoy(Array.isArray(arr) ? arr : vehiculosRaw);
-      setInicioSugerido(valor);
-      setInicioManual(String(valor));
-      setOpenInicioModal(true);
-      debugReporte('inicio-manual: abrir modal (manual)', { sugerido: valor, totalVehiculosFetched: Array.isArray(arr) ? arr.length : 'n/a', totalVehiculosLocal: vehiculosRaw?.length ?? 'n/a' });
-    } catch (e) {
-      // En caso de error, abrir igualmente con el conteo local
-      const valorLocal = calcularInicioHoy(vehiculosRaw);
-      setInicioSugerido(valorLocal);
-      setInicioManual(String(valorLocal));
-      setOpenInicioModal(true);
-      console.warn('No se pudo preparar el valor sugerido (manual)', e);
-      debugReporte('inicio-manual: error al preparar sugerido (manual)', e?.message || e);
-    }
-  };
+  // Función abrirInicioManual eliminada (no utilizada)
 
   // Filtrar vehículos solo cuando ambos estados estén listos
   useEffect(() => {
@@ -710,7 +690,7 @@ export default function Dashboard() {
           <Select
             size="small"
             value={ordenEstado}
-    Box     onChange={(e) => setOrdenEstado(e.target.value)}
+            onChange={(e) => setOrdenEstado(e.target.value)}
             displayEmpty
             sx={{
               minWidth: 120,
@@ -791,222 +771,126 @@ export default function Dashboard() {
         </Grid>
       ) : (
         <>
-          {/* Vista tabla en móviles */}
+          {/* Vista móvil: lista tipo tarjeta */}
           <Box
             sx={{
               display: { xs: "block", sm: "none" },
               width: "100%",
-              overflowX: "auto",
             }}
           >
-            <table
-              style={{
-                minWidth: 350,
-                borderCollapse: "collapse",
-                fontSize: "0.80rem",
-                width: "100%",
-              }}
-            >
-              <thead>
-                <tr style={{ background: "#f5f5f5" }}>
-                  <th
-                    style={{
-                      padding: "4px",
-                      border: "1px solid #ddd",
-                      whiteSpace: "nowrap",
-                      fontSize: "0.80rem",
+            {[...vehiculos]
+              .filter(
+                (v) =>
+                  (v.status || v.estado) !== nombreOcultar &&
+                  (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
+                  coincideBusqueda(v, busqueda)
+              )
+              .sort((a, b) => {
+                if (!ordenEstado)
+                  return ordenAsc
+                    ? a.arrivalTime - b.arrivalTime
+                    : b.arrivalTime - a.arrivalTime;
+                if (ordenAsc)
+                  return (
+                    (a.status || a.estado).localeCompare(
+                      b.status || b.estado
+                    ) || a.arrivalTime - b.arrivalTime
+                  );
+                return (
+                  (b.status || b.estado).localeCompare(
+                    a.status || a.estado
+                  ) || b.arrivalTime - a.arrivalTime
+                );
+              })
+              .map((v) => {
+                const estadoObj = estadosServicio.find(
+                  (e) => e.nombre === (v.status || v.estado)
+                );
+                const validColors = [
+                  "default",
+                  "primary",
+                  "secondary",
+                  "error",
+                  "info",
+                  "success",
+                  "warning",
+                ];
+                const chipColor = validColors.includes(estadoObj?.color)
+                  ? estadoObj?.color
+                  : "default";
+                const dt = new Date(
+                  typeof v.arrivalTime === "string"
+                    ? Number(v.arrivalTime)
+                    : v.arrivalTime
+                );
+                const fechaStr = dt.toLocaleDateString("es-VE", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit",
+                });
+                const horaStr = dt.toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+                return (
+                  <Box
+                    key={v.id}
+                    onClick={() => handleOpen(v)}
+                    sx={{
+                      mb: 1.5,
+                      p: 1,
+                      borderRadius: 1.5,
+                      boxShadow: 1,
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      cursor: 'pointer'
                     }}
                   >
-                    Fecha
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Modelo
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Cliente
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Servicio
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Estado
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Hora
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...vehiculos]
-                  .filter(
-                    (v) =>
-                      (v.status || v.estado) !== nombreOcultar &&
-                      (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
-                      coincideBusqueda(v, busqueda)
-                  )
-                  .sort((a, b) => {
-                    if (!ordenEstado)
-                      return ordenAsc
-                        ? a.arrivalTime - b.arrivalTime
-                        : b.arrivalTime - a.arrivalTime;
-                    if (ordenAsc)
-                      return (
-                        (a.status || a.estado).localeCompare(
-                          b.status || b.estado
-                        ) || a.arrivalTime - b.arrivalTime
-                      );
-                    return (
-                      (b.status || b.estado).localeCompare(
-                        a.status || a.estado
-                      ) || b.arrivalTime - a.arrivalTime
-                    );
-                  })
-                  .map((v) => (
-                    <tr
-                      key={v.id}
-                      style={{ cursor: "pointer", whiteSpace: "nowrap" }}
-                      onClick={() => handleOpen(v)}
-                    >
-                      <td
-                        style={{
-                          padding: "4px",
-                          border: "1px solid #ddd",
-                          textAlign: "center",
-                          whiteSpace: "nowrap",
-                          fontSize: "0.80rem",
-                        }}
-                      >
-                        {new Date(
-                          typeof v.arrivalTime === "string"
-                            ? Number(v.arrivalTime)
-                            : v.arrivalTime
-                        ).toLocaleDateString("es-VE", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "2-digit",
-                        })}
-                      </td>
-                      <td
-                        style={{
-                          padding: "8px",
-                          border: "1px solid #ddd",
-                          textAlign: "center",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {v.vehiculo && v.vehiculo.toUpperCase()}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px",
-                          border: "1px solid #ddd",
-                          textAlign: "left",
-                          whiteSpace: "nowrap",
-                          fontSize: "0.80rem",
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-                          <span style={{ fontWeight: 500 }}>{v.customerName || ""}</span>
-                          {v.customerPhone && (
-                            <span style={{ fontSize: '0.75em', color: '#666' }}>{v.customerPhone}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td
-                        style={{
-                          padding: "8px",
-                          border: "1px solid #ddd",
-                          textAlign: "left",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mr: 1 }}>
+                        {v.vehiculo ? String(v.vehiculo).toUpperCase() : ''}
+                      </Typography>
+                      <Chip
+                        label={estadoObj?.label || v.status || v.estado || 'Sin estado'}
+                        color={chipColor}
+                        size="small"
+                        sx={{ height: 22, fontSize: '0.75rem' }}
+                      />
+                    </Box>
+                    {v.servicio && (
+                      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
                         {v.servicio}
-                      </td>
-                      <td
-                        style={{
-                          padding: "8px",
-                          border: "1px solid #ddd",
-                          textAlign: "center",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <Chip
-                          label={(() => {
-                            const estadoObj = estadosServicio.find(
-                              (e) => e.nombre === (v.status || v.estado)
-                            );
-                            return estadoObj?.label || v.status || v.estado;
-                          })()}
-                          color={(() => {
-                            const estadoObj = estadosServicio.find(
-                              (e) => e.nombre === (v.status || v.estado)
-                            );
-                            // Solo permitir colores válidos de MUI
-                            const validColors = [
-                              "default",
-                              "primary",
-                              "secondary",
-                              "error",
-                              "info",
-                              "success",
-                              "warning",
-                            ];
-                            return validColors.includes(estadoObj?.color)
-                              ? estadoObj?.color
-                              : "default";
-                          })()}
-                          size="small"
-                          sx={{ fontSize: "0.80rem", height: 24 }}
-                        />
-                      </td>
-                      <td
-                        style={{
-                          padding: "8px",
-                          border: "1px solid #ddd",
-                          textAlign: "center",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {new Date(
-                          typeof v.arrivalTime === "string"
-                            ? Number(v.arrivalTime)
-                            : v.arrivalTime
-                        ).toLocaleTimeString()}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+                      </Typography>
+                    )}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, mb: 0.25, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {v.customerName || ''}
+                        </Typography>
+                        {v.customerPhone && (
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            {v.customerPhone}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                          {fechaStr}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {horaStr}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {v.observaciones && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                        {v.observaciones}
+                      </Typography>
+                    )}
+                  </Box>
+                );
+              })}
           </Box>
           {/* Vista cards en desktop/tablet */}
           <Grid
