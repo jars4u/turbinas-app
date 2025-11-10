@@ -136,7 +136,15 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
       }}
       onClick={(e) => {
         // Evitar que el click en el chip, el botón de precio o el cambio de estado abra el modal de edición
-        if (e.target.closest(".MuiChip-root") || e.target.closest(".ver-precio-btn") || e.preventEdit) return;
+        if (
+          e.target.closest(".MuiChip-root") ||
+          e.target.closest(".ver-precio-btn") ||
+          e.preventEdit ||
+          Boolean(anchorEl) ||
+          Boolean(popoverConfirm?.open)
+        ) {
+          return;
+        }
         onEdit();
       }}
     >
@@ -153,24 +161,40 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
             Este servicio desaparecerá del Dashboard. ¿Desea continuar?
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-            <Button size="small" onClick={() => setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null })} color="primary" variant="outlined">Cancelar</Button>
-            <Button size="small" color="error" variant="contained" onClick={async () => {
-              // Evitar que el click se propague y abra el modal de edición
-              if (window.event) {
-                window.event.stopPropagation();
-                window.event.preventDefault();
-              }
-              setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null });
-              setCurrentStatus(popoverConfirm.newStatus);
-              setAnchorEl(null);
-              if (vehiculo.id) {
-                const data = sanitizeDeep({ ...vehiculo, status: popoverConfirm.newStatus });
-                await actualizarVehiculo(vehiculo.id, data);
-              }
-              if (typeof onStatusChange === "function") {
-                onStatusChange(popoverConfirm.newStatus);
-              }
-            }}>Confirmar</Button>
+            <Button
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null });
+              }}
+              color="primary"
+              variant="outlined"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="small"
+              color="error"
+              variant="contained"
+              onClick={async (e) => {
+                // Evitar que el click se propague y abra el modal de edición
+                e.stopPropagation();
+                e.preventDefault();
+                setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null });
+                setCurrentStatus(popoverConfirm.newStatus);
+                setAnchorEl(null);
+                if (vehiculo.id) {
+                  const data = sanitizeDeep({ ...vehiculo, status: popoverConfirm.newStatus });
+                  await actualizarVehiculo(vehiculo.id, data);
+                }
+                if (typeof onStatusChange === "function") {
+                  onStatusChange(popoverConfirm.newStatus);
+                }
+              }}
+            >
+              Confirmar
+            </Button>
           </Box>
         </Box>
       </Popover>

@@ -770,7 +770,7 @@ export default function Dashboard() {
           </Box>
         ) : (
           <Grid container spacing={3} columns={6} sx={{ mt: 1 }}>
-            {[...Array(4)].map((_, idx) => (
+            {[...Array(12)].map((_, idx) => (
               <Grid key={idx} sx={{ mb: 3 }}>
                 <Box
                   sx={{
@@ -781,34 +781,36 @@ export default function Dashboard() {
                     mx: 1.5,
                     display: "flex",
                     flexDirection: "column",
-                    justifyContent: "space-between",
                     p: 0.8,
                     borderRadius: 2,
                     boxShadow: 2,
                     bgcolor: "background.paper",
+                    border: '1px solid',
+                    borderColor: 'divider',
                   }}
                 >
-                  <Skeleton
-                    variant="rectangular"
-                    width={180}
-                    height={24}
-                    sx={{ mb: 1 }}
-                  />
-                  <Skeleton variant="text" width={120} sx={{ mb: 1 }} />
-                  <Skeleton variant="text" width={80} sx={{ mb: 1 }} />
-                  <Skeleton
-                    variant="rectangular"
-                    width={180}
-                    height={18}
-                    sx={{ mb: 1 }}
-                  />
-                  <Skeleton variant="text" width={100} sx={{ mb: 1 }} />
-                  <Skeleton
-                    variant="rectangular"
-                    width={60}
-                    height={32}
-                    sx={{ mt: 2 }}
-                  />
+                  {/* Fila superior: fecha/hora a la izquierda y chip a la derecha */}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Box>
+                      <Skeleton variant="text" width={70} height={12} sx={{ mb: 0.5 }} />
+                      <Skeleton variant="text" width={90} height={12} />
+                    </Box>
+                    <Skeleton variant="rounded" width={90} height={22} />
+                  </Box>
+                  {/* Divider simulado */}
+                  <Skeleton variant="rectangular" width="100%" height={1} sx={{ my: 1, opacity: 0.4 }} />
+                  {/* Cliente y teléfono */}
+                  <Box sx={{ mb: 0.5 }}>
+                    <Skeleton variant="text" width={150} height={14} sx={{ mb: 0.3 }} />
+                    <Skeleton variant="text" width={110} height={14} />
+                  </Box>
+                  {/* Subtítulo */}
+                  <Skeleton variant="text" width={140} height={16} sx={{ mb: 0.5 }} />
+                  {/* Vehículo y servicio */}
+                  <Skeleton variant="rectangular" width={180} height={18} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="rectangular" width={160} height={18} sx={{ mb: 0.5 }} />
+                  {/* Observaciones */}
+                  <Skeleton variant="text" width={150} height={14} />
                 </Box>
               </Grid>
             ))}
@@ -1961,6 +1963,28 @@ export default function Dashboard() {
                           setSnackbarOpen(true);
                           setOpen(false);
                         }}
+                        disabled={(() => {
+                          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.nombre;
+                          const vehiculoActual = vehiculos.find(v => v.id === editId);
+                          const actual = vehiculoActual?.status || vehiculoActual?.estado;
+                          if (!actual) return false;
+                          // Deshabilitar si está en estado final de facturación o ya está en por_cobrar
+                          return (estadoFact && actual === estadoFact) || actual === 'por_cobrar';
+                        })()}
+                        title={(() => {
+                          const estadoFactObj = estadosServicio.find(e => e.defaultFacturar);
+                          const estadoFact = estadoFactObj?.nombre;
+                          const vehiculoActual = vehiculos.find(v => v.id === editId);
+                          const actual = vehiculoActual?.status || vehiculoActual?.estado;
+                          if (!actual) return undefined;
+                          if (estadoFact && actual === estadoFact) {
+                            return `Este servicio ya está en estado "${estadoFactObj?.label || estadoFact}" y no puede ir a Por Cobrar`;
+                          }
+                          if (actual === 'por_cobrar') {
+                            return 'Este servicio ya está en Por Cobrar';
+                          }
+                          return undefined;
+                        })()}
                       >
                         Por Cobrar
                       </Button>
@@ -1971,6 +1995,21 @@ export default function Dashboard() {
                         startIcon={<PointOfSaleIcon />}
                         sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
                         onClick={() => setFacturaOpen(true)}
+                        disabled={(() => {
+                          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.nombre;
+                          if (!estadoFact) return false;
+                          const vehiculoActual = vehiculos.find(v => v.id === editId);
+                          const actual = vehiculoActual?.status || vehiculoActual?.estado;
+                          return actual === estadoFact;
+                        })()}
+                        title={(() => {
+                          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.label || estadosServicio.find(e => e.defaultFacturar)?.nombre;
+                          const vehiculoActual = vehiculos.find(v => v.id === editId);
+                          const actual = vehiculoActual?.status || vehiculoActual?.estado;
+                          return actual && estadoFact && actual === (estadosServicio.find(e => e.defaultFacturar)?.nombre)
+                            ? 'Este servicio ya está en el estado final de facturación'
+                            : undefined;
+                        })()}
                       >
                         Facturar
                       </Button>
