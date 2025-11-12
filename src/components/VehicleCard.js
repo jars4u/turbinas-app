@@ -39,7 +39,7 @@ function sanitizeDeep(obj) {
 
 
 
-const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
+const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }) => {
   const {
     // id,
     arrivalTime = Date.now(),
@@ -178,14 +178,21 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height }) => {
               color="error"
               variant="contained"
               onClick={async (e) => {
-                // Evitar que el click se propague y abra el modal de edición
                 e.stopPropagation();
                 e.preventDefault();
                 setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null });
                 setCurrentStatus(popoverConfirm.newStatus);
                 setAnchorEl(null);
                 if (vehiculo.id) {
-                  const data = sanitizeDeep({ ...vehiculo, status: popoverConfirm.newStatus });
+                  const estadoObj = estadosServicio.find(es => es.nombre === popoverConfirm.newStatus);
+                  const esOcultar = !!estadoObj?.dejarDeMostrar;
+                  const localUser = usuarioActivo ? String(usuarioActivo).split('@')[0] : null;
+                  const fallbackUser = (vehiculo.entregadoPor || vehiculo.usuario || vehiculo.registradoPor || null);
+                  const data = sanitizeDeep({
+                    ...vehiculo,
+                    status: popoverConfirm.newStatus,
+                    ...(esOcultar ? { fechaEntrega: Date.now(), entregadoPor: (localUser || (fallbackUser ? String(fallbackUser).split('@')[0] : null)) } : {})
+                  });
                   await actualizarVehiculo(vehiculo.id, data);
                 }
                 if (typeof onStatusChange === "function") {

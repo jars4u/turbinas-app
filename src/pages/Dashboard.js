@@ -139,12 +139,20 @@ export default function Dashboard() {
   const handleStatusChange = async (id, newStatus) => {
     const vehiculo = vehiculos.find((v) => v.id === id);
     if (!vehiculo) return;
-    // Limpiar campos undefined
-    const data = { ...vehiculo, status: newStatus };
-    Object.keys(data).forEach((k) => {
-      if (data[k] === undefined) data[k] = null;
+    // Verificar si el estado destino es "dejar de mostrar"
+    const estadoObj = estadosServicio.find(e => e.nombre === newStatus);
+    const esOcultar = !!estadoObj?.dejarDeMostrar;
+    const payload = {
+      ...vehiculo,
+      status: newStatus,
+      // Si es estado final (ocultar), fijar fecha de entrega y quién entregó
+      ...(esOcultar ? { fechaEntrega: Date.now(), entregadoPor: (usuarioActivo ? String(usuarioActivo).split('@')[0] : null) } : {}),
+    };
+    // Limpiar undefined
+    Object.keys(payload).forEach((k) => {
+      if (payload[k] === undefined) payload[k] = null;
     });
-    await actualizarVehiculo(id, data);
+    await actualizarVehiculo(id, payload);
     const actualizados = await obtenerVehiculos();
     setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
   };
@@ -732,7 +740,7 @@ export default function Dashboard() {
       {loadingVehiculos || loadingEstados ? (
         isXs ? (
           <Box sx={{ mt: 1 }}>
-            {[...Array(6)].map((_, idx) => (
+            {[...Array(14)].map((_, idx) => (
               <Box
                 key={idx}
                 sx={{
@@ -825,6 +833,40 @@ export default function Dashboard() {
               width: "100%",
             }}
           >
+            {/* Skeleton de creación mientras se registra un nuevo servicio */}
+            {actionLoading && isRegistering && (
+              <Box
+                sx={{
+                  mb: 1.5,
+                  p: 1,
+                  borderRadius: 1.5,
+                  boxShadow: 1,
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Skeleton variant="text" width="40%" height={24} />
+                  <Skeleton variant="rounded" width={80} height={22} />
+                </Box>
+                <Skeleton variant="text" width="60%" sx={{ mb: 0.5 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Skeleton variant="text" width={160} height={18} sx={{ mb: 0.5 }} />
+                    <Skeleton variant="text" width={100} height={14} />
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Skeleton variant="text" width={70} height={14} />
+                    <Skeleton variant="text" width={50} height={14} />
+                  </Box>
+                </Box>
+                <Skeleton variant="text" width="80%" height={14} sx={{ mt: 0.5 }} />
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  Guardando servicio...
+                </Typography>
+              </Box>
+            )}
             {[...vehiculos]
               .filter(
                 (v) =>
@@ -947,6 +989,48 @@ export default function Dashboard() {
             sx={{ display: { xs: "none", sm: "flex" } }}
             mt={1}
           >
+            {/* Skeleton de creación en escritorio mientras se registra */}
+            {actionLoading && isRegistering && (
+              <Grid sx={{ mb: 3 }}>
+                <Box
+                  sx={{
+                    width: 210,
+                    minWidth: 210,
+                    maxWidth: 210,
+                    minHeight: 180,
+                    mx: 1.5,
+                    display: "flex",
+                    flexDirection: "column",
+                    p: 0.8,
+                    borderRadius: 2,
+                    boxShadow: 2,
+                    bgcolor: "background.paper",
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Box>
+                      <Skeleton variant="text" width={70} height={12} sx={{ mb: 0.5 }} />
+                      <Skeleton variant="text" width={90} height={12} />
+                    </Box>
+                    <Skeleton variant="rounded" width={90} height={22} />
+                  </Box>
+                  <Skeleton variant="rectangular" width="100%" height={1} sx={{ my: 1, opacity: 0.4 }} />
+                  <Box sx={{ mb: 0.5 }}>
+                    <Skeleton variant="text" width={150} height={14} sx={{ mb: 0.3 }} />
+                    <Skeleton variant="text" width={110} height={14} />
+                  </Box>
+                  <Skeleton variant="text" width={140} height={16} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="rectangular" width={180} height={18} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="rectangular" width={160} height={18} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="text" width={150} height={14} />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Guardando servicio...
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
             {(() => {
               // Calcular el alto máximo de los VehicleCard
               const heights = [...vehiculos]
@@ -997,6 +1081,7 @@ export default function Dashboard() {
                       onStatusChange={(newStatus) =>
                         handleStatusChange(v.id, newStatus)
                       }
+                      usuarioActivo={usuarioActivo}
                       height={maxHeight}
                     />
                   </Grid>
@@ -1208,9 +1293,11 @@ export default function Dashboard() {
                             setConfirmOcultar({ open: true, estado });
                           } else {
                             setOpenEstadoModal(false);
+                            const esOcultar = !!estado.dejarDeMostrar;
                             const data = sanitizeDeep({
                               ...vehiculoEstadoModal,
                               status: estado.nombre,
+                              ...(esOcultar ? { fechaEntrega: Date.now(), entregadoPor: (usuarioActivo ? String(usuarioActivo).split('@')[0] : null) } : {}),
                             });
                             actualizarVehiculo(
                               vehiculoEstadoModal.id,
@@ -2108,7 +2195,7 @@ export default function Dashboard() {
               const vehiculoUpdate = {
                 ...form,
                 status: statusFacturar,
-                entregadoPor: usuarioActivo,
+                entregadoPor: (usuarioActivo ? String(usuarioActivo).split('@')[0] : null),
                 fechaEntrega: Date.now(),
                 registradoPor:
                   vehiculos.find((v) => v.id === editId)?.registradoPor ||
