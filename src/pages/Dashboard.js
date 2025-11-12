@@ -20,6 +20,7 @@ import {
   Alert,
   Autocomplete,
   useMediaQuery,
+  Fade,
 } from "@mui/material";
 import Skeleton from "@mui/material/Skeleton";
 import PaymentModal from "../components/PaymentModal";
@@ -161,6 +162,8 @@ export default function Dashboard() {
   const [loadingVehiculos, setLoadingVehiculos] = useState(true);
   const [loadingEstados, setLoadingEstados] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [creatingSkeleton, setCreatingSkeleton] = useState(false);
+  // Estado local para UI temporal (no usado actualmente)
   // Cargar vehículos y estados desde la API al montar
   useEffect(() => {
     const unsubscribe = escucharVehiculos((data) => {
@@ -390,7 +393,8 @@ export default function Dashboard() {
         ? vehiculos.find((v) => v.id === editId)?.fechaEntrega
         : null,
     };
-    setActionLoading(true);
+  setActionLoading(true);
+  if (!editId) setCreatingSkeleton(true);
     // Limpiar campos undefined
     Object.keys(vehiculoData).forEach((k) => {
       if (vehiculoData[k] === undefined) vehiculoData[k] = null;
@@ -433,14 +437,19 @@ export default function Dashboard() {
     }
     if (editId) {
       await actualizarVehiculo(editId, vehiculoData);
+      // Actualización normal: ocultar loading y refrescar
+      setActionLoading(false);
       const actualizados = await obtenerVehiculos();
       setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
     } else {
+      // CREACIÓN NUEVA: ocultamos inmediatamente el skeleton de la lista y mantenemos el overlay del modal
+      setCreatingSkeleton(false); // oculta skeleton ANTES de que aparezca el nuevo card
       await crearVehiculo(vehiculoData);
+      // Refrescar lista
       const actualizados = await obtenerVehiculos();
       setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
+      setActionLoading(false);
     }
-    setActionLoading(false);
     setOpen(false);
     setEditSection(null);
     setIsEditing(false);
@@ -833,40 +842,6 @@ export default function Dashboard() {
               width: "100%",
             }}
           >
-            {/* Skeleton de creación mientras se registra un nuevo servicio */}
-            {actionLoading && isRegistering && (
-              <Box
-                sx={{
-                  mb: 1.5,
-                  p: 1,
-                  borderRadius: 1.5,
-                  boxShadow: 1,
-                  bgcolor: 'background.paper',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                  <Skeleton variant="text" width="40%" height={24} />
-                  <Skeleton variant="rounded" width={80} height={22} />
-                </Box>
-                <Skeleton variant="text" width="60%" sx={{ mb: 0.5 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Skeleton variant="text" width={160} height={18} sx={{ mb: 0.5 }} />
-                    <Skeleton variant="text" width={100} height={14} />
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Skeleton variant="text" width={70} height={14} />
-                    <Skeleton variant="text" width={50} height={14} />
-                  </Box>
-                </Box>
-                <Skeleton variant="text" width="80%" height={14} sx={{ mt: 0.5 }} />
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  Guardando servicio...
-                </Typography>
-              </Box>
-            )}
             {[...vehiculos]
               .filter(
                 (v) =>
@@ -980,6 +955,40 @@ export default function Dashboard() {
                   </Box>
                 );
               })}
+            {/* Skeleton de creación mientras se registra un nuevo servicio (al final, con fade) */}
+            <Fade in={creatingSkeleton && isRegistering} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
+              <Box
+                sx={{
+                  mb: 1.5,
+                  p: 1,
+                  borderRadius: 1.5,
+                  boxShadow: 1,
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Skeleton variant="text" width="40%" height={24} />
+                  <Skeleton variant="rounded" width={80} height={22} />
+                </Box>
+                <Skeleton variant="text" width="60%" sx={{ mb: 0.5 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Skeleton variant="text" width={160} height={18} sx={{ mb: 0.5 }} />
+                    <Skeleton variant="text" width={100} height={14} />
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Skeleton variant="text" width={70} height={14} />
+                    <Skeleton variant="text" width={50} height={14} />
+                  </Box>
+                </Box>
+                <Skeleton variant="text" width="80%" height={14} sx={{ mt: 0.5 }} />
+                {/* <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  Guardando servicio...
+                </Typography> */}
+              </Box>
+            </Fade>
           </Box>
           {/* Vista cards en desktop/tablet */}
           <Grid
@@ -989,48 +998,6 @@ export default function Dashboard() {
             sx={{ display: { xs: "none", sm: "flex" } }}
             mt={1}
           >
-            {/* Skeleton de creación en escritorio mientras se registra */}
-            {actionLoading && isRegistering && (
-              <Grid sx={{ mb: 3 }}>
-                <Box
-                  sx={{
-                    width: 210,
-                    minWidth: 210,
-                    maxWidth: 210,
-                    minHeight: 180,
-                    mx: 1.5,
-                    display: "flex",
-                    flexDirection: "column",
-                    p: 0.8,
-                    borderRadius: 2,
-                    boxShadow: 2,
-                    bgcolor: "background.paper",
-                    border: '1px solid',
-                    borderColor: 'divider',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Box>
-                      <Skeleton variant="text" width={70} height={12} sx={{ mb: 0.5 }} />
-                      <Skeleton variant="text" width={90} height={12} />
-                    </Box>
-                    <Skeleton variant="rounded" width={90} height={22} />
-                  </Box>
-                  <Skeleton variant="rectangular" width="100%" height={1} sx={{ my: 1, opacity: 0.4 }} />
-                  <Box sx={{ mb: 0.5 }}>
-                    <Skeleton variant="text" width={150} height={14} sx={{ mb: 0.3 }} />
-                    <Skeleton variant="text" width={110} height={14} />
-                  </Box>
-                  <Skeleton variant="text" width={140} height={16} sx={{ mb: 0.5 }} />
-                  <Skeleton variant="rectangular" width={180} height={18} sx={{ mb: 0.5 }} />
-                  <Skeleton variant="rectangular" width={160} height={18} sx={{ mb: 0.5 }} />
-                  <Skeleton variant="text" width={150} height={14} />
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Guardando servicio...
-                  </Typography>
-                </Box>
-              </Grid>
-            )}
             {(() => {
               // Calcular el alto máximo de los VehicleCard
               const heights = [...vehiculos]
@@ -1087,6 +1054,48 @@ export default function Dashboard() {
                   </Grid>
                 ));
             })()}
+            {/* Skeleton de creación en escritorio mientras se registra (al final, con fade) */}
+            <Fade in={creatingSkeleton && isRegistering} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
+              <Grid sx={{ mb: 3 }}>
+                <Box
+                  sx={{
+                    width: 210,
+                    minWidth: 210,
+                    maxWidth: 210,
+                    minHeight: 180,
+                    mx: 1.5,
+                    display: "flex",
+                    flexDirection: "column",
+                    p: 0.8,
+                    borderRadius: 2,
+                    boxShadow: 2,
+                    bgcolor: "background.paper",
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Box>
+                      <Skeleton variant="text" width={70} height={12} sx={{ mb: 0.5 }} />
+                      <Skeleton variant="text" width={90} height={12} />
+                    </Box>
+                    <Skeleton variant="rounded" width={90} height={22} />
+                  </Box>
+                  <Skeleton variant="rectangular" width="100%" height={1} sx={{ my: 1, opacity: 0.4 }} />
+                  <Box sx={{ mb: 0.5 }}>
+                    <Skeleton variant="text" width={150} height={14} sx={{ mb: 0.3 }} />
+                    <Skeleton variant="text" width={110} height={14} />
+                  </Box>
+                  <Skeleton variant="text" width={140} height={16} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="rectangular" width={180} height={18} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="rectangular" width={160} height={18} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="text" width={150} height={14} />
+                  {/* <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Guardando servicio...
+                  </Typography> */}
+                </Box>
+              </Grid>
+            </Fade>
           </Grid>
         </>
       )}
