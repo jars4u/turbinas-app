@@ -1,6 +1,5 @@
 import React from "react";
 import { Button, TextField } from "@mui/material";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SavingsIcon from '@mui/icons-material/Savings';
 import { Box, Typography } from "@mui/material";
 import { guardarFondoCajaChica, obtenerFondoCajaChica } from "../lib/configuracionCajaChicaFirebase";

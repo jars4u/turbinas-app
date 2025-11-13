@@ -1,5 +1,4 @@
 import GroupIcon from "@mui/icons-material/Group";
-import AssignmentIcon from "@mui/icons-material/Assignment";
 import MessageIcon from '@mui/icons-material/Message';
 import PlantillaMensajes from "../components/PlantillaMensajes";
 import ClientesGestion from "../components/ClientesGestion";

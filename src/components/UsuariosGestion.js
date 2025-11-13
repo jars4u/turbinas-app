@@ -18,10 +18,8 @@ import {
   TextField,
   Checkbox,
   Tooltip,
-  Divider,
   CircularProgress,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../firebase";
@@ -33,7 +31,7 @@ import {
 } from "../lib/usuariosFirebase";
 
 export default function UsuariosGestion() {
-  const { usuario, isAdmin, isOwner } = useAuth();
+  const { isOwner } = useAuth();
   const [usuarios, setUsuarios] = useState([]);
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);

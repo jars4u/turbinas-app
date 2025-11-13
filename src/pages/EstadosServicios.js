@@ -22,7 +22,6 @@ import {
   Chip,
   Checkbox
 } from "@mui/material";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';

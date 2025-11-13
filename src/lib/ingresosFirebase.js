@@ -1,4 +1,4 @@
-import { getFirestore, collection, addDoc, getDocs, Timestamp, doc, deleteDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc } from "firebase/firestore";
 
 const db = getFirestore();
 const INGRESOS_COLLECTION = "ingresosMovimientos";

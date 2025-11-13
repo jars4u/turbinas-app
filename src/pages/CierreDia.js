@@ -41,7 +41,7 @@ import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 
 export default function CierreDia() {
-  const { usuario, isAdmin, isOwner } = useAuth();
+  const { isAdmin, isOwner } = useAuth();
   const navigate = useNavigate();
   const [vehiculos, setVehiculos] = useState([]);
   const [estadosServicio, setEstadosServicio] = useState([]);
