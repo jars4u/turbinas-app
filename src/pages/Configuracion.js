@@ -16,6 +16,9 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Tabs,
+  Tab,
+  Divider,
 } from "@mui/material";
 import BadgeIcon from '@mui/icons-material/Badge';
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -87,13 +90,52 @@ export default function Configuracion() {
       >
         Atrás
       </Button>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ mb: { xs: 2, md: 3 } }}>
         <span style={{ fontWeight: 600 }}>Configuración</span>
       </Typography>
       {isAdmin ? (
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, mt: 4 }}>
-          {/* Menú lateral */}
-          <Box sx={{ minWidth: 220, maxWidth: 260, borderRight: { md: '1px solid #eee' }, pr: { md: 3 }, mb: { xs: 2, md: 0 }, bgcolor: { xs: 'background.paper', md: '#f7f7fa' } }}>
+          {/* Navegación móvil (tabs horizontales) */}
+          <Box
+            sx={{
+              display: { xs: 'block', md: 'none' },
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              bgcolor: 'background.paper',
+              borderRadius: 2,
+              boxShadow: 1,
+              mb: 2,
+            }}
+          >
+            <Tabs
+              value={selectedSection}
+              onChange={(e, val) => handleSectionChange(val)}
+              variant="scrollable"
+              allowScrollButtons="auto"
+              aria-label="Secciones de configuración"
+              sx={{ minHeight: 48 }}
+            >
+              {menuItems.map(item => (
+                <Tab
+                  key={item.key}
+                  value={item.key}
+                  icon={item.icon}
+                  iconPosition="start"
+                  label={<span style={{ fontSize: 12 }}>{item.label}</span>}
+                  sx={{
+                    minHeight: 48,
+                    alignItems: 'center',
+                    px: 2,
+                    '& .MuiTab-iconWrapper': { mr: 1 },
+                  }}
+                />
+              ))}
+            </Tabs>
+            <Divider sx={{ mt: 0 }} />
+          </Box>
+          {/* Menú lateral desktop (sin cambios) */}
+          <Box sx={{ display: { xs: 'none', md: 'block' }, minWidth: 220, maxWidth: 260, borderRight: { md: '1px solid #eee' }, pr: { md: 3 }, mb: { xs: 2, md: 0 }, bgcolor: { md: '#f7f7fa' } }}>
             <List>
               {menuItems.map((item) => (
                 <ListItem key={item.key} disablePadding>
@@ -127,7 +169,7 @@ export default function Configuracion() {
             alt="Sin permisos de administrador"
             style={{ maxWidth: 220, marginBottom: 16 }}
           />
-          <Typography variant="body1" align="center" px={15}>
+          <Typography variant="body1" align="center" px={{ xs: 2, md: 15 }}>
             No tienes permisos de administrador para acceder a la configuración,
             contacta a un administrador o solicita acceso.
           </Typography>

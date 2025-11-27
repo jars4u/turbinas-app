@@ -23,6 +23,7 @@ import {
   TableContainer,
 } from "@mui/material";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 
 import ServicioTimeline from "../components/ServicioTimeline";
 import HistoryIcon from "@mui/icons-material/History";
@@ -169,6 +170,14 @@ export default function HistorialVehiculos() {
   // Estados para el rango de fechas
   const [fechaInicio, setFechaInicio] = React.useState(null);
   const [fechaFin, setFechaFin] = React.useState(null);
+
+  // Utilidad: formatear fecha dd/mm/yyyy
+  const formatFecha = React.useCallback((val) => {
+    if (!val || val === '-') return '-';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return '-';
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  }, []);
 
   // Cargar datos reales de Firestore y asociar factura
   React.useEffect(() => {
@@ -325,16 +334,17 @@ export default function HistorialVehiculos() {
           sx={{
             mb: 2,
             display: "flex",
-            alignItems: "center",
-            gap: 2,
-            flexWrap: "wrap",
+            alignItems: { xs: "stretch", md: "center" },
+            flexDirection: { xs: "column", md: "row" },
+            gap: { xs: 1.5, md: 2 },
+            flexWrap: { xs: "nowrap", md: "wrap" },
             justifyContent: "space-between",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: { xs: "100%", md: "auto" } }}>
             <input
               type="text"
-              placeholder="Buscar por modelo, servicio, cliente, usuario..."
+              placeholder="Buscar por modelo, servicio, cliente, usuario, factura..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               style={{
@@ -342,7 +352,7 @@ export default function HistorialVehiculos() {
                 fontSize: "1rem",
                 borderRadius: 6,
                 border: "1px solid #bdbdbd",
-                width: 320,
+                width: "min(100%, 320px)",
                 fontFamily: "Poppins, sans-serif",
               }}
             />
@@ -351,148 +361,313 @@ export default function HistorialVehiculos() {
               color="primary"
               size="small"
               onClick={() => setOpenColumnModal(true)}
+              aria-label="Seleccionar columnas"
             >
-              Seleccionar columnas
+              <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Seleccionar columnas</Box>
+              <Box component="span" sx={{ display: { xs: 'inline-flex', md: 'none' }, alignItems: 'center' }}>
+                <ViewColumnIcon fontSize="small" />
+              </Box>
             </Button>
           </Box>
           {/* DatePicker de rango con fuente Poppins alineado a la derecha y botón de exportar */}
           <Box
             sx={{
               display: "flex",
-              alignItems: "center",
-              gap: 2,
-              justifyContent: "flex-end",
+              alignItems: { xs: "stretch", md: "center" },
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 1, md: 2 },
+              justifyContent: { xs: "stretch", md: "flex-end" },
               flex: 1,
+              width: { xs: "100%", md: "auto" },
             }}
           >
-            <Typography
-              variant="body2"
-              sx={{ mr: 1, fontFamily: "Poppins, sans-serif" }}
-            >
-              Desde:
-            </Typography>
-            <input
-              type="date"
-              value={fechaInicio || ""}
-              onChange={(e) => setFechaInicio(e.target.value)}
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                border: "1px solid #bdbdbd",
-                fontFamily: "Poppins, sans-serif",
-                fontSize: "1rem",
-              }}
-            />
-            <Typography
-              variant="body2"
-              sx={{ mx: 1, fontFamily: "Poppins, sans-serif" }}
-            >
-              a
-            </Typography>
-            <input
-              type="date"
-              value={fechaFin || ""}
-              onChange={(e) => setFechaFin(e.target.value)}
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                border: "1px solid #bdbdbd",
-                fontFamily: "Poppins, sans-serif",
-                fontSize: "1rem",
-              }}
-            />
-            <Button
-              variant="outlined"
-              color="success"
-              size="small"
+            <Box
               sx={{
-                fontFamily: "Poppins, sans-serif",
-                fontWeight: 600,
-                textTransform: "none",
-                boxShadow: "none",
+                display: "flex",
+                alignItems: "center",
+                flexDirection: "row",
+                gap: 1,
+                justifyContent: { xs: "flex-start", md: "flex-end" },
+                flex: 1,
+                width: "100%",
+                flexWrap: "nowrap",
               }}
-              onClick={() => {
-                // Filtrar los datos igual que la tabla
-                // Definir el orden de columnas igual al visual de la tabla
-                const columnasOrden = [
-                  "#",
-                  "arrivalTime",
-                  "fechaEntrega",
-                  "vehiculo",
-                  "servicio",
-                  "customerName",
-                  "customerPhone",
-                  "precio",
-                  "factura",
-                  "formaPago",
-                  "referencia",
-                  "montoUSD",
-                  "montoBs",
-                  "estadoFactura",
-                  "status",
-                  "registradoPor",
-                  "entregadoPor",
-                ];
-                const datosExportar = vehiculos
-                  .filter((v) => {
-                    const q = busqueda.toLowerCase();
-                    const match =
-                      v.vehiculo?.toLowerCase().includes(q) ||
-                      v.servicio?.toLowerCase().includes(q) ||
-                      v.customerName?.toLowerCase().includes(q) ||
-                      v.customerPhone?.toLowerCase().includes(q) ||
-                      v.usuario?.toLowerCase().includes(q);
-                    let matchFecha = true;
-                    if (fechaInicio) {
-                      const fechaReg = v.arrivalTime
-                        ? new Date(v.arrivalTime)
-                        : null;
-                      if (fechaReg) {
-                        matchFecha =
-                          matchFecha && fechaReg >= new Date(fechaInicio);
-                      }
-                    }
-                    if (fechaFin) {
-                      const fechaReg = v.arrivalTime
-                        ? new Date(v.arrivalTime)
-                        : null;
-                      if (fechaReg) {
-                        matchFecha =
-                          matchFecha &&
-                          fechaReg <= new Date(fechaFin + "T23:59:59");
-                      }
-                    }
-                    return match && matchFecha;
-                  })
-                  .sort((a, b) => {
-                    // Ordenar por arrivalTime ascendente
-                    const fa = a.arrivalTime
-                      ? new Date(a.arrivalTime).getTime()
-                      : 0;
-                    const fb = b.arrivalTime
-                      ? new Date(b.arrivalTime).getTime()
-                      : 0;
-                    return fa - fb;
-                  })
-                  .map((v, idx) => {
-                    // Exportar columnas en el orden visual
-                    const fila = {};
-                    fila["#"] = idx + 1;
-                    columnasOrden.slice(1).forEach((col) => {
-                      if (columnasVisibles[col]) fila[col] = v[col];
-                    });
-                    return fila;
-                  });
-                import("../lib/exportarExcel").then(({ exportarExcel }) => {
-                  exportarExcel(datosExportar, "historial-servicios.xlsx");
-                });
-              }}
-              startIcon={<FileDownloadIcon />}
             >
-              Descargar Excel
-            </Button>
+              <Typography
+                variant="body2"
+                sx={{ display: { xs: 'none', md: 'inline' }, mr: { xs: 0.5, md: 1 }, fontFamily: "Poppins, sans-serif" }}
+              >
+                Desde:
+              </Typography>
+              <input
+                type="date"
+                value={fechaInicio || ""}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                aria-label="Fecha inicio"
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  border: "1px solid #bdbdbd",
+                  fontFamily: "Poppins, sans-serif",
+                  fontSize: "1rem",
+                  width: 130,
+                }}
+              />
+              <Typography
+                variant="body2"
+                sx={{ display: { xs: 'inline', md: 'none' }, mx: 0.5, fontFamily: "Poppins, sans-serif" }}
+              >
+                -
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ display: { xs: 'none', md: 'inline' }, mx: { xs: 0.5, md: 1 }, fontFamily: "Poppins, sans-serif" }}
+              >
+                a
+              </Typography>
+              <input
+                type="date"
+                value={fechaFin || ""}
+                onChange={(e) => setFechaFin(e.target.value)}
+                aria-label="Fecha fin"
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  border: "1px solid #bdbdbd",
+                  fontFamily: "Poppins, sans-serif",
+                  fontSize: "1rem",
+                  width: 130,
+                }}
+              />
+            </Box>
+            <Box sx={{ mt: { xs: 1, md: 0 }, width: { xs: '100%', md: 'auto' } }}>
+              <Button
+                variant="outlined"
+                color="success"
+                size="small"
+                sx={{
+                  fontFamily: "Poppins, sans-serif",
+                  fontWeight: 600,
+                  textTransform: "none",
+                  boxShadow: "none",
+                  width: { xs: '100%', md: 'auto' },
+                }}
+                onClick={() => {
+                  // Filtrar los datos igual que la tabla
+                  // Definir el orden de columnas igual al visual de la tabla
+                  const columnasOrden = [
+                    "#",
+                    "arrivalTime",
+                    "fechaEntrega",
+                    "vehiculo",
+                    "servicio",
+                    "customerName",
+                    "customerPhone",
+                    "precio",
+                    "factura",
+                    "formaPago",
+                    "referencia",
+                    "montoUSD",
+                    "montoBs",
+                    "estadoFactura",
+                    "status",
+                    "registradoPor",
+                    "entregadoPor",
+                  ];
+                  const datosExportar = vehiculos
+                    .filter((v) => {
+                      const q = busqueda.toLowerCase();
+                      const match =
+                        v.vehiculo?.toLowerCase().includes(q) ||
+                        v.servicio?.toLowerCase().includes(q) ||
+                        v.customerName?.toLowerCase().includes(q) ||
+                        v.customerPhone?.toLowerCase().includes(q) ||
+                        v.usuario?.toLowerCase().includes(q) ||
+                        (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
+                      let matchFecha = true;
+                      if (fechaInicio) {
+                        const fechaReg = v.arrivalTime
+                          ? new Date(v.arrivalTime)
+                          : null;
+                        if (fechaReg) {
+                          matchFecha =
+                            matchFecha && fechaReg >= new Date(fechaInicio);
+                        }
+                      }
+                      if (fechaFin) {
+                        const fechaReg = v.arrivalTime
+                          ? new Date(v.arrivalTime)
+                          : null;
+                        if (fechaReg) {
+                          matchFecha =
+                            matchFecha &&
+                            fechaReg <= new Date(fechaFin + "T23:59:59");
+                        }
+                      }
+                      return match && matchFecha;
+                    })
+                    .sort((a, b) => {
+                      // Ordenar por arrivalTime ascendente
+                      const fa = a.arrivalTime
+                        ? new Date(a.arrivalTime).getTime()
+                        : 0;
+                      const fb = b.arrivalTime
+                        ? new Date(b.arrivalTime).getTime()
+                        : 0;
+                      return fa - fb;
+                    })
+                    .map((v, idx) => {
+                      // Exportar columnas en el orden visual
+                      const fila = {};
+                      fila["#"] = idx + 1;
+                      columnasOrden.slice(1).forEach((col) => {
+                        if (columnasVisibles[col]) fila[col] = v[col];
+                      });
+                      return fila;
+                    });
+                  import("../lib/exportarExcel").then(({ exportarExcel }) => {
+                    exportarExcel(datosExportar, "historial-servicios.xlsx");
+                  });
+                }}
+                startIcon={<FileDownloadIcon />}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Descargar Excel</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', md: 'none' } }}>Exportar</Box>
+              </Button>
+            </Box>
           </Box>
         </Box>
+        {/* Vista móvil (cards) */}
+        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+          {loading ? (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: 200,
+              }}
+            >
+              <CircularProgress color="primary" size={48} />
+            </Box>
+          ) : (
+            <Box>
+              {vehiculos
+                .filter((v) => {
+                  const q = busqueda.toLowerCase();
+                  const match =
+                    v.vehiculo?.toLowerCase().includes(q) ||
+                    v.servicio?.toLowerCase().includes(q) ||
+                    v.customerName?.toLowerCase().includes(q) ||
+                    v.customerPhone?.toLowerCase().includes(q) ||
+                    v.usuario?.toLowerCase().includes(q) ||
+                    (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
+                  let matchFecha = true;
+                  if (fechaInicio) {
+                    const fechaReg = v.arrivalTime ? new Date(v.arrivalTime) : null;
+                    if (fechaReg) matchFecha = matchFecha && fechaReg >= new Date(fechaInicio);
+                  }
+                  if (fechaFin) {
+                    const fechaReg = v.arrivalTime ? new Date(v.arrivalTime) : null;
+                    if (fechaReg) matchFecha = matchFecha && fechaReg <= new Date(fechaFin + 'T23:59:59');
+                  }
+                  return match && matchFecha;
+                })
+                .sort((a, b) => {
+                  // Mantener el mismo criterio por defecto que desktop
+                  let va = a[ordenCol] ?? '';
+                  let vb = b[ordenCol] ?? '';
+                  if (ordenCol === 'precio') {
+                    va = Number(va) || 0;
+                    vb = Number(vb) || 0;
+                  }
+                  if (ordenCol === 'arrivalTime') {
+                    va = Number(va) || 0;
+                    vb = Number(vb) || 0;
+                  }
+                  if (typeof va === 'string' && typeof vb === 'string') {
+                    return ordenAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                  }
+                  return ordenAsc ? va - vb : vb - va;
+                })
+                .map((v, idx) => {
+                  const estadoLabel = (() => {
+                    const codigo = v.status || v.estado || v.estadoActual || v.currentStatus || '';
+                    if (!codigo) return '-';
+                    const estadoObj = estadosServicio.find((e) => e.nombre === codigo || e.id === codigo || e.value === codigo);
+                    return estadoObj ? estadoObj.label || estadoObj.nombre || codigo : codigo;
+                  })();
+                  return (
+                    <Box
+                      key={v.id || idx}
+                      onClick={() => {
+                        setServicioSeleccionado(v);
+                        setOpenHistorial(true);
+                      }}
+                      sx={{
+                        p: 1.25,
+                        mb: 1,
+                        border: '1px solid',
+                        borderColor: 'grey.200',
+                        borderRadius: 2,
+                        backgroundColor: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatFecha(v.arrivalTime)}
+                        </Typography>
+                        <Box sx={{
+                          px: 0.75,
+                          py: 0.25,
+                          borderRadius: 1,
+                          bgcolor: 'grey.100',
+                          color: 'text.secondary',
+                          fontSize: 12,
+                          fontWeight: 500,
+                        }}>
+                          {estadoLabel}
+                        </Box>
+                      </Box>
+                      <Typography variant="body1" fontWeight={700} sx={{ lineHeight: 1.2 }}>
+                        {v.vehiculo || '-'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                        {v.servicio || '-'}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {v.customerName || '-'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {v.customerPhone || ''}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                        {v.factura && v.factura !== '-' && (
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">Factura:</Typography>
+                            <Typography variant="caption">{v.factura}</Typography>
+                          </Box>
+                        )}
+                        {(v.montoUSD || v.montoBs) && (
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">Monto:</Typography>
+                            <Typography variant="caption">
+                              {v.montoUSD ? `${v.montoUSD}` : '-'}{v.montoBs ? ` | ${v.montoBs}` : ''}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                })}
+            </Box>
+          )}
+        </Box>
+
+        {/* Vista escritorio (tabla original) */}
         {loading ? (
           <Box
             sx={{
@@ -507,7 +682,7 @@ export default function HistorialVehiculos() {
         ) : (
           <TableContainer
             component={Paper}
-            sx={{ width: "100%", overflowX: "auto", mb: 2 }}
+            sx={{ width: "100%", overflowX: "auto", mb: 2, display: { xs: 'none', md: 'block' } }}
           >
             <Table size="small" sx={{ minWidth: 900, whiteSpace: "nowrap" }}>
               <TableHead>
@@ -712,7 +887,8 @@ export default function HistorialVehiculos() {
                         v.servicio?.toLowerCase().includes(q) ||
                         v.customerName?.toLowerCase().includes(q) ||
                         v.customerPhone?.toLowerCase().includes(q) ||
-                        v.usuario?.toLowerCase().includes(q);
+                        v.usuario?.toLowerCase().includes(q) ||
+                        (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
                       // Filtro de rango de fechas (arrivalTime)
                       let matchFecha = true;
                       if (fechaInicio) {

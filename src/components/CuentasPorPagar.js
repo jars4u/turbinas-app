@@ -24,6 +24,7 @@ export default function CuentasPorPagar() {
   const [confirmPayId, setConfirmPayId] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
+  const [editingMobile, setEditingMobile] = useState(false);
   // Eliminar cuenta por pagar
   const handleDelete = async (id) => {
     const { db } = await import('../firebase');
@@ -109,23 +110,24 @@ export default function CuentasPorPagar() {
           <Typography fontWeight={600}>+ Agregar cuenta por pagar</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-              <TextField label="Documento" name="documento" value={form.documento} onChange={handleChange} size="small" sx={{ minWidth: 120 }} />
-              <TextField label="Proveedor" name="proveedor" value={form.proveedor} onChange={handleChange} size="small" sx={{ minWidth: 120 }} />
-              <TextField label="Concepto" name="concepto" value={form.concepto} onChange={handleChange} size="small" sx={{ flex: 1 }} />
+          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, width: '100%', flexDirection: { xs: 'column', md: 'row' } }}>
+              <TextField fullWidth label="Documento" name="documento" value={form.documento} onChange={handleChange} size="small" sx={{ minWidth: 120 }} />
+              <TextField fullWidth label="Proveedor" name="proveedor" value={form.proveedor} onChange={handleChange} size="small" sx={{ minWidth: 120 }} />
+              <TextField fullWidth label="Concepto" name="concepto" value={form.concepto} onChange={handleChange} size="small" sx={{ flex: 1 }} />
             </Box>
-            <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-              <TextField label="Monto $" name="montoUSD" value={form.montoUSD} onChange={handleChange} size="small" type="number" sx={{ minWidth: 100 }} />
-              <TextField label="Monto Bs" name="montoBs" value={form.montoBs} onChange={handleChange} size="small" type="number" sx={{ minWidth: 100 }} />
-              <TextField label="Vencimiento" name="vencimiento" value={form.vencimiento} onChange={handleChange} size="small" type="date" InputLabelProps={{ shrink: true }} sx={{ minWidth: 140 }} />
-              <Button type="submit" variant="contained" color="primary" sx={{ height: 40, flex: 1 }}>Agregar</Button>
+            <Box sx={{ display: 'flex', gap: 2, width: '100%', flexDirection: { xs: 'column', md: 'row' } }}>
+              <TextField fullWidth label="Monto $" name="montoUSD" value={form.montoUSD} onChange={handleChange} size="small" type="number" sx={{ minWidth: 100 }} />
+              <TextField fullWidth label="Monto Bs" name="montoBs" value={form.montoBs} onChange={handleChange} size="small" type="number" sx={{ minWidth: 100 }} />
+              <TextField fullWidth label="Vencimiento" name="vencimiento" value={form.vencimiento} onChange={handleChange} size="small" type="date" InputLabelProps={{ shrink: true }} sx={{ minWidth: 140 }} />
+              <Button type="submit" variant="contained" color="primary" sx={{ height: 40, width: { xs: '100%', md: 'auto' } }}>Agregar</Button>
             </Box>
           </Box>
         </AccordionDetails>
       </Accordion>
   {loading && <LinearProgress sx={{ mb: 1 }} />}
-  <Table component={Paper} size="small" sx={{ mb: 2 }}>
+  {/* Vista escritorio: tabla */}
+  <Table component={Paper} size="small" sx={{ mb: 2, display: { xs: 'none', md: 'table' } }}>
         <TableHead>
           <TableRow>
             <TableCell>Documento</TableCell>
@@ -183,7 +185,82 @@ export default function CuentasPorPagar() {
                       >
                         Pagar
                       </Button>
-      {/* Modal de confirmación de pago */}
+                    </TableCell>
+                  </>
+                )}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+      {/* Vista móvil: cards */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {cuentas.length === 0 ? (
+          <Paper sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+            No hay cuentas por pagar registradas.
+          </Paper>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+            {cuentas.map((cuenta, idx) => {
+              const montoUSD = (typeof cuenta.montoUSD === 'number' && cuenta.montoUSD !== 0)
+                ? cuenta.montoUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '-';
+              const montoBs = (typeof cuenta.montoBs === 'number' && cuenta.montoBs !== 0)
+                ? cuenta.montoBs.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '-';
+              return (
+                <Box key={cuenta.id || idx} sx={{ p: 1.25, border: '1px solid', borderColor: 'grey.200', borderRadius: 2, bgcolor: '#fff' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {cuenta.proveedor ? cuenta.proveedor.toUpperCase() : '-'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {cuenta.vencimiento || '-'}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    {cuenta.concepto ? cuenta.concepto.toUpperCase() : '-'}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {cuenta.documento && (
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">Doc:</Typography>
+                        <Typography variant="caption">{cuenta.documento.toUpperCase()}</Typography>
+                      </Box>
+                    )}
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary">$:</Typography>
+                      <Typography variant="caption">{montoUSD}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary">Bs:</Typography>
+                      <Typography variant="caption">{montoBs}</Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 0.75 }}>
+                    <IconButton color="primary" size="small" onClick={() => { handleEditInit(cuenta); setEditingMobile(true); }} aria-label="Editar cuenta">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton color="error" size="small" onClick={() => setConfirmDeleteId(cuenta.id)} aria-label="Eliminar cuenta">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      size="small"
+                      startIcon={<PaidIcon />}
+                      onClick={() => setConfirmPayId(cuenta.id)}
+                    >
+                      Pagar
+                    </Button>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+      {/* Diálogos globales: pagar, eliminar y editar en móvil */}
       <Dialog open={!!confirmPayId} onClose={() => setConfirmPayId(null)}>
         <DialogTitle>¿Confirmar pago de cuenta?</DialogTitle>
         <DialogContent>
@@ -217,7 +294,6 @@ export default function CuentasPorPagar() {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Modal de confirmación de eliminación */}
       <Dialog open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)}>
         <DialogTitle>¿Eliminar cuenta por pagar?</DialogTitle>
         <DialogContent>
@@ -228,14 +304,23 @@ export default function CuentasPorPagar() {
           <Button onClick={() => handleDelete(confirmDeleteId)} color="error" variant="contained">Eliminar</Button>
         </DialogActions>
       </Dialog>
-                    </TableCell>
-                  </>
-                )}
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+      <Dialog open={editingMobile && !!editId} onClose={() => { setEditingMobile(false); handleEditCancel(); }} fullWidth maxWidth="sm">
+        <DialogTitle>Editar cuenta por pagar</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField label="Documento" value={editForm.documento} onChange={e => setEditForm({ ...editForm, documento: e.target.value })} size="small" fullWidth />
+          <TextField label="Proveedor" value={editForm.proveedor} onChange={e => setEditForm({ ...editForm, proveedor: e.target.value })} size="small" fullWidth />
+          <TextField label="Concepto" value={editForm.concepto} onChange={e => setEditForm({ ...editForm, concepto: e.target.value })} size="small" fullWidth />
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+            <TextField label="Monto $" value={editForm.montoUSD} onChange={e => setEditForm({ ...editForm, montoUSD: e.target.value })} size="small" type="number" fullWidth />
+            <TextField label="Monto Bs" value={editForm.montoBs} onChange={e => setEditForm({ ...editForm, montoBs: e.target.value })} size="small" type="number" fullWidth />
+          </Box>
+          <TextField label="Vencimiento" value={editForm.vencimiento} onChange={e => setEditForm({ ...editForm, vencimiento: e.target.value })} size="small" type="date" InputLabelProps={{ shrink: true }} fullWidth />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setEditingMobile(false); handleEditCancel(); }}>Cancelar</Button>
+          <Button onClick={() => { handleEditSave(editId); setEditingMobile(false); }} variant="contained" color="success">Guardar</Button>
+        </DialogActions>
+      </Dialog>
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3000}

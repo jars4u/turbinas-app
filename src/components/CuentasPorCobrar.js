@@ -26,6 +26,7 @@ export default function CuentasPorCobrar() {
   const [snackbarMsg, setSnackbarMsg] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [cuentaServicio, setCuentaServicio] = useState(null);
+  const [editingMobile, setEditingMobile] = useState(false);
 
   // Eliminar cuenta por cobrar
   const handleDelete = async (id) => {
@@ -167,36 +168,37 @@ export default function CuentasPorCobrar() {
             <ToggleButton value="servicio">Servicio</ToggleButton>
           </ToggleButtonGroup>
           {modalidad === 'documento' ? (
-            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-                <TextField label="Documento" name="documento" value={form.documento} onChange={handleChange} size="small" sx={{ minWidth: 120 }} />
-                <TextField label="Cliente" name="cliente" value={form.cliente} onChange={handleChange} size="small" sx={{ minWidth: 120 }} />
-                <TextField label="Concepto" name="concepto" value={form.concepto} onChange={handleChange} size="small" sx={{ flex: 1 }} />
+            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, width: '100%', flexDirection: { xs: 'column', md: 'row' } }}>
+                <TextField fullWidth label="Documento" name="documento" value={form.documento} onChange={handleChange} size="small" />
+                <TextField fullWidth label="Cliente" name="cliente" value={form.cliente} onChange={handleChange} size="small" />
+                <TextField fullWidth label="Concepto" name="concepto" value={form.concepto} onChange={handleChange} size="small" />
               </Box>
-              <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-                <TextField label="Monto $" name="montoUSD" value={form.montoUSD} onChange={handleChange} size="small" type="number" sx={{ minWidth: 100 }} />
-                <TextField label="Monto Bs" name="montoBs" value={form.montoBs} onChange={handleChange} size="small" type="number" sx={{ minWidth: 100 }} />
-                <TextField label="Vencimiento" name="vencimiento" value={form.vencimiento} onChange={handleChange} size="small" type="date" InputLabelProps={{ shrink: true }} sx={{ minWidth: 140 }} />
-                <Button type="submit" variant="contained" color="primary" sx={{ height: 40, flex: 1 }}>Agregar</Button>
+              <Box sx={{ display: 'flex', gap: 2, width: '100%', flexDirection: { xs: 'column', md: 'row' } }}>
+                <TextField fullWidth label="Monto $" name="montoUSD" value={form.montoUSD} onChange={handleChange} size="small" type="number" />
+                <TextField fullWidth label="Monto Bs" name="montoBs" value={form.montoBs} onChange={handleChange} size="small" type="number" />
+                <TextField fullWidth label="Vencimiento" name="vencimiento" value={form.vencimiento} onChange={handleChange} size="small" type="date" InputLabelProps={{ shrink: true }} />
+                <Button type="submit" variant="contained" color="primary" sx={{ height: 40, width: { xs: '100%', md: 'auto' } }}>Agregar</Button>
               </Box>
             </Box>
           ) : (
-            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-                <TextField label="Modelo" name="vehiculo" value={form.vehiculo || ''} onChange={handleChange} size="small" sx={{ minWidth: 120 }} />
-                <TextField label="Servicio" name="servicio" value={form.servicio || ''} onChange={handleChange} size="small" sx={{ minWidth: 120 }} />
-                <TextField label="Precio $" name="precio" value={form.precio || ''} onChange={handleChange} size="small" type="number" sx={{ minWidth: 100 }} />
-                <TextField label="Precio Bs" name="precioBs" value={form.precioBs || ''} onChange={handleChange} size="small" type="number" sx={{ minWidth: 100 }} />
+            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, width: '100%', flexDirection: { xs: 'column', md: 'row' } }}>
+                <TextField fullWidth label="Modelo" name="vehiculo" value={form.vehiculo || ''} onChange={handleChange} size="small" />
+                <TextField fullWidth label="Servicio" name="servicio" value={form.servicio || ''} onChange={handleChange} size="small" />
+                <TextField fullWidth label="Precio $" name="precio" value={form.precio || ''} onChange={handleChange} size="small" type="number" />
+                <TextField fullWidth label="Precio Bs" name="precioBs" value={form.precioBs || ''} onChange={handleChange} size="small" type="number" />
               </Box>
-              <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-                <TextField label="Observaciones" name="observaciones" value={form.observaciones || ''} onChange={handleChange} size="small" sx={{ flex: 1 }} />
-                <Button type="submit" variant="contained" color="primary" sx={{ height: 40, flex: 1 }}>Agregar</Button>
+              <Box sx={{ display: 'flex', gap: 2, width: '100%', flexDirection: { xs: 'column', md: 'row' } }}>
+                <TextField fullWidth label="Observaciones" name="observaciones" value={form.observaciones || ''} onChange={handleChange} size="small" />
+                <Button type="submit" variant="contained" color="primary" sx={{ height: 40, width: { xs: '100%', md: 'auto' } }}>Agregar</Button>
               </Box>
             </Box>
           )}
         </AccordionDetails>
       </Accordion>
-      <Table component={Paper} size="small" sx={{ mb: 2 }}>
+      {/* Tabla escritorio */}
+      <Table component={Paper} size="small" sx={{ mb: 2, display: { xs: 'none', md: 'table' } }}>
         <TableHead>
           <TableRow>
             <TableCell>Tipo</TableCell>
@@ -313,6 +315,137 @@ export default function CuentasPorCobrar() {
           )}
         </TableBody>
       </Table>
+      {/* Vista móvil: tarjetas */}
+      <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 2 }}>
+        {loading ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {[...Array(3)].map((_, i) => (
+              <Paper key={i} sx={{ p: 1.25, borderRadius: 2 }}>
+                <Skeleton variant="text" width={120} />
+                <Skeleton variant="text" width={160} />
+                <Skeleton variant="text" width={80} />
+              </Paper>
+            ))}
+          </Box>
+        ) : cuentas.length === 0 ? (
+          <Paper sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+            No hay cuentas por cobrar registradas.
+          </Paper>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+            {[...cuentas]
+              .sort((a, b) => {
+                const aTs = toMillis(a.fechaRegistro) ?? toMillis(a.arrivalTime) ?? 0;
+                const bTs = toMillis(b.fechaRegistro) ?? toMillis(b.arrivalTime) ?? 0;
+                return bTs - aTs;
+              })
+              .map((cuenta, idx) => {
+                const montoUSD = cuenta.modalidad === 'servicio'
+                  ? (typeof cuenta.precio === 'number' && cuenta.precio !== 0 ? cuenta.precio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-')
+                  : (typeof cuenta.montoUSD === 'number' && cuenta.montoUSD !== 0 ? cuenta.montoUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-');
+                const montoBs = cuenta.modalidad === 'servicio'
+                  ? (typeof cuenta.precioBs === 'number' && cuenta.precioBs !== 0 ? cuenta.precioBs.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-')
+                  : (typeof cuenta.montoBs === 'number' && cuenta.montoBs !== 0 ? cuenta.montoBs.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-');
+                return (
+                  <Box key={cuenta.id || idx} sx={{ p: 1.25, border: '1px solid', borderColor: 'grey.200', borderRadius: 2, bgcolor: '#fff' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {cuenta.modalidad === 'servicio'
+                          ? (cuenta.vehiculo ? cuenta.vehiculo.toUpperCase() : '-')
+                          : (cuenta.documento ? cuenta.documento.toUpperCase() : '-')}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {cuenta.modalidad === 'servicio' ? 'Servicio' : 'Doc'}
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      {cuenta.modalidad === 'servicio'
+                        ? (cuenta.servicio ? cuenta.servicio.toUpperCase() : '-')
+                        : (cuenta.cliente ? cuenta.cliente.toUpperCase() : '-')}
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
+                      {cuenta.modalidad === 'servicio'
+                        ? (cuenta.observaciones ? cuenta.observaciones : '-')
+                        : (cuenta.concepto ? cuenta.concepto.toUpperCase() : '-')}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">$:</Typography>
+                        <Typography variant="caption">{montoUSD}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">Bs:</Typography>
+                        <Typography variant="caption">{montoBs}</Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                      <IconButton color="primary" size="small" onClick={() => { handleEditInit(cuenta); setEditingMobile(true); }} aria-label="Editar">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton color="error" size="small" onClick={() => setConfirmDeleteId(cuenta.id)} aria-label="Eliminar">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                      <Button
+                        variant="outlined"
+                        color="success"
+                        size="small"
+                        startIcon={<PaidIcon />}
+                        onClick={() => {
+                          if (cuenta.modalidad === 'servicio') {
+                            setCuentaServicio(cuenta);
+                            setPaymentModalOpen(true);
+                          } else {
+                            setConfirmCobroId(cuenta.id);
+                          }
+                        }}
+                      >
+                        Cobrar
+                      </Button>
+                    </Box>
+                  </Box>
+                );
+              })}
+          </Box>
+        )}
+      </Box>
+      {/* Diálogo de edición móvil */}
+      <Dialog open={editingMobile && !!editId} onClose={() => { setEditingMobile(false); handleEditCancel(); }} fullWidth maxWidth="sm">
+        <DialogTitle>Editar cuenta por cobrar</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          {editId && (() => {
+            const cuenta = cuentas.find(c => c.id === editId);
+            if (!cuenta) return null;
+            if (cuenta.modalidad === 'servicio') {
+              return (
+                <>
+                  <TextField label="Modelo" value={editForm.vehiculo} onChange={e => setEditForm({ ...editForm, vehiculo: e.target.value })} size="small" fullWidth />
+                  <TextField label="Servicio" value={editForm.servicio} onChange={e => setEditForm({ ...editForm, servicio: e.target.value })} size="small" fullWidth />
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <TextField label="Precio $" value={editForm.precio} onChange={e => setEditForm({ ...editForm, precio: e.target.value })} size="small" type="number" fullWidth />
+                    <TextField label="Precio Bs" value={editForm.precioBs} onChange={e => setEditForm({ ...editForm, precioBs: e.target.value })} size="small" type="number" fullWidth />
+                  </Box>
+                  <TextField label="Observaciones" value={editForm.observaciones} onChange={e => setEditForm({ ...editForm, observaciones: e.target.value })} size="small" fullWidth />
+                </>
+              );
+            }
+            return (
+              <>
+                <TextField label="Documento" value={editForm.documento} onChange={e => setEditForm({ ...editForm, documento: e.target.value })} size="small" fullWidth />
+                <TextField label="Cliente" value={editForm.cliente} onChange={e => setEditForm({ ...editForm, cliente: e.target.value })} size="small" fullWidth />
+                <TextField label="Concepto" value={editForm.concepto} onChange={e => setEditForm({ ...editForm, concepto: e.target.value })} size="small" fullWidth />
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                  <TextField label="Monto $" value={editForm.montoUSD} onChange={e => setEditForm({ ...editForm, montoUSD: e.target.value })} size="small" type="number" fullWidth />
+                  <TextField label="Monto Bs" value={editForm.montoBs} onChange={e => setEditForm({ ...editForm, montoBs: e.target.value })} size="small" type="number" fullWidth />
+                </Box>
+              </>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setEditingMobile(false); handleEditCancel(); }}>Cancelar</Button>
+          <Button onClick={() => { handleEditSave(editId); setEditingMobile(false); }} variant="contained" color="success">Guardar</Button>
+        </DialogActions>
+      </Dialog>
       {/* Modal de confirmación de cobro para documento */}
       <Dialog open={!!confirmCobroId} onClose={() => setConfirmCobroId(null)}>
         <DialogTitle>¿Confirmar cobro de cuenta?</DialogTitle>
