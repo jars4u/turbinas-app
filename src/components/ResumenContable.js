@@ -21,6 +21,7 @@ import {
   TextField,
   Button,
   useMediaQuery,
+  Checkbox,
 } from "@mui/material";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -61,6 +62,10 @@ export default function ResumenContable({ tasaBCV }) {
   const isMobile = useMediaQuery("(max-width:600px)");
   const [fondoCajaChica, setFondoCajaChica] = useState(null);
   const [movimientosCajaChica, setMovimientosCajaChica] = useState([]);
+  const [selectedIngresos, setSelectedIngresos] = useState(new Set());
+  const [selectedEgresos, setSelectedEgresos] = useState(new Set());
+  const getIngresoKey = (i, idx) => (i && i.id) || `${i?.descripcion || ''}-${i?.fecha || ''}-${idx}`;
+  const getEgresoKey = (e, idx) => (e && e.id) || `${e?.descripcion || ''}-${e?._fechaDate || e?.fecha || ''}-${idx}`;
   useEffect(() => {
     Promise.all([
       obtenerFondoCajaChica(),
@@ -1015,6 +1020,14 @@ export default function ResumenContable({ tasaBCV }) {
                               }
                               return (
                                 <Paper key={idx} sx={{ p: 1.5, mb: 1 }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
+                                    <Checkbox
+                                      size="small"
+                                      checked={selectedIngresos.has(getIngresoKey(i, idx))}
+                                      onChange={() => setSelectedIngresos((prev) => { const next = new Set(prev); const k = getIngresoKey(i, idx); if (next.has(k)) next.delete(k); else next.add(k); return next; })}
+                                      inputProps={{ 'aria-label': 'Seleccionar ingreso' }}
+                                    />
+                                  </Box>
                                   <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
                                     {i.descripcion || i.observaciones || "-"}
                                   </Typography>
@@ -1062,6 +1075,23 @@ export default function ResumenContable({ tasaBCV }) {
                         >
                           <TableHead>
                             <TableRow sx={{ height: 28 }}>
+                              <TableCell sx={{ py: 0.5, fontSize: 13, width: 36 }}>
+                                <Checkbox
+                                  size="small"
+                                  inputProps={{ 'aria-label': 'Seleccionar todos ingresos' }}
+                                  checked={ingresos.length > 0 && ingresos.every((it, ix) => selectedIngresos.has(getIngresoKey(it, ix)))}
+                                  indeterminate={ingresos.some((it, ix) => selectedIngresos.has(getIngresoKey(it, ix))) && !(ingresos.length > 0 && ingresos.every((it, ix) => selectedIngresos.has(getIngresoKey(it, ix))))}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedIngresos((prev) => {
+                                      const next = new Set(prev);
+                                      if (checked) ingresos.forEach((it, ix) => next.add(getIngresoKey(it, ix)));
+                                      else ingresos.forEach((it, ix) => next.delete(getIngresoKey(it, ix)));
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              </TableCell>
                               <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                 Descripción
                               </TableCell>
@@ -1086,7 +1116,7 @@ export default function ResumenContable({ tasaBCV }) {
                             {ingresos.length === 0 ? (
                               <TableRow>
                                 <TableCell
-                                  colSpan={4}
+                                  colSpan={5}
                                   align="center"
                                   sx={{
                                     color: "text.secondary",
@@ -1100,6 +1130,14 @@ export default function ResumenContable({ tasaBCV }) {
                             ) : (
                               ingresos.map((i, idx) => (
                                 <TableRow key={idx} sx={{ height: 28 }}>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13, width: 36 }}>
+                                    <Checkbox
+                                      size="small"
+                                      checked={selectedIngresos.has(getIngresoKey(i, idx))}
+                                      onChange={() => setSelectedIngresos((prev) => { const next = new Set(prev); const k = getIngresoKey(i, idx); if (next.has(k)) next.delete(k); else next.add(k); return next; })}
+                                      inputProps={{ 'aria-label': 'Seleccionar ingreso' }}
+                                    />
+                                  </TableCell>
                                   <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                     {i.descripcion || i.observaciones || "-"}
                                   </TableCell>
@@ -1267,6 +1305,14 @@ export default function ResumenContable({ tasaBCV }) {
                           ) : (
                             egresos.map((e, idx) => (
                               <Paper key={idx} sx={{ p: 1.5, mb: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
+                                  <Checkbox
+                                    size="small"
+                                    checked={selectedEgresos.has(getEgresoKey(e, idx))}
+                                    onChange={() => setSelectedEgresos((prev) => { const next = new Set(prev); const k = getEgresoKey(e, idx); if (next.has(k)) next.delete(k); else next.add(k); return next; })}
+                                    inputProps={{ 'aria-label': 'Seleccionar egreso' }}
+                                  />
+                                </Box>
                                 <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
                                   {e.descripcion}
                                 </Typography>
@@ -1293,6 +1339,23 @@ export default function ResumenContable({ tasaBCV }) {
                         >
                           <TableHead>
                             <TableRow sx={{ height: 28 }}>
+                              <TableCell sx={{ py: 0.5, fontSize: 13, width: 36 }}>
+                                <Checkbox
+                                  size="small"
+                                  inputProps={{ 'aria-label': 'Seleccionar todos egresos' }}
+                                  checked={egresos.length > 0 && egresos.every((it, ix) => selectedEgresos.has(getEgresoKey(it, ix)))}
+                                  indeterminate={egresos.some((it, ix) => selectedEgresos.has(getEgresoKey(it, ix))) && !(egresos.length > 0 && egresos.every((it, ix) => selectedEgresos.has(getEgresoKey(it, ix))))}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedEgresos((prev) => {
+                                      const next = new Set(prev);
+                                      if (checked) egresos.forEach((it, ix) => next.add(getEgresoKey(it, ix)));
+                                      else egresos.forEach((it, ix) => next.delete(getEgresoKey(it, ix)));
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              </TableCell>
                               <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                 Descripción
                               </TableCell>
@@ -1320,7 +1383,7 @@ export default function ResumenContable({ tasaBCV }) {
                             {egresos.length === 0 ? (
                               <TableRow>
                                 <TableCell
-                                  colSpan={4}
+                                  colSpan={5}
                                   align="center"
                                   sx={{
                                     color: "text.secondary",
@@ -1334,6 +1397,14 @@ export default function ResumenContable({ tasaBCV }) {
                             ) : (
                               egresos.map((e, idx) => (
                                 <TableRow key={idx} sx={{ height: 28 }}>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13, width: 36 }}>
+                                    <Checkbox
+                                      size="small"
+                                      checked={selectedEgresos.has(getEgresoKey(e, idx))}
+                                      onChange={() => setSelectedEgresos((prev) => { const next = new Set(prev); const k = getEgresoKey(e, idx); if (next.has(k)) next.delete(k); else next.add(k); return next; })}
+                                      inputProps={{ 'aria-label': 'Seleccionar egreso' }}
+                                    />
+                                  </TableCell>
                                   <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                     {e.descripcion}
                                   </TableCell>

@@ -341,7 +341,7 @@ export default function HistorialVehiculos() {
             justifyContent: "space-between",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: { xs: "100%", md: "auto" } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: { xs: "100%", md: "50%" } }}>
             <input
               type="text"
               placeholder="Buscar por modelo, servicio, cliente, usuario, factura..."
@@ -352,7 +352,7 @@ export default function HistorialVehiculos() {
                 fontSize: "1rem",
                 borderRadius: 6,
                 border: "1px solid #bdbdbd",
-                width: "min(100%, 320px)",
+                width: "100%",
                 fontFamily: "Poppins, sans-serif",
               }}
             />
@@ -362,6 +362,7 @@ export default function HistorialVehiculos() {
               size="small"
               onClick={() => setOpenColumnModal(true)}
               aria-label="Seleccionar columnas"
+              sx={{ width: { xs: '100%', md: 'min(100%, 320px)' }, flexShrink: 0 }}
             >
               <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Seleccionar columnas</Box>
               <Box component="span" sx={{ display: { xs: 'inline-flex', md: 'none' }, alignItems: 'center' }}>
@@ -484,27 +485,14 @@ export default function HistorialVehiculos() {
                         v.customerPhone?.toLowerCase().includes(q) ||
                         v.usuario?.toLowerCase().includes(q) ||
                         (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
-                      let matchFecha = true;
-                      if (fechaInicio) {
-                        const fechaReg = v.arrivalTime
-                          ? new Date(v.arrivalTime)
-                          : null;
-                        if (fechaReg) {
-                          matchFecha =
-                            matchFecha && fechaReg >= new Date(fechaInicio);
-                        }
-                      }
-                      if (fechaFin) {
-                        const fechaReg = v.arrivalTime
-                          ? new Date(v.arrivalTime)
-                          : null;
-                        if (fechaReg) {
-                          matchFecha =
-                            matchFecha &&
-                            fechaReg <= new Date(fechaFin + "T23:59:59");
-                        }
-                      }
-                      return match && matchFecha;
+                      const hasRange = Boolean(fechaInicio || fechaFin);
+                      if (!hasRange) return match;
+                      if (!v.arrivalTime) return false;
+                      const fechaReg = new Date(v.arrivalTime);
+                      const start = fechaInicio ? new Date(fechaInicio) : null;
+                      const end = fechaFin ? new Date(fechaFin + "T23:59:59") : null;
+                      const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
+                      return match && inRange;
                     })
                     .sort((a, b) => {
                       // Ordenar por arrivalTime ascendente
@@ -562,16 +550,14 @@ export default function HistorialVehiculos() {
                     v.customerPhone?.toLowerCase().includes(q) ||
                     v.usuario?.toLowerCase().includes(q) ||
                     (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
-                  let matchFecha = true;
-                  if (fechaInicio) {
-                    const fechaReg = v.arrivalTime ? new Date(v.arrivalTime) : null;
-                    if (fechaReg) matchFecha = matchFecha && fechaReg >= new Date(fechaInicio);
-                  }
-                  if (fechaFin) {
-                    const fechaReg = v.arrivalTime ? new Date(v.arrivalTime) : null;
-                    if (fechaReg) matchFecha = matchFecha && fechaReg <= new Date(fechaFin + 'T23:59:59');
-                  }
-                  return match && matchFecha;
+                  const hasRange = Boolean(fechaInicio || fechaFin);
+                  if (!hasRange) return match;
+                  if (!v.arrivalTime) return false;
+                  const fechaReg = new Date(v.arrivalTime);
+                  const start = fechaInicio ? new Date(fechaInicio) : null;
+                  const end = fechaFin ? new Date(fechaFin + 'T23:59:59') : null;
+                  const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
+                  return match && inRange;
                 })
                 .sort((a, b) => {
                   // Mantener el mismo criterio por defecto que desktop
@@ -881,7 +867,6 @@ export default function HistorialVehiculos() {
                   vehiculos
                     .filter((v) => {
                       const q = busqueda.toLowerCase();
-                      // Filtro de texto
                       const match =
                         v.vehiculo?.toLowerCase().includes(q) ||
                         v.servicio?.toLowerCase().includes(q) ||
@@ -889,28 +874,14 @@ export default function HistorialVehiculos() {
                         v.customerPhone?.toLowerCase().includes(q) ||
                         v.usuario?.toLowerCase().includes(q) ||
                         (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
-                      // Filtro de rango de fechas (arrivalTime)
-                      let matchFecha = true;
-                      if (fechaInicio) {
-                        const fechaReg = v.arrivalTime
-                          ? new Date(v.arrivalTime)
-                          : null;
-                        if (fechaReg) {
-                          matchFecha =
-                            matchFecha && fechaReg >= new Date(fechaInicio);
-                        }
-                      }
-                      if (fechaFin) {
-                        const fechaReg = v.arrivalTime
-                          ? new Date(v.arrivalTime)
-                          : null;
-                        if (fechaReg) {
-                          matchFecha =
-                            matchFecha &&
-                            fechaReg <= new Date(fechaFin + "T23:59:59");
-                        }
-                      }
-                      return match && matchFecha;
+                      const hasRange = Boolean(fechaInicio || fechaFin);
+                      if (!hasRange) return match;
+                      if (!v.arrivalTime) return false;
+                      const fechaReg = new Date(v.arrivalTime);
+                      const start = fechaInicio ? new Date(fechaInicio) : null;
+                      const end = fechaFin ? new Date(fechaFin + "T23:59:59") : null;
+                      const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
+                      return match && inRange;
                     })
                     .sort((a, b) => {
                       let va = a[ordenCol] ?? "";
