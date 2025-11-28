@@ -21,6 +21,8 @@ import {
   DialogContent,
   DialogActions,
   TableContainer,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
@@ -170,6 +172,9 @@ export default function HistorialVehiculos() {
   // Estados para el rango de fechas
   const [fechaInicio, setFechaInicio] = React.useState(null);
   const [fechaFin, setFechaFin] = React.useState(null);
+  // Criterio de filtrado de fecha: 'registro' (arrivalTime) o 'entrega' (fechaEntrega)
+  const [criterioFecha, setCriterioFecha] = React.useState('registro');
+  const campoFecha = criterioFecha === 'entrega' ? 'fechaEntrega' : 'arrivalTime';
 
   // Utilidad: formatear fecha dd/mm/yyyy
   const formatFecha = React.useCallback((val) => {
@@ -441,6 +446,20 @@ export default function HistorialVehiculos() {
                 }}
               />
             </Box>
+            <ToggleButtonGroup
+              size="small"
+              value={criterioFecha}
+              exclusive
+              onChange={(e, val) => { if (val) setCriterioFecha(val); }}
+              sx={{
+                alignSelf: { xs: 'stretch', md: 'center' },
+                width: { xs: '100%', md: 'auto' },
+                mt: { xs: 1, md: 0 },
+              }}
+            >
+              <ToggleButton value="registro" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Registro</ToggleButton>
+              <ToggleButton value="entrega" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Entrega</ToggleButton>
+            </ToggleButtonGroup>
             <Box sx={{ mt: { xs: 1, md: 0 }, width: { xs: '100%', md: 'auto' } }}>
               <Button
                 variant="outlined"
@@ -487,8 +506,9 @@ export default function HistorialVehiculos() {
                         (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
                       const hasRange = Boolean(fechaInicio || fechaFin);
                       if (!hasRange) return match;
-                      if (!v.arrivalTime) return false;
-                      const fechaReg = new Date(v.arrivalTime);
+                      const campo = campoFecha;
+                      if (!v[campo]) return false;
+                      const fechaReg = new Date(v[campo]);
                       const start = fechaInicio ? new Date(fechaInicio) : null;
                       const end = fechaFin ? new Date(fechaFin + "T23:59:59") : null;
                       const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
@@ -552,8 +572,9 @@ export default function HistorialVehiculos() {
                     (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
                   const hasRange = Boolean(fechaInicio || fechaFin);
                   if (!hasRange) return match;
-                  if (!v.arrivalTime) return false;
-                  const fechaReg = new Date(v.arrivalTime);
+                  const campo = campoFecha;
+                  if (!v[campo]) return false;
+                  const fechaReg = new Date(v[campo]);
                   const start = fechaInicio ? new Date(fechaInicio) : null;
                   const end = fechaFin ? new Date(fechaFin + 'T23:59:59') : null;
                   const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
@@ -876,8 +897,9 @@ export default function HistorialVehiculos() {
                         (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
                       const hasRange = Boolean(fechaInicio || fechaFin);
                       if (!hasRange) return match;
-                      if (!v.arrivalTime) return false;
-                      const fechaReg = new Date(v.arrivalTime);
+                      const campo = campoFecha;
+                      if (!v[campo]) return false;
+                      const fechaReg = new Date(v[campo]);
                       const start = fechaInicio ? new Date(fechaInicio) : null;
                       const end = fechaFin ? new Date(fechaFin + "T23:59:59") : null;
                       const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
