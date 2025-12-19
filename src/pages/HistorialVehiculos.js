@@ -176,6 +176,81 @@ export default function HistorialVehiculos() {
   const [criterioFecha, setCriterioFecha] = React.useState('registro');
   const campoFecha = criterioFecha === 'entrega' ? 'fechaEntrega' : 'arrivalTime';
 
+  // Obtener label amigable del estado para usar también en búsqueda
+  const getEstadoLabel = React.useCallback((codigo) => {
+    if (!codigo) return '';
+    const estadoObj = estadosServicio.find(
+      (e) => e.nombre === codigo || e.id === codigo || e.value === codigo
+    );
+    return estadoObj ? estadoObj.label || estadoObj.nombre || codigo : codigo;
+  }, [estadosServicio]);
+
+  // Valores buscables (todas las columnas del historial)
+  const getSearchableValues = React.useCallback((v) => {
+    const values = [];
+    // Fechas (como timestamp y formateadas)
+    const fechas = ['arrivalTime', 'fechaEntrega'];
+    fechas.forEach((f) => {
+      const val = v[f];
+      if (val) {
+        try {
+          const d = new Date(val);
+          if (!isNaN(d.getTime())) {
+            values.push(String(d.getTime()));
+            values.push(
+              `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+            );
+          }
+        } catch {}
+      }
+    });
+    // Texto
+    ['vehiculo', 'servicio', 'customerName', 'customerPhone', 'factura', 'formaPago', 'referencia', 'registradoPor', 'entregadoPor', 'usuario', 'estadoFactura', 'status'].forEach((k) => {
+      const val = v[k];
+      if (val && typeof val === 'string') values.push(val);
+    });
+    // Estado legible
+    const estadoLegible = getEstadoLabel(v.status || v.estado || v.estadoActual || v.currentStatus || '');
+    if (estadoLegible) values.push(estadoLegible);
+    // Números y montos
+    ['precio', 'precioBs'].forEach((k) => {
+      const val = v[k];
+      if (val !== undefined && val !== null) values.push(String(val));
+    });
+    ['montoUSD', 'montoBs', 'monto'].forEach((k) => {
+      const val = v[k];
+      if (val) values.push(String(val));
+    });
+    return values;
+  }, [getEstadoLabel]);
+
+  // Coincidencia con búsqueda global (abarca todas las columnas)
+  const matchesBusqueda = React.useCallback((v, term) => {
+    const q = String(term || '').trim().toLowerCase();
+    if (!q) return true;
+    const vals = getSearchableValues(v);
+    return vals.some((val) => String(val).toLowerCase().includes(q));
+  }, [getSearchableValues]);
+
+  // Filtro por rango de fechas (puede aplicar a registro, entrega o ambas)
+  const inDateRange = React.useCallback((v) => {
+    const hasRange = Boolean(fechaInicio || fechaFin);
+    if (!hasRange) return true;
+    const start = fechaInicio ? new Date(fechaInicio) : null;
+    const end = fechaFin ? new Date(fechaFin + 'T23:59:59') : null;
+    const checkDate = (val) => {
+      if (!val) return false;
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return false;
+      return (start ? d >= start : true) && (end ? d <= end : true);
+    };
+    if (criterioFecha === 'ambas') {
+      return checkDate(v.arrivalTime) || checkDate(v.fechaEntrega);
+    }
+    const campo = campoFecha;
+    return checkDate(v[campo]);
+  }, [fechaInicio, fechaFin, criterioFecha, campoFecha]);
+
   // Utilidad: formatear fecha dd/mm/yyyy
   const formatFecha = React.useCallback((val) => {
     if (!val || val === '-') return '-';
@@ -459,6 +534,7 @@ export default function HistorialVehiculos() {
             >
               <ToggleButton value="registro" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Registro</ToggleButton>
               <ToggleButton value="entrega" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Entrega</ToggleButton>
+                <ToggleButton value="ambas" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Ambas</ToggleButton>
             </ToggleButtonGroup>
             <Box sx={{ mt: { xs: 1, md: 0 }, width: { xs: '100%', md: 'auto' } }}>
               <Button
@@ -495,25 +571,7 @@ export default function HistorialVehiculos() {
                     "entregadoPor",
                   ];
                   const datosExportar = vehiculos
-                    .filter((v) => {
-                      const q = busqueda.toLowerCase();
-                      const match =
-                        v.vehiculo?.toLowerCase().includes(q) ||
-                        v.servicio?.toLowerCase().includes(q) ||
-                        v.customerName?.toLowerCase().includes(q) ||
-                        v.customerPhone?.toLowerCase().includes(q) ||
-                        v.usuario?.toLowerCase().includes(q) ||
-                        (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
-                      const hasRange = Boolean(fechaInicio || fechaFin);
-                      if (!hasRange) return match;
-                      const campo = campoFecha;
-                      if (!v[campo]) return false;
-                      const fechaReg = new Date(v[campo]);
-                      const start = fechaInicio ? new Date(fechaInicio) : null;
-                      const end = fechaFin ? new Date(fechaFin + "T23:59:59") : null;
-                      const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
-                      return match && inRange;
-                    })
+                    .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
                     .sort((a, b) => {
                       // Ordenar por arrivalTime ascendente
                       const fa = a.arrivalTime
@@ -561,25 +619,7 @@ export default function HistorialVehiculos() {
           ) : (
             <Box>
               {vehiculos
-                .filter((v) => {
-                  const q = busqueda.toLowerCase();
-                  const match =
-                    v.vehiculo?.toLowerCase().includes(q) ||
-                    v.servicio?.toLowerCase().includes(q) ||
-                    v.customerName?.toLowerCase().includes(q) ||
-                    v.customerPhone?.toLowerCase().includes(q) ||
-                    v.usuario?.toLowerCase().includes(q) ||
-                    (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
-                  const hasRange = Boolean(fechaInicio || fechaFin);
-                  if (!hasRange) return match;
-                  const campo = campoFecha;
-                  if (!v[campo]) return false;
-                  const fechaReg = new Date(v[campo]);
-                  const start = fechaInicio ? new Date(fechaInicio) : null;
-                  const end = fechaFin ? new Date(fechaFin + 'T23:59:59') : null;
-                  const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
-                  return match && inRange;
-                })
+                .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
                 .sort((a, b) => {
                   // Mantener el mismo criterio por defecto que desktop
                   let va = a[ordenCol] ?? '';
@@ -886,25 +926,7 @@ export default function HistorialVehiculos() {
                   </TableRow>
                 ) : (
                   vehiculos
-                    .filter((v) => {
-                      const q = busqueda.toLowerCase();
-                      const match =
-                        v.vehiculo?.toLowerCase().includes(q) ||
-                        v.servicio?.toLowerCase().includes(q) ||
-                        v.customerName?.toLowerCase().includes(q) ||
-                        v.customerPhone?.toLowerCase().includes(q) ||
-                        v.usuario?.toLowerCase().includes(q) ||
-                        (typeof v.factura === 'string' && v.factura.toLowerCase().includes(q));
-                      const hasRange = Boolean(fechaInicio || fechaFin);
-                      if (!hasRange) return match;
-                      const campo = campoFecha;
-                      if (!v[campo]) return false;
-                      const fechaReg = new Date(v[campo]);
-                      const start = fechaInicio ? new Date(fechaInicio) : null;
-                      const end = fechaFin ? new Date(fechaFin + "T23:59:59") : null;
-                      const inRange = (start ? fechaReg >= start : true) && (end ? fechaReg <= end : true);
-                      return match && inRange;
-                    })
+                    .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
                     .sort((a, b) => {
                       let va = a[ordenCol] ?? "";
                       let vb = b[ordenCol] ?? "";
