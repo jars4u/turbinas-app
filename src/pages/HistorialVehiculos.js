@@ -12,6 +12,7 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  TableFooter,
   Paper,
   CircularProgress,
   Button,
@@ -23,9 +24,14 @@ import {
   TableContainer,
   ToggleButton,
   ToggleButtonGroup,
+  TablePagination,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import ServicioTimeline from "../components/ServicioTimeline";
 import HistoryIcon from "@mui/icons-material/History";
@@ -113,6 +119,10 @@ export default function HistorialVehiculos() {
   const [openHistorial, setOpenHistorial] = React.useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = React.useState(null);
   const [openColumnModal, setOpenColumnModal] = React.useState(false);
+  const [pageMobile, setPageMobile] = React.useState(0);
+  const [rowsPerPageMobile, setRowsPerPageMobile] = React.useState(20);
+  const [pageDesktop, setPageDesktop] = React.useState(0);
+  const [rowsPerPageDesktop, setRowsPerPageDesktop] = React.useState(50);
   const defaultColumnas = React.useMemo(() => ({
     arrivalTime: true,
     fechaEntrega: true,
@@ -168,13 +178,16 @@ export default function HistorialVehiculos() {
     });
     return () => unsubscribe();
   }, [defaultColumnas]);
-
   // Estados para el rango de fechas
   const [fechaInicio, setFechaInicio] = React.useState(null);
   const [fechaFin, setFechaFin] = React.useState(null);
   // Criterio de filtrado de fecha: 'registro' (arrivalTime) o 'entrega' (fechaEntrega)
   const [criterioFecha, setCriterioFecha] = React.useState('registro');
   const campoFecha = criterioFecha === 'entrega' ? 'fechaEntrega' : 'arrivalTime';
+  React.useEffect(() => {
+    setPageMobile(0);
+    setPageDesktop(0);
+  }, [busqueda, fechaInicio, fechaFin, criterioFecha, ordenCol, ordenAsc]);
 
   // Obtener label amigable del estado para usar también en búsqueda
   const getEstadoLabel = React.useCallback((codigo) => {
@@ -421,14 +434,14 @@ export default function HistorialVehiculos() {
             justifyContent: "space-between",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: { xs: "100%", md: "50%" } }}>
+          <Box sx={{ display: "flex", alignItems: "stretch", gap: { xs: 1, md: 1 }, width: { xs: "100%", md: "50%" }, flexDirection: { xs: 'column', md: 'row' } }}>
             <input
               type="text"
               placeholder="Buscar por modelo, servicio, cliente, usuario, factura..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               style={{
-                padding: "8px 12px",
+                padding: "10px 12px",
                 fontSize: "1rem",
                 borderRadius: 6,
                 border: "1px solid #bdbdbd",
@@ -442,7 +455,7 @@ export default function HistorialVehiculos() {
               size="small"
               onClick={() => setOpenColumnModal(true)}
               aria-label="Seleccionar columnas"
-              sx={{ width: { xs: '100%', md: 'min(100%, 320px)' }, flexShrink: 0 }}
+              sx={{ width: { xs: '100%', md: 'min(100%, 320px)' }, flexShrink: 0, alignSelf: { xs: 'stretch', md: 'center' } }}
             >
               <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Seleccionar columnas</Box>
               <Box component="span" sx={{ display: { xs: 'inline-flex', md: 'none' }, alignItems: 'center' }}>
@@ -450,16 +463,141 @@ export default function HistorialVehiculos() {
               </Box>
             </Button>
           </Box>
-          {/* DatePicker de rango con fuente Poppins alineado a la derecha y botón de exportar */}
+          {/* Filtros: versión móvil como Accordion */}
+          <Box sx={{ display: { xs: 'block', md: 'none' }, width: '100%' }}>
+            <Accordion elevation={0} sx={{ border: '1px solid', borderColor: 'grey.300', borderRadius: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="filtros-content" id="filtros-header">
+                <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600 }}>Filtros</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "stretch",
+                    flexDirection: "column",
+                    gap: 1,
+                    width: "100%",
+                  }}
+                >
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                    <Typography variant="body2" sx={{ fontFamily: 'Poppins, sans-serif' }}>Desde</Typography>
+                    <input
+                      type="date"
+                      value={fechaInicio || ""}
+                      onChange={(e) => setFechaInicio(e.target.value)}
+                      aria-label="Fecha inicio"
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 4,
+                        border: "1px solid #bdbdbd",
+                        fontFamily: "Poppins, sans-serif",
+                        fontSize: "1rem",
+                        width: "100%",
+                        minWidth: 130,
+                      }}
+                    />
+                    <Typography variant="body2" sx={{ mt: 1, fontFamily: 'Poppins, sans-serif' }}>Hasta</Typography>
+                    <input
+                      type="date"
+                      value={fechaFin || ""}
+                      onChange={(e) => setFechaFin(e.target.value)}
+                      aria-label="Fecha fin"
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 4,
+                        border: "1px solid #bdbdbd",
+                        fontFamily: "Poppins, sans-serif",
+                        fontSize: "1rem",
+                        width: "100%",
+                        minWidth: 130,
+                      }}
+                    />
+                  </Box>
+                  <ToggleButtonGroup
+                    size="small"
+                    value={criterioFecha}
+                    exclusive
+                    onChange={(e, val) => { if (val) setCriterioFecha(val); }}
+                    sx={{
+                      alignSelf: 'stretch',
+                      width: '100%',
+                    }}
+                  >
+                    <ToggleButton value="registro" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Registro</ToggleButton>
+                    <ToggleButton value="entrega" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Entrega</ToggleButton>
+                      <ToggleButton value="ambas" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Ambas</ToggleButton>
+                  </ToggleButtonGroup>
+                  <Box sx={{ width: '100%' }}>
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      size="small"
+                      sx={{
+                        fontFamily: "Poppins, sans-serif",
+                        fontWeight: 600,
+                        textTransform: "none",
+                        boxShadow: "none",
+                        width: '100%',
+                      }}
+                      onClick={() => {
+                        const columnasOrden = [
+                          "#",
+                          "arrivalTime",
+                          "fechaEntrega",
+                          "vehiculo",
+                          "servicio",
+                          "customerName",
+                          "customerPhone",
+                          "precio",
+                          "factura",
+                          "formaPago",
+                          "referencia",
+                          "montoUSD",
+                          "montoBs",
+                          "estadoFactura",
+                          "status",
+                          "registradoPor",
+                          "entregadoPor",
+                        ];
+                        const datosExportar = vehiculos
+                          .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
+                          .sort((a, b) => {
+                            const fa = a.arrivalTime ? new Date(a.arrivalTime).getTime() : 0;
+                            const fb = b.arrivalTime ? new Date(b.arrivalTime).getTime() : 0;
+                            return fa - fb;
+                          })
+                          .map((v, idx) => {
+                            const fila = {};
+                            fila["#"] = idx + 1;
+                            columnasOrden.slice(1).forEach((col) => {
+                              if (columnasVisibles[col]) fila[col] = v[col];
+                            });
+                            return fila;
+                          });
+                        import("../lib/exportarExcel").then(({ exportarExcel }) => {
+                          exportarExcel(datosExportar, "historial-servicios.xlsx");
+                        });
+                      }}
+                      startIcon={<FileDownloadIcon />}
+                    >
+                      Exportar
+                    </Button>
+                  </Box>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          </Box>
+
+          {/* Filtros: versión escritorio (sin cambios de diseño) */}
           <Box
             sx={{
-              display: "flex",
-              alignItems: { xs: "stretch", md: "center" },
-              flexDirection: { xs: "column", md: "row" },
-              gap: { xs: 1, md: 2 },
-              justifyContent: { xs: "stretch", md: "flex-end" },
+              display: { xs: 'none', md: 'flex' },
+              alignItems: 'center',
+              flexDirection: 'row',
+              gap: 2,
+              justifyContent: 'flex-end',
               flex: 1,
-              width: { xs: "100%", md: "auto" },
+              width: 'auto',
             }}
           >
             <Box
@@ -468,7 +606,7 @@ export default function HistorialVehiculos() {
                 alignItems: "center",
                 flexDirection: "row",
                 gap: 1,
-                justifyContent: { xs: "flex-start", md: "flex-end" },
+                justifyContent: "flex-end",
                 flex: 1,
                 width: "100%",
                 flexWrap: "nowrap",
@@ -549,8 +687,6 @@ export default function HistorialVehiculos() {
                   width: { xs: '100%', md: 'auto' },
                 }}
                 onClick={() => {
-                  // Filtrar los datos igual que la tabla
-                  // Definir el orden de columnas igual al visual de la tabla
                   const columnasOrden = [
                     "#",
                     "arrivalTime",
@@ -573,17 +709,11 @@ export default function HistorialVehiculos() {
                   const datosExportar = vehiculos
                     .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
                     .sort((a, b) => {
-                      // Ordenar por arrivalTime ascendente
-                      const fa = a.arrivalTime
-                        ? new Date(a.arrivalTime).getTime()
-                        : 0;
-                      const fb = b.arrivalTime
-                        ? new Date(b.arrivalTime).getTime()
-                        : 0;
+                      const fa = a.arrivalTime ? new Date(a.arrivalTime).getTime() : 0;
+                      const fb = b.arrivalTime ? new Date(b.arrivalTime).getTime() : 0;
                       return fa - fb;
                     })
                     .map((v, idx) => {
-                      // Exportar columnas en el orden visual
                       const fila = {};
                       fila["#"] = idx + 1;
                       columnasOrden.slice(1).forEach((col) => {
@@ -618,98 +748,106 @@ export default function HistorialVehiculos() {
             </Box>
           ) : (
             <Box>
-              {vehiculos
-                .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
-                .sort((a, b) => {
-                  // Mantener el mismo criterio por defecto que desktop
-                  let va = a[ordenCol] ?? '';
-                  let vb = b[ordenCol] ?? '';
-                  if (ordenCol === 'precio') {
-                    va = Number(va) || 0;
-                    vb = Number(vb) || 0;
-                  }
-                  if (ordenCol === 'arrivalTime') {
-                    va = Number(va) || 0;
-                    vb = Number(vb) || 0;
-                  }
-                  if (typeof va === 'string' && typeof vb === 'string') {
-                    return ordenAsc ? va.localeCompare(vb) : vb.localeCompare(va);
-                  }
-                  return ordenAsc ? va - vb : vb - va;
-                })
-                .map((v, idx) => {
-                  const estadoLabel = (() => {
-                    const codigo = v.status || v.estado || v.estadoActual || v.currentStatus || '';
-                    if (!codigo) return '-';
-                    const estadoObj = estadosServicio.find((e) => e.nombre === codigo || e.id === codigo || e.value === codigo);
-                    return estadoObj ? estadoObj.label || estadoObj.nombre || codigo : codigo;
-                  })();
-                  return (
-                    <Box
-                      key={v.id || idx}
-                      onClick={() => {
-                        setServicioSeleccionado(v);
-                        setOpenHistorial(true);
-                      }}
-                      sx={{
-                        p: 1.25,
-                        mb: 1,
-                        border: '1px solid',
-                        borderColor: 'grey.200',
-                        borderRadius: 2,
-                        backgroundColor: '#fff',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatFecha(v.arrivalTime)}
-                        </Typography>
-                        <Box sx={{
-                          px: 0.75,
-                          py: 0.25,
-                          borderRadius: 1,
-                          bgcolor: 'grey.100',
-                          color: 'text.secondary',
-                          fontSize: 12,
-                          fontWeight: 500,
-                        }}>
-                          {estadoLabel}
-                        </Box>
+              {(() => {
+                const filteredSorted = vehiculos
+                  .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
+                  .sort((a, b) => {
+                    let va = a[ordenCol] ?? '';
+                    let vb = b[ordenCol] ?? '';
+                    if (ordenCol === 'precio') { va = Number(va) || 0; vb = Number(vb) || 0; }
+                    if (ordenCol === 'arrivalTime') { va = Number(va) || 0; vb = Number(vb) || 0; }
+                    if (typeof va === 'string' && typeof vb === 'string') {
+                      return ordenAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                    }
+                    return ordenAsc ? va - vb : vb - va;
+                  });
+                const totalCount = filteredSorted.length;
+                const start = pageMobile * rowsPerPageMobile;
+                const end = start + rowsPerPageMobile;
+                const pageRows = filteredSorted.slice(start, end);
+                const extractNumbers = (val) => {
+                  if (val === null || val === undefined) return [];
+                  const str = String(val);
+                  const matches = str.match(/[-+]?[0-9]*\.?[0-9]+/g);
+                  if (!matches) return [];
+                  return matches.map((n) => parseFloat(n.replace(/,/g, ''))).filter((n) => !isNaN(n));
+                };
+                const totalUSD = pageRows.reduce((acc, v) => {
+                  const source = v.monto ? v.monto : v.montoUSD;
+                  const nums = extractNumbers(source);
+                  const sum = nums.reduce((a, b) => a + b, 0);
+                  return acc + sum;
+                }, 0);
+                const totalBs = pageRows.reduce((acc, v) => {
+                  const nums = extractNumbers(v.montoBs);
+                  const sum = nums.reduce((a, b) => a + b, 0);
+                  return acc + sum;
+                }, 0);
+                return (
+                  <>
+                    <Box sx={{ mb: 1, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: 'grey.100', fontWeight: 700 }}>
+                        <span style={{ color: '#666', fontWeight: 500, marginRight: 6 }}>Total ($)</span>{totalUSD.toFixed(2)}
                       </Box>
-                      <Typography variant="body1" fontWeight={700} sx={{ lineHeight: 1.2 }}>
-                        {v.vehiculo || '-'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                        {v.servicio || '-'}
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {v.customerName || '-'}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {v.customerPhone || ''}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                        {v.factura && v.factura !== '-' && (
-                          <Box sx={{ display: 'flex', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">Factura:</Typography>
-                            <Typography variant="caption">{v.factura}</Typography>
-                          </Box>
-                        )}
-                        {(v.montoUSD || v.montoBs) && (
-                          <Box sx={{ display: 'flex', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">Monto:</Typography>
-                            <Typography variant="caption">
-                              {v.montoUSD ? `${v.montoUSD}` : '-'}{v.montoBs ? ` | ${v.montoBs}` : ''}
-                            </Typography>
-                          </Box>
-                        )}
+                      <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: 'grey.100', fontWeight: 700 }}>
+                        <span style={{ color: '#666', fontWeight: 500, marginRight: 6 }}>Total (Bs)</span>{totalBs.toFixed(2)}
                       </Box>
                     </Box>
-                  );
-                })}
+                    {pageRows.map((v, idx) => {
+                      const estadoLabel = (() => {
+                        const codigo = v.status || v.estado || v.estadoActual || v.currentStatus || '';
+                        if (!codigo) return '-';
+                        const estadoObj = estadosServicio.find((e) => e.nombre === codigo || e.id === codigo || e.value === codigo);
+                        return estadoObj ? estadoObj.label || estadoObj.nombre || codigo : codigo;
+                      })();
+                      return (
+                        <Box
+                          key={v.id || start + idx}
+                          onClick={() => { setServicioSeleccionado(v); setOpenHistorial(true); }}
+                          sx={{ p: 1.25, mb: 1, border: '1px solid', borderColor: 'grey.200', borderRadius: 2, backgroundColor: '#fff', cursor: 'pointer' }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">{formatFecha(v.arrivalTime)}</Typography>
+                            <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, bgcolor: 'grey.100', color: 'text.secondary', fontSize: 12, fontWeight: 500 }}>{estadoLabel}</Box>
+                          </Box>
+                          <Typography variant="body1" fontWeight={700} sx={{ lineHeight: 1.2 }}>{v.vehiculo || '-'}</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{v.servicio || '-'}</Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{v.customerName || '-'}</Typography>
+                            <Typography variant="body2" color="text.secondary">{v.customerPhone || ''}</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                            {v.factura && v.factura !== '-' && (
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <Typography variant="caption" color="text.secondary">Factura:</Typography>
+                                <Typography variant="caption">{v.factura}</Typography>
+                              </Box>
+                            )}
+                            {(v.montoUSD || v.montoBs) && (
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <Typography variant="caption" color="text.secondary">Monto:</Typography>
+                                <Typography variant="caption">{(v.montoUSD ? String(v.montoUSD) : '-') + (v.montoBs ? ' | ' + v.montoBs : '')}</Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                      <TablePagination
+                        component="div"
+                        count={totalCount}
+                        page={pageMobile}
+                        onPageChange={(e, newPage) => setPageMobile(newPage)}
+                        rowsPerPage={rowsPerPageMobile}
+                        onRowsPerPageChange={(e) => setRowsPerPageMobile(Number(e.target.value) || 20)}
+                        rowsPerPageOptions={[20]}
+                        labelRowsPerPage="Filas por página"
+                      />
+                    </Box>
+                  </>
+                );
+              })()}
             </Box>
           )}
         </Box>
@@ -727,11 +865,66 @@ export default function HistorialVehiculos() {
             <CircularProgress color="primary" size={48} />
           </Box>
         ) : (
-          <TableContainer
-            component={Paper}
-            sx={{ width: "100%", overflowX: "auto", mb: 2, display: { xs: 'none', md: 'block' } }}
-          >
-            <Table size="small" sx={{ minWidth: 900, whiteSpace: "nowrap" }}>
+          (() => {
+            const filteredSorted = vehiculos
+              .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
+              .sort((a, b) => {
+                let va = a[ordenCol] ?? "";
+                let vb = b[ordenCol] ?? "";
+                if (ordenCol === "precio") {
+                  va = Number(va) || 0;
+                  vb = Number(vb) || 0;
+                }
+                if (ordenCol === "arrivalTime") {
+                  va = Number(va) || 0;
+                  vb = Number(vb) || 0;
+                }
+                if (typeof va === "string" && typeof vb === "string") {
+                  return ordenAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                }
+                return ordenAsc ? va - vb : vb - va;
+              });
+            const totalCount = filteredSorted.length;
+            const start = pageDesktop * rowsPerPageDesktop;
+            const end = start + rowsPerPageDesktop;
+            const pageRows = filteredSorted.slice(start, end);
+            const extractNumbers = (val) => {
+              if (val === null || val === undefined) return [];
+              const str = String(val);
+              const matches = str.match(/[-+]?[0-9]*\.?[0-9]+/g);
+              if (!matches) return [];
+              return matches
+                .map((n) => parseFloat(n.replace(/,/g, "")))
+                .filter((n) => !isNaN(n));
+            };
+            const totalUSD = pageRows.reduce((acc, v) => {
+              const source = v.monto ? v.monto : v.montoUSD;
+              const nums = extractNumbers(source);
+              const sum = nums.reduce((a, b) => a + b, 0);
+              return acc + sum;
+            }, 0);
+            const totalBs = pageRows.reduce((acc, v) => {
+              const nums = extractNumbers(v.montoBs);
+              const sum = nums.reduce((a, b) => a + b, 0);
+              return acc + sum;
+            }, 0);
+            const totalPrecioUSD = pageRows.reduce((acc, v) => acc + (Number(v.precio) || 0), 0);
+            const totalPrecioBs = pageRows.reduce((acc, v) => acc + (Number(v.precioBs) || 0), 0);
+            const precioTotalDisplay = (() => {
+              const hasUSD = totalPrecioUSD > 0;
+              const hasBs = totalPrecioBs > 0;
+              if (hasUSD && hasBs) return "$" + totalPrecioUSD.toFixed(2) + " | Bs " + totalPrecioBs.toFixed(2);
+              if (hasUSD) return "$" + totalPrecioUSD.toFixed(2);
+              if (hasBs) return "Bs " + totalPrecioBs.toFixed(2);
+              return "-";
+            })();
+            return (
+              <>
+                <TableContainer
+                  component={Paper}
+                  sx={{ width: "100%", overflowX: "auto", mb: 2, display: { xs: 'none', md: 'block' } }}
+                >
+                  <Table size="small" sx={{ minWidth: 900, whiteSpace: "nowrap" }}>
               <TableHead>
                 <TableRow>
                   <TableCell>#</TableCell>
@@ -925,29 +1118,10 @@ export default function HistorialVehiculos() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  vehiculos
-                    .filter((v) => matchesBusqueda(v, busqueda) && inDateRange(v))
-                    .sort((a, b) => {
-                      let va = a[ordenCol] ?? "";
-                      let vb = b[ordenCol] ?? "";
-                      if (ordenCol === "precio") {
-                        va = Number(va) || 0;
-                        vb = Number(vb) || 0;
-                      }
-                      if (ordenCol === "arrivalTime") {
-                        va = Number(va) || 0;
-                        vb = Number(vb) || 0;
-                      }
-                      if (typeof va === "string" && typeof vb === "string") {
-                        return ordenAsc
-                          ? va.localeCompare(vb)
-                          : vb.localeCompare(va);
-                      }
-                      return ordenAsc ? va - vb : vb - va;
-                    })
+                  pageRows
                     .map((v, idx) => (
                       <TableRow
-                        key={v.id || idx}
+                        key={v.id || start + idx}
                         sx={{
                           bgcolor:
                             idx % 2 === 0 ? "background.paper" : "grey.100",
@@ -1187,8 +1361,53 @@ export default function HistorialVehiculos() {
                     ))
                 )}
               </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell />
+                  {columnasVisibles.arrivalTime && (<TableCell />)}
+                  {columnasVisibles.fechaEntrega && (<TableCell />)}
+                  {columnasVisibles.vehiculo && (<TableCell />)}
+                  {columnasVisibles.servicio && (<TableCell />)}
+                  {columnasVisibles.customerName && (<TableCell />)}
+                  {columnasVisibles.customerPhone && (<TableCell />)}
+                  {columnasVisibles.precio && (
+                    <TableCell sx={{ fontWeight: 700 }}>{precioTotalDisplay}</TableCell>
+                  )}
+                  {columnasVisibles.factura && (<TableCell />)}
+                  {columnasVisibles.formaPago && (<TableCell />)}
+                  {columnasVisibles.referencia && (<TableCell />)}
+                  {columnasVisibles.montoUSD && (
+                    <TableCell sx={{ fontWeight: 700 }}>{totalUSD > 0 ? totalUSD.toFixed(2) : "-"}</TableCell>
+                  )}
+                  {columnasVisibles.montoBs && (
+                    <TableCell sx={{ fontWeight: 700 }}>{totalBs > 0 ? totalBs.toFixed(2) : "-"}</TableCell>
+                  )}
+                  {columnasVisibles.status && (<TableCell />)}
+                  {columnasVisibles.registradoPor && (<TableCell />)}
+                  {columnasVisibles.entregadoPor && (<TableCell />)}
+                </TableRow>
+              </TableFooter>
             </Table>
           </TableContainer>
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'flex-end', mt: 1 }}>
+            <TablePagination
+              component="div"
+              count={totalCount}
+              page={pageDesktop}
+              onPageChange={(e, newPage) => setPageDesktop(newPage)}
+              rowsPerPage={rowsPerPageDesktop}
+              onRowsPerPageChange={(e) => {
+                const val = Number(e.target.value) || 50;
+                setRowsPerPageDesktop(val);
+                setPageDesktop(0);
+              }}
+              rowsPerPageOptions={[20, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+            />
+          </Box>
+        </>
+            );
+          })()
         )}
         {/* Modal para seleccionar columnas */}
         <Dialog
@@ -1198,7 +1417,7 @@ export default function HistorialVehiculos() {
           fullWidth
         >
           <DialogTitle>Seleccionar columnas</DialogTitle>
-          <DialogContent>
+          <DialogContent sx={{ px: 2, maxHeight: { xs: 360, md: 'none' }, overflowY: { xs: 'auto', md: 'visible' } }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
               <Button
                 variant="outlined"
@@ -1232,7 +1451,7 @@ export default function HistorialVehiculos() {
               {Object.entries(columnasVisibles).map(([col, visible]) => (
                 <Box
                   key={col}
-                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}
                 >
                   <input
                     type="checkbox"
@@ -1244,10 +1463,11 @@ export default function HistorialVehiculos() {
                         [col]: e.target.checked,
                       }))
                     }
+                    style={{ width: 18, height: 18 }}
                   />
                   <label
                     htmlFor={`col-check-${col}`}
-                    style={{ fontSize: 15, cursor: "pointer" }}
+                    style={{ fontSize: 15, cursor: "pointer", flex: 1, wordBreak: 'break-word' }}
                   >
                     {(() => {
                       switch (col) {

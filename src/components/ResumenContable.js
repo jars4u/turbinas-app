@@ -139,41 +139,15 @@ export default function ResumenContable({ tasaBCV }) {
       setCierresPorDia(cierresMap);
       setLoading(false);
 
-      // Seleccionar el día de hoy por defecto si existe, si no el más cercano con información
-      const hoy = new Date();
-      const hoyStr = `${String(hoy.getDate()).padStart(2, "0")}/${String(
-        hoy.getMonth() + 1
-      ).padStart(2, "0")}/${hoy.getFullYear()}`;
-      const fechas = Object.keys(agrupados).sort((a, b) => {
-        const fa = Date.parse(a.split("/").reverse().join("-"));
-        const fb = Date.parse(b.split("/").reverse().join("-"));
-        return (
-          Math.abs(fa - Date.parse(hoyStr.split("/").reverse().join("-"))) -
-          Math.abs(fb - Date.parse(hoyStr.split("/").reverse().join("-")))
-        );
-      });
-      let fechaInicial = hoyStr;
-      if (fechas.includes(hoyStr)) {
-        setFechaSeleccionada(hoyStr);
-        fechaInicial = hoyStr;
-      } else if (fechas.length > 0) {
-        // Seleccionar el día más reciente (mayor fecha) con información
-        const fechasOrdenadas = fechas.sort((a, b) => {
-          const fa = Date.parse(a.split("/").reverse().join("-"));
-          const fb = Date.parse(b.split("/").reverse().join("-"));
-          return fb - fa;
-        });
-        const fechaMasReciente = fechasOrdenadas[0];
-        setFechaSeleccionada(fechaMasReciente);
-        fechaInicial = fechaMasReciente;
-      }
-      // Sincronizar el DatePicker con la fecha seleccionada
-      const [d, m, y] = fechaInicial.split("/");
-      const fechaDayjs = window.dayjs
-        ? window.dayjs(`${y}-${m}-${d}`)
-        : require("dayjs")(`${y}-${m}-${d}`);
-      setFechaInicio(fechaDayjs);
-      setFechaFin(fechaDayjs);
+      // Establecer por defecto el rango de la semana actual: lunes a viernes
+      const todayDj = window.dayjs ? window.dayjs() : require('dayjs')();
+      const dow = todayDj.day(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+      const monday = todayDj.subtract((dow + 6) % 7, 'day').startOf('day');
+      const friday = monday.add(4, 'day').startOf('day');
+      setFechaInicio(monday);
+      setFechaFin(friday);
+      // Limpiar selección de fecha única para que prevalezca el rango
+      setFechaSeleccionada("");
     });
   }, []);
 
@@ -339,20 +313,13 @@ export default function ResumenContable({ tasaBCV }) {
               minDate={
                 Object.keys(datosPorDia).length > 0
                   ? dayjs(
-                    Object.keys(datosPorDia)
-                      .sort((a, b) => {
-                        const fa = Date.parse(
-                          a.split("/").reverse().join("-")
-                        );
-                        const fb = Date.parse(
-                          b.split("/").reverse().join("-")
-                        );
-                        return fa - fb;
-                      })[0]
-                      .split("/")
-                      .reverse()
-                      .join("-")
-                  )
+                      (() => {
+                        const toMs = (s) => { const p = (s || '').split('/'); return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])).getTime(); };
+                        const first = Object.keys(datosPorDia).sort((a, b) => toMs(a) - toMs(b))[0] || '';
+                        const parts = first.split('/');
+                        return [parts[2], parts[1], parts[0]].join('-');
+                      })()
+                    )
                   : undefined
               }
               maxDate={fechaFin || dayjs().startOf("day")}
@@ -370,20 +337,13 @@ export default function ResumenContable({ tasaBCV }) {
                 fechaInicio ||
                 (Object.keys(datosPorDia).length > 0
                   ? dayjs(
-                    Object.keys(datosPorDia)
-                      .sort((a, b) => {
-                        const fa = Date.parse(
-                          a.split("/").reverse().join("-")
-                        );
-                        const fb = Date.parse(
-                          b.split("/").reverse().join("-")
-                        );
-                        return fa - fb;
-                      })[0]
-                      .split("/")
-                      .reverse()
-                      .join("-")
-                  )
+                      (() => {
+                        const toMs = (s) => { const p = (s || '').split('/'); return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])).getTime(); };
+                        const first = Object.keys(datosPorDia).sort((a, b) => toMs(a) - toMs(b))[0] || '';
+                        const parts = first.split('/');
+                        return [parts[2], parts[1], parts[0]].join('-');
+                      })()
+                    )
                   : undefined)
               }
               maxDate={dayjs().startOf("day")}
@@ -402,25 +362,22 @@ export default function ResumenContable({ tasaBCV }) {
             // Si hay rango de fechas seleccionado, filtrar y acumular
             let fechasFiltradas = [];
             if (fechaInicio && fechaFin) {
-              // Normalizar fechas a formato DD/MM/YYYY para comparar correctamente
-              const start = fechaInicio.startOf("day");
-              const end = fechaFin.startOf("day");
+              // Comparación robusta por timestamps locales (evita discrepancias de instancias de dayjs)
+              const startMs = fechaInicio.startOf('day').valueOf();
+              const endMs = fechaFin.endOf('day').valueOf();
               fechasFiltradas = Object.keys(datosPorDia)
                 .filter((f) => {
-                  // f ya está en formato DD/MM/YYYY
-                  const [d, m, y] = f.split("/");
-                  // Comparar usando dayjs para evitar problemas de zona horaria
-                  const fecha = dayjs(`${y}-${m}-${d}`);
-                  // Incluir la fecha de inicio y fin
-                  return (
-                    fecha.isValid() &&
-                    (fecha.isAfter(start) || fecha.isSame(start, "day")) &&
-                    (fecha.isBefore(end) || fecha.isSame(end, "day"))
-                  );
+                  // f en formato DD/MM/YYYY
+                  const [d, m, y] = (f || '').split('/');
+                  const fMs = new Date(Number(y), Number(m) - 1, Number(d)).getTime();
+                  if (isNaN(fMs)) return false;
+                  return fMs >= startMs && fMs <= endMs;
                 })
                 .sort((a, b) => {
-                  const fa = Date.parse(a.split("/").reverse().join("-"));
-                  const fb = Date.parse(b.split("/").reverse().join("-"));
+                  const faParts = (a || '').split('/');
+                  const fbParts = (b || '').split('/');
+                  const fa = new Date(Number(faParts[2]), Number(faParts[1]) - 1, Number(faParts[0])).getTime();
+                  const fb = new Date(Number(fbParts[2]), Number(fbParts[1]) - 1, Number(fbParts[0])).getTime();
                   return fa - fb;
                 });
             } else if (fechaSeleccionada) {
