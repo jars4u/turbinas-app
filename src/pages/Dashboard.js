@@ -35,6 +35,7 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { useNavigate } from "react-router-dom";
 import VehicleCard from "../components/VehicleCard";
 import AppHeader from "../components/AppHeader";
+import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
 import {
   obtenerVehiculos,
   escucharVehiculos,
@@ -77,6 +78,7 @@ const debugReporte = (...args) => {
 
 export default function Dashboard() {
   const isXs = useMediaQuery('(max-width:600px)');
+  const [factorConversion, setFactorConversion] = useState(1);
   const [openReporteDia, setOpenReporteDia] = useState(false);
   // Modal para fijar manualmente "servicios al inicio" al comenzar el día
   const [openInicioModal, setOpenInicioModal] = useState(false);
@@ -125,6 +127,33 @@ export default function Dashboard() {
       setClientes(clientesUnicos);
     });
     return () => unsubscribe();
+  }, []);
+
+  // Cargar factor de conversión al iniciar
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const val = await obtenerFactorConversion();
+        if (mounted && typeof val === 'number' && !isNaN(val) && val > 0) {
+          setFactorConversion(val);
+          // Si ya hay precio en $, recalcular Bs automáticamente con el factor cargado
+          setForm((prev) => {
+            const p = parseFloat(prev?.precio);
+            if (!isNaN(p)) {
+              const bs = (p * val).toFixed(2);
+              return { ...prev, precioBs: bs };
+            }
+            return prev;
+          });
+        }
+      } catch (_) {
+        // en caso de error, mantener factor por defecto (1)
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
@@ -292,6 +321,7 @@ export default function Dashboard() {
     placa: "",
     servicio: "",
     precio: "",
+    precioBs: "",
     customerName: "",
     customerPhone: "",
     observaciones: "",
@@ -326,6 +356,7 @@ export default function Dashboard() {
         placa: "",
         servicio: "",
         precio: "",
+        precioBs: "",
         customerName: "",
         customerPhone: "",
         observaciones: "",
@@ -346,6 +377,7 @@ export default function Dashboard() {
       placa: "",
       servicio: "",
       precio: "",
+      precioBs: "",
       customerName: "",
       customerPhone: "",
       observaciones: "",
@@ -355,7 +387,25 @@ export default function Dashboard() {
   };
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const f = parseFloat(factorConversion);
+    if (name === "precio") {
+      const p = parseFloat(value);
+      let nuevoPrecioBs = "";
+      if (!isNaN(p) && !isNaN(f) && f > 0) {
+        nuevoPrecioBs = (p * f).toFixed(2);
+      }
+      setForm({ ...form, precio: value, precioBs: nuevoPrecioBs });
+    } else if (name === "precioBs") {
+      const bs = parseFloat(value);
+      let nuevoPrecio = "";
+      if (!isNaN(bs) && !isNaN(f) && f > 0) {
+        nuevoPrecio = (bs / f).toFixed(2);
+      }
+      setForm({ ...form, precioBs: value, precio: nuevoPrecio });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
     setIsEditing(true);
   };
 
