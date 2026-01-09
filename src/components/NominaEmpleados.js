@@ -157,9 +157,11 @@ export default function NominaEmpleados() {
     <Box sx={{ mt: 2 }}>
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          display: 'flex',
+          justifyContent: { xs: 'flex-start', sm: 'space-between' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1, sm: 0 },
           mb: 2,
         }}
       >
@@ -170,7 +172,7 @@ export default function NominaEmpleados() {
           <AssignmentIndIcon fontSize="small" sx={{ mb: "2px" }} />
           Nómina de empleados
         </Typography>
-        <Box sx={{ display: "flex", gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap', width: { xs: '100%', sm: 'auto' } }}>
           <Button
             variant="outlined"
             color="secondary"
@@ -190,14 +192,14 @@ export default function NominaEmpleados() {
           </Button>
         </Box>
       </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mb: 2 }}>
         <TextField
           label="Días x semana laboral"
           type="number"
           value={diasSemanaLaboral}
           onChange={e => setDiasSemanaLaboral(Math.max(1, parseInt(e.target.value) || 1))}
           size="small"
-          sx={{ width: 160 }}
+          sx={{ width: { xs: '100%', sm: 160 } }}
           inputProps={{ min: 1, max: 7 }}
         />
       </Box>
@@ -297,7 +299,16 @@ export default function NominaEmpleados() {
           <Typography variant="subtitle2">Lista de cargos</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ px: 0, py: 0 }}>
-          <Table size="small">
+          <Table
+            size="small"
+            sx={{
+              '& .MuiTableCell-root': {
+                fontSize: { xs: '0.80rem' },
+                py: { xs: 0.5 },
+                px: { xs: 0.75 },
+              },
+            }}
+          >
             <TableHead>
               <TableRow>
                 <TableCell>Nombre</TableCell>
@@ -402,7 +413,16 @@ export default function NominaEmpleados() {
           <Typography variant="subtitle2">Lista de empleados</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ px: 0, py: 0 }}>
-          <Table size="small">
+          <Table
+            size="small"
+            sx={{
+              '& .MuiTableCell-root': {
+                fontSize: { xs: '0.80rem' },
+                py: { xs: 0.5 },
+                px: { xs: 0.75 },
+              },
+            }}
+          >
             <TableHead>
               <TableRow>
                 <TableCell>Nombre</TableCell>

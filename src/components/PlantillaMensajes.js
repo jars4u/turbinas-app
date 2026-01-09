@@ -58,36 +58,87 @@ export default function PlantillaMensajes({ onSelect }) {
   };
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: { xs: 1.5, md: 2 } }}>
       <Typography variant="h6" fontWeight={600} mb={2}>Plantillas de mensajes</Typography>
       <Button variant="outlined" color="primary" onClick={() => setOpenDialog(true)} sx={{ mb: 2 }}>+ Nueva plantilla</Button>
-      <List>
+      {/* Vista móvil en tarjetas */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
         {loading ? (
-          <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>Cargando...</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ px: 1.5 }}>Cargando...</Typography>
         ) : plantillas.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>No hay plantillas guardadas.</Typography>
-        ) : plantillas.map((p) => (
-          <ListItem key={p.id} divider secondaryAction={
-            <Box>
-              <IconButton color="primary" onClick={() => handleEditar(p)}><EditIcon /></IconButton>
-              <IconButton color="error" onClick={() => handleEliminar(p.id)}><DeleteIcon /></IconButton>
-              <Button size="small" variant="outlined" sx={{ ml: 1 }} onClick={() => {
-                setPlantillaSeleccionada(p);
-                setEnvioModalOpen(true);
-              }}>Usar</Button>
+          <Typography variant="body2" color="text.secondary" sx={{ px: 1.5 }}>No hay plantillas guardadas.</Typography>
+        ) : (
+          plantillas.map((p) => (
+            <Box
+              key={p.id}
+              sx={{
+                border: '1px solid #eee',
+                borderRadius: 2,
+                p: 1,
+                mb: 0.75,
+                bgcolor: 'grey.50',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{p.nombre || 'Sin nombre'}</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    sx={{ minWidth: 0, p: 0.5, border: 0 }}
+                    onClick={() => {
+                      setPlantillaSeleccionada(p);
+                      setEnvioModalOpen(true);
+                    }}
+                  >
+                    Usar
+                  </Button>
+                  <IconButton color="primary" size="small" sx={{ p: 0.5 }} onClick={() => handleEditar(p)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton color="error" size="small" sx={{ p: 0.5 }} onClick={() => handleEliminar(p.id)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                {p.mensaje.replace(/\{nombre\}/g, '{nombre}').slice(0, 60)}{p.mensaje.length > 60 ? '...' : ''}
+              </Typography>
             </Box>
-          }>
-            <ListItemText
-              primary={p.nombre || "Sin nombre"}
-              secondary={
-                <span style={{ color: '#888', fontSize: 13 }}>
-                  {p.mensaje.replace(/\{nombre\}/g, "{nombre}").slice(0, 60)}{p.mensaje.length > 60 ? '...' : ''}
-                </span>
-              }
-            />
-          </ListItem>
-        ))}
-      </List>
+          ))
+        )}
+      </Box>
+
+      {/* Vista desktop en lista (sin cambios) */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <List>
+          {loading ? (
+            <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>Cargando...</Typography>
+          ) : plantillas.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>No hay plantillas guardadas.</Typography>
+          ) : plantillas.map((p) => (
+            <ListItem key={p.id} divider secondaryAction={
+              <Box>
+                <IconButton color="primary" onClick={() => handleEditar(p)}><EditIcon /></IconButton>
+                <IconButton color="error" onClick={() => handleEliminar(p.id)}><DeleteIcon /></IconButton>
+                <Button size="small" variant="outlined" sx={{ ml: 1 }} onClick={() => {
+                  setPlantillaSeleccionada(p);
+                  setEnvioModalOpen(true);
+                }}>Usar</Button>
+              </Box>
+            }>
+              <ListItemText
+                primary={p.nombre || "Sin nombre"}
+                secondary={
+                  <span style={{ color: '#888', fontSize: 12 }}>
+                    {p.mensaje.replace(/\{nombre\}/g, "{nombre}").slice(0, 60)}{p.mensaje.length > 60 ? '...' : ''}
+                  </span>
+                }
+              />
+            </ListItem>
+          ))}
+        </List>
+      </Box>
       <WhatsAppEnvioModal
         open={envioModalOpen}
         onClose={() => setEnvioModalOpen(false)}

@@ -338,7 +338,17 @@ export default function CierreDia() {
                 <Typography variant="subtitle1" fontWeight={600}>Totales por estado</Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Table size="small" sx={{ mb: 2, minWidth: 400, width: '100%', overflowX: 'auto' }}>
+                <Table
+                  size="small"
+                  sx={{
+                    mb: 2,
+                    minWidth: 360,
+                    width: '100%',
+                    overflowX: 'auto',
+                    '& .MuiTableCell-root': { fontSize: { xs: '0.80rem' } },
+                    '& .MuiChip-label': { fontSize: { xs: '0.75rem' } },
+                  }}
+                >
                   <TableHead>
                     <TableRow>
                       <TableCell>Estado</TableCell>
@@ -355,8 +365,8 @@ export default function CierreDia() {
                             size="small"
                             sx={{
                               fontWeight: 500,
-                              fontSize: "0.95rem",
-                              height: 24,
+                              fontSize: { xs: '0.75rem', md: '0.95rem' },
+                              height: { xs: 22, md: 24 },
                               bgcolor: estado.color === "gris" ? "grey.500" : undefined,
                               color: estado.color === "gris" ? "#fff" : undefined,
                             }}

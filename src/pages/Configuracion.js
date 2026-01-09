@@ -99,22 +99,23 @@ export default function Configuracion() {
           <Box
             sx={{
               display: { xs: 'block', md: 'none' },
-              position: 'sticky',
-              top: 0,
-              zIndex: 10,
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              boxShadow: 1,
               mb: 2,
+              bgcolor: 'transparent',
+              borderRadius: 0,
+              boxShadow: 'none',
+              px: 1,
             }}
           >
             <Tabs
               value={selectedSection}
               onChange={(e, val) => handleSectionChange(val)}
-              variant="scrollable"
-              allowScrollButtons="auto"
+              indicatorColor="primary"
+              textColor="primary"
+              variant={typeof window !== 'undefined' && window.innerWidth < 600 ? 'scrollable' : 'fullWidth'}
+              scrollButtons={typeof window !== 'undefined' && window.innerWidth < 600 ? 'auto' : false}
+              allowScrollButtonsMobile
               aria-label="Secciones de configuración"
-              sx={{ minHeight: 48 }}
+              sx={{ minHeight: 44, minWidth: 0, maxWidth: '100%' }}
             >
               {menuItems.map(item => (
                 <Tab
@@ -122,11 +123,12 @@ export default function Configuracion() {
                   value={item.key}
                   icon={item.icon}
                   iconPosition="start"
-                  label={<span style={{ fontSize: 12 }}>{item.label}</span>}
+                  label={item.label}
                   sx={{
-                    minHeight: 48,
+                    minHeight: 44,
                     alignItems: 'center',
-                    px: 2,
+                    px: 1.5,
+                    fontSize: { xs: 12, md: 14 },
                     '& .MuiTab-iconWrapper': { mr: 1 },
                   }}
                 />

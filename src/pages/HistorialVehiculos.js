@@ -28,6 +28,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Skeleton,
 } from "@mui/material";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
@@ -434,19 +435,20 @@ export default function HistorialVehiculos() {
             justifyContent: "space-between",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "stretch", gap: { xs: 1, md: 1 }, width: { xs: "100%", md: "50%" }, flexDirection: { xs: 'column', md: 'row' } }}>
+          <Box sx={{ display: "flex", alignItems: "stretch", gap: { xs: 1, md: 1 }, width: { xs: "100%", md: "50%" }, flexDirection: { xs: 'column', md: 'row' }, overflow: { xs: 'hidden', md: 'visible' } }}>
             <input
               type="text"
               placeholder="Buscar por modelo, servicio, cliente, usuario, factura..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               style={{
-                padding: "10px 12px",
-                fontSize: "1rem",
+                padding: "8px 10px",
+                fontSize: "clamp(12px, 3.5vw, 16px)",
                 borderRadius: 6,
                 border: "1px solid #bdbdbd",
                 width: "100%",
                 fontFamily: "Poppins, sans-serif",
+                boxSizing: 'border-box',
               }}
             />
             <Button
@@ -487,13 +489,14 @@ export default function HistorialVehiculos() {
                       onChange={(e) => setFechaInicio(e.target.value)}
                       aria-label="Fecha inicio"
                       style={{
-                        padding: "8px 10px",
+                        padding: "6px 8px",
                         borderRadius: 4,
                         border: "1px solid #bdbdbd",
                         fontFamily: "Poppins, sans-serif",
-                        fontSize: "1rem",
+                        fontSize: "clamp(12px, 3.5vw, 15px)",
                         width: "100%",
-                        minWidth: 130,
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                       }}
                     />
                     <Typography variant="body2" sx={{ mt: 1, fontFamily: 'Poppins, sans-serif' }}>Hasta</Typography>
@@ -503,13 +506,14 @@ export default function HistorialVehiculos() {
                       onChange={(e) => setFechaFin(e.target.value)}
                       aria-label="Fecha fin"
                       style={{
-                        padding: "8px 10px",
+                        padding: "6px 8px",
                         borderRadius: 4,
                         border: "1px solid #bdbdbd",
                         fontFamily: "Poppins, sans-serif",
-                        fontSize: "1rem",
+                        fontSize: "clamp(12px, 3.5vw, 15px)",
                         width: "100%",
-                        minWidth: 130,
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                       }}
                     />
                   </Box>
@@ -523,9 +527,9 @@ export default function HistorialVehiculos() {
                       width: '100%',
                     }}
                   >
-                    <ToggleButton value="registro" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Registro</ToggleButton>
-                    <ToggleButton value="entrega" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Entrega</ToggleButton>
-                      <ToggleButton value="ambas" sx={{ px: 1.25, fontFamily: 'Poppins, sans-serif' }}>Ambas</ToggleButton>
+                    <ToggleButton value="registro" sx={{ px: { xs: 0.75, md: 1.25 }, fontSize: { xs: 12, md: 'inherit' }, minWidth: { xs: 0, md: 40 }, fontFamily: 'Poppins, sans-serif' }}>Registro</ToggleButton>
+                    <ToggleButton value="entrega" sx={{ px: { xs: 0.75, md: 1.25 }, fontSize: { xs: 12, md: 'inherit' }, minWidth: { xs: 0, md: 40 }, fontFamily: 'Poppins, sans-serif' }}>Entrega</ToggleButton>
+                      <ToggleButton value="ambas" sx={{ px: { xs: 0.75, md: 1.25 }, fontSize: { xs: 12, md: 'inherit' }, minWidth: { xs: 0, md: 40 }, fontFamily: 'Poppins, sans-serif' }}>Ambas</ToggleButton>
                   </ToggleButtonGroup>
                   <Box sx={{ width: '100%' }}>
                     <Button
@@ -736,15 +740,28 @@ export default function HistorialVehiculos() {
         {/* Vista móvil (cards) */}
         <Box sx={{ display: { xs: 'block', md: 'none' } }}>
           {loading ? (
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: 200,
-              }}
-            >
-              <CircularProgress color="primary" size={48} />
+            <Box>
+              <Box sx={{ mb: 1, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Skeleton variant="rounded" width={120} height={28} />
+                <Skeleton variant="rounded" width={140} height={28} />
+              </Box>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Box key={i} sx={{ p: 1.25, mb: 1, border: '1px solid', borderColor: 'grey.200', borderRadius: 2, backgroundColor: '#fff' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Skeleton variant="text" width={90} height={16} />
+                    <Skeleton variant="rounded" width={80} height={18} />
+                  </Box>
+                  <Skeleton variant="text" width="70%" height={22} />
+                  <Skeleton variant="text" width="50%" height={18} />
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                    <Skeleton variant="text" width={120} height={16} />
+                    <Skeleton variant="text" width={100} height={16} />
+                  </Box>
+                </Box>
+              ))}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                <Skeleton variant="rounded" width={160} height={28} />
+              </Box>
             </Box>
           ) : (
             <Box>
@@ -804,32 +821,29 @@ export default function HistorialVehiculos() {
                         <Box
                           key={v.id || start + idx}
                           onClick={() => { setServicioSeleccionado(v); setOpenHistorial(true); }}
-                          sx={{ p: 1.25, mb: 1, border: '1px solid', borderColor: 'grey.200', borderRadius: 2, backgroundColor: '#fff', cursor: 'pointer' }}
+                          sx={{ p: 1, mb: 0.75, border: '1px solid', borderColor: 'grey.200', borderRadius: 2, backgroundColor: '#fff', cursor: 'pointer' }}
                         >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
                             <Typography variant="caption" color="text.secondary">{formatFecha(v.arrivalTime)}</Typography>
-                            <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, bgcolor: 'grey.100', color: 'text.secondary', fontSize: 12, fontWeight: 500 }}>{estadoLabel}</Box>
+                            <Box sx={{ px: 0.5, py: 0.2, borderRadius: 1, bgcolor: 'grey.100', color: 'text.secondary', fontSize: 11, fontWeight: 500 }}>{estadoLabel}</Box>
                           </Box>
-                          <Typography variant="body1" fontWeight={700} sx={{ lineHeight: 1.2 }}>{v.vehiculo || '-'}</Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{v.servicio || '-'}</Typography>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{v.customerName || '-'}</Typography>
-                            <Typography variant="body2" color="text.secondary">{v.customerPhone || ''}</Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                            {v.factura && v.factura !== '-' && (
-                              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                <Typography variant="caption" color="text.secondary">Factura:</Typography>
-                                <Typography variant="caption">{v.factura}</Typography>
-                              </Box>
-                            )}
-                            {(v.montoUSD || v.montoBs) && (
-                              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                <Typography variant="caption" color="text.secondary">Monto:</Typography>
-                                <Typography variant="caption">{(v.montoUSD ? String(v.montoUSD) : '-') + (v.montoBs ? ' | ' + v.montoBs : '')}</Typography>
-                              </Box>
-                            )}
-                          </Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {v.vehiculo || '-'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.25, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {v.servicio || '-'}
+                          </Typography>
+                          <Typography variant="caption" sx={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <span style={{ fontWeight: 600 }}>{v.customerName || '-'}</span>
+                            {v.customerPhone ? <span style={{ color: '#757575' }}>{` · ${v.customerPhone}`}</span> : null}
+                          </Typography>
+                          {(v.factura && v.factura !== '-') || v.montoUSD || v.montoBs ? (
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {v.factura && v.factura !== '-' ? `Fact: ${v.factura}` : ''}
+                              {(v.factura && v.factura !== '-') && (v.montoUSD || v.montoBs) ? ' · ' : ''}
+                              {(v.montoUSD || v.montoBs) ? `Monto: ${(v.montoUSD ? String(v.montoUSD) : '-') + (v.montoBs ? ' | ' + v.montoBs : '')}` : ''}
+                            </Typography>
+                          ) : null}
                         </Box>
                       );
                     })}
@@ -853,17 +867,28 @@ export default function HistorialVehiculos() {
         </Box>
 
         {/* Vista escritorio (tabla original) */}
+        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
         {loading ? (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: 200,
-            }}
-          >
-            <CircularProgress color="primary" size={48} />
-          </Box>
+          <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'auto', mb: 2 }}>
+            <Table size="small" sx={{ minWidth: 900, whiteSpace: 'nowrap' }}>
+              <TableHead>
+                <TableRow>
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <TableCell key={i}><Skeleton variant="text" width={i % 3 === 0 ? 100 : 80} /></TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {Array.from({ length: 8 }).map((_, r) => (
+                  <TableRow key={r}>
+                    {Array.from({ length: 12 }).map((_, c) => (
+                      <TableCell key={c}><Skeleton variant="text" width={c % 3 === 0 ? 120 : 80} /></TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         ) : (
           (() => {
             const filteredSorted = vehiculos
@@ -1409,6 +1434,7 @@ export default function HistorialVehiculos() {
             );
           })()
         )}
+        </Box>
         {/* Modal para seleccionar columnas */}
         <Dialog
           open={openColumnModal}

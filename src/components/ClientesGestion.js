@@ -44,6 +44,23 @@ export default function ClientesGestion() {
     fetchClientes();
   }, []);
 
+  const openWhatsAppToNumber = (rawPhone, text = "") => {
+    try {
+      const telefono = (rawPhone || "").toString().replace(/[^\d]/g, "");
+      let url = "";
+      if (telefono.startsWith("58") && telefono.length >= 12) {
+        url = `https://wa.me/${telefono}`;
+      } else if (telefono.length >= 10) {
+        url = `https://wa.me/${telefono}`;
+      }
+      if (!url) return;
+      const finalUrl = text && text.trim() ? `${url}?text=${encodeURIComponent(text.trim())}` : url;
+      window.open(finalUrl, '_blank');
+    } catch (_) {
+      // no-op
+    }
+  };
+
 
   return (
     <Box>
@@ -53,13 +70,13 @@ export default function ClientesGestion() {
           Agenda de contactos
         </Typography>
       </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
         <TextField
           size="small"
           placeholder="Buscar cliente..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          sx={{ width: 220 }}
+          sx={{ width: { xs: '100%', sm: 220 } }}
         />
         <Button
           variant="outlined"
@@ -75,7 +92,98 @@ export default function ClientesGestion() {
         </Button>
       </Box>
       <Divider sx={{ mb: 2 }} />
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, flexDirection: 'column', width: '100%' }}>
+        {/* Vista móvil en tarjetas */}
+        {loading ? (
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mt: 2 }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : (
+          <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 1 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Clientes</Typography>
+            {clientes.filter(c =>
+              (c.nombre || '').toLowerCase().includes((search || '').toLowerCase()) ||
+              (c.telefono || '').toLowerCase().includes((search || '').toLowerCase())
+            ).length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                No hay clientes registrados.
+              </Typography>
+            ) : (
+              clientes.filter(c =>
+                (c.nombre || '').toLowerCase().includes((search || '').toLowerCase()) ||
+                (c.telefono || '').toLowerCase().includes((search || '').toLowerCase())
+              ).map((c, idx, arr) => (
+                <Box
+                  key={c.id || c.nombre}
+                  sx={{
+                    border: '1px solid #eee',
+                    borderRadius: 2,
+                    p: 1,
+                    mb: 0.5,
+                    bgcolor: 'grey.50',
+                  }}
+                  onClick={() => {
+                    setClienteSeleccionado(c);
+                    setModelosLoading(true);
+                    setModelosDialogOpen(true);
+                    let modelos = Array.isArray(c.modelosServicios) ? [...c.modelosServicios] : [];
+                    modelos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+                    setModelosCliente(modelos);
+                    setModelosLoading(false);
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{(c.nombre || '').toUpperCase()}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={e => e.stopPropagation()}>
+                      <Button
+                        variant="outlined"
+                        color="success"
+                        size="small"
+                        sx={{ border: 0, minWidth: 0, p: 0.5 }}
+                        onClick={() => openWhatsAppToNumber(c.telefono)}
+                      >
+                        <WhatsAppIcon sx={{ fontSize: 18, color: '#25D366' }} />
+                      </Button>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        sx={{ p: 0.5 }}
+                        onClick={() => {
+                          setClienteEdit(c);
+                          setEditForm({ nombre: c.nombre, telefono: c.telefono, etiqueta: c.etiqueta || "" });
+                          setEditDialogOpen(true);
+                          setEditError("");
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        sx={{ p: 0.5 }}
+                        onClick={() => {
+                          setClienteDelete(c);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Teléfono: {(c.telefono || '').toUpperCase()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Etiqueta: {c.etiqueta || '-'}
+                  </Typography>
+                  {idx < arr.length - 1 && (
+                    <Divider sx={{ mt: 1 }} />
+                  )}
+                </Box>
+              ))
+            )}
+          </Box>
+        )}
         {/* Diálogo para agregar cliente */}
         <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)}>
           <DialogTitle>Agregar cliente</DialogTitle>
@@ -140,85 +248,93 @@ export default function ClientesGestion() {
           </DialogActions>
         </Dialog>
         {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'center', mt: 4 }}>
             <CircularProgress size={32} />
           </Box>
         ) : (
-          <Table size="small" sx={{ minWidth: 400 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600, fontSize: 14 }}>Nombre</TableCell>
-                <TableCell sx={{ fontWeight: 600, fontSize: 14 }}>Teléfono</TableCell>
-                <TableCell sx={{ fontWeight: 600, fontSize: 14 }}>Etiqueta</TableCell>
-                <TableCell sx={{ fontWeight: 600, fontSize: 14, textAlign: 'center' }}>Enviar</TableCell>
-                <TableCell sx={{ fontWeight: 600, fontSize: 14, textAlign: 'right' }}>Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {clientes.filter(c =>
-                c.nombre.toLowerCase().includes(search.toLowerCase()) ||
-                c.telefono.toLowerCase().includes(search.toLowerCase())
-              ).length === 0 ? (
+          <Box sx={{ display: { xs: 'none', md: 'block' }, width: '100%' }}>
+            <Table
+              size="small"
+              sx={{
+                minWidth: { xs: 360, md: 400 },
+                '& .MuiTableCell-root': {
+                  fontSize: { xs: '0.80rem', md: 14 },
+                  py: { xs: 0.5, md: 1 },
+                  px: { xs: 0.75, md: 1 },
+                },
+              }}
+            >
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={3} align="center">
-                    <Typography variant="body2" color="text.secondary">
-                      No hay clientes registrados.
-                    </Typography>
-                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Nombre</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Teléfono</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Etiqueta</TableCell>
+                  <TableCell sx={{ fontWeight: 600, textAlign: 'center' }}>Enviar</TableCell>
+                  <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>Acciones</TableCell>
                 </TableRow>
-              ) : (
-                clientes.filter(c =>
-                  c.nombre.toLowerCase().includes(search.toLowerCase()) ||
-                  c.telefono.toLowerCase().includes(search.toLowerCase())
-                ).map((c) => (
-                  <TableRow key={c.id || c.nombre} hover style={{ cursor: 'pointer' }} onClick={() => {
-                    setClienteSeleccionado(c);
-                    setModelosLoading(true);
-                    setModelosDialogOpen(true);
-                    let modelos = Array.isArray(c.modelosServicios) ? [...c.modelosServicios] : [];
-                    modelos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-                    setModelosCliente(modelos);
-                    setModelosLoading(false);
-                  }}>
-                    <TableCell>{(c.nombre || "").toUpperCase()}</TableCell>
-                    <TableCell>{(c.telefono || "").toUpperCase()}</TableCell>
-                    <TableCell>{c.etiqueta || "-"}</TableCell>
-                    <TableCell align="center" onClick={e => e.stopPropagation()}>
-                      <Button
-                        variant="outlined"
-                        color="success"
-                        size="small"
-                        sx={{ border: 0 }}
-                        onClick={() => {
-                          setClienteWhatsapp(c);
-                          setMensajeWhatsapp("");
-                          setWhatsappDialogOpen(true);
-                        }}
-                      >
-                        <WhatsAppIcon sx={{ fontSize: 20, color: '#25D366' }} />
-                      </Button>
-                    </TableCell>
-                    <TableCell align="right" onClick={e => e.stopPropagation()}>
-                      <IconButton size="small" color="primary" sx={{ mr: 1 }} onClick={() => {
-                        setClienteEdit(c);
-                        setEditForm({ nombre: c.nombre, telefono: c.telefono, etiqueta: c.etiqueta || "" });
-                        setEditDialogOpen(true);
-                        setEditError("");
-                      }}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => {
-                        setClienteDelete(c);
-                        setDeleteDialogOpen(true);
-                      }}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+              </TableHead>
+              <TableBody>
+                {clientes.filter(c =>
+                  (c.nombre || '').toLowerCase().includes((search || '').toLowerCase()) ||
+                  (c.telefono || '').toLowerCase().includes((search || '').toLowerCase())
+                ).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} align="center">
+                      <Typography variant="body2" color="text.secondary">
+                        No hay clientes registrados.
+                      </Typography>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  clientes.filter(c =>
+                    (c.nombre || '').toLowerCase().includes((search || '').toLowerCase()) ||
+                    (c.telefono || '').toLowerCase().includes((search || '').toLowerCase())
+                  ).map((c) => (
+                    <TableRow key={c.id || c.nombre} hover style={{ cursor: 'pointer' }} onClick={() => {
+                      setClienteSeleccionado(c);
+                      setModelosLoading(true);
+                      setModelosDialogOpen(true);
+                      let modelos = Array.isArray(c.modelosServicios) ? [...c.modelosServicios] : [];
+                      modelos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+                      setModelosCliente(modelos);
+                      setModelosLoading(false);
+                    }}>
+                      <TableCell>{(c.nombre || '').toUpperCase()}</TableCell>
+                      <TableCell>{(c.telefono || '').toUpperCase()}</TableCell>
+                      <TableCell>{c.etiqueta || '-'}</TableCell>
+                      <TableCell align="center" onClick={e => e.stopPropagation()}>
+                        <Button
+                          variant="outlined"
+                          color="success"
+                          size="small"
+                          sx={{ border: 0 }}
+                          onClick={() => openWhatsAppToNumber(c.telefono)}
+                        >
+                          <WhatsAppIcon sx={{ fontSize: 20, color: '#25D366' }} />
+                        </Button>
+                      </TableCell>
+                      <TableCell align="right" onClick={e => e.stopPropagation()}>
+                        <IconButton size="small" color="primary" sx={{ mr: 1 }} onClick={() => {
+                          setClienteEdit(c);
+                          setEditForm({ nombre: c.nombre, telefono: c.telefono, etiqueta: c.etiqueta || "" });
+                          setEditDialogOpen(true);
+                          setEditError("");
+                        }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => {
+                          setClienteDelete(c);
+                          setDeleteDialogOpen(true);
+                        }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Box>
         )}
 
         <Dialog open={whatsappDialogOpen} onClose={() => setWhatsappDialogOpen(false)} maxWidth="xs" fullWidth>

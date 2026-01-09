@@ -168,15 +168,142 @@ export default function EstadosServicios() {
           </span>
         </Button>
       </Box>
-      {/* Mostrar tabla de estados directamente */}
+      {/* Vista móvil en tarjetas */}
+      <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 1 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>Estados de servicio</Typography>
+        {estados.map((estado) => (
+          <Box
+            key={estado.id}
+            sx={{
+              border: '1px solid #eee',
+              borderRadius: 2,
+              p: 1.5,
+              mb: 1,
+              bgcolor: 'grey.50',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{estado.nombre}</Typography>
+              {estado.color === 'grey'
+                ? <Chip size="small" sx={{ minWidth: 15, height: 15, bgcolor: 'grey.500' }} />
+                : <Chip color={estado.color || 'default'} size="small" sx={{ minWidth: 15, height: 15 }} />}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Etiqueta: {estado.label}
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { sm: 'center' },
+                gap: { xs: 1.5, sm: 2 },
+              }}
+            >
+              <Box sx={{ flex: 1 }}>
+                <Table size="small" sx={{ minWidth: 0, '& .MuiTableCell-root': { py: 0.5, fontSize: '0.80rem' } }}>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell sx={{ width: '60%' }}>
+                        <Typography variant="caption">Default Registro</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Checkbox
+                            checked={!!estado.defaultEstado}
+                            onChange={() => handleDefaultChange(estado.id)}
+                            color="primary"
+                            inputProps={{ 'aria-label': 'Estado predeterminado' }}
+                            disabled={savingDefaultId === estado.id}
+                            sx={{ p: 0.5 }}
+                          />
+                          {savingDefaultId === estado.id && (
+                            <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                          )}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>
+                        <Typography variant="caption">Default Facturar</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Checkbox
+                            checked={!!estado.defaultFacturar}
+                            onChange={() => handleDefaultFacturarChange(estado.id)}
+                            color="success"
+                            inputProps={{ 'aria-label': 'Estado default de facturación' }}
+                            disabled={savingDefaultFacturarId === estado.id}
+                            sx={{ p: 0.5 }}
+                          />
+                          {savingDefaultFacturarId === estado.id && (
+                            <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                          )}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>
+                        <Typography variant="caption">Ocultar</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Checkbox
+                            checked={!!estado.dejarDeMostrar}
+                            onChange={() => handleDejarDeMostrarChange(estado.id)}
+                            color="warning"
+                            inputProps={{ 'aria-label': 'Estado dejar de mostrar' }}
+                            sx={{ p: 0.5 }}
+                          />
+                          {dejarDeMostrarId === estado.id && (
+                            <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                          )}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Acción timer: {estado.accionTimer === 'pausar' ? 'Pausar' : 'Continuar'}
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    <Tooltip title="Editar">
+                      <IconButton size="small" onClick={() => handleOpen(estado)} sx={{ p: 0.5 }}><EditIcon fontSize="small" /></IconButton>
+                    </Tooltip>
+                    <Tooltip title="Eliminar">
+                      <IconButton size="small" color="error" onClick={() => handleDelete(estado.id)} sx={{ p: 0.5 }}><DeleteIcon fontSize="small" /></IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        ))}
+      </Box>
+
+      {/* Mostrar tabla de estados directamente (desktop) */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
           <CircularProgress color="primary" size={40} />
         </Box>
       ) : (
-        <Box sx={{ width: '100%', overflowX: 'auto', maxWidth: '100vw', mt: 1 }}>
+        <Box sx={{ width: '100%', overflowX: 'auto', maxWidth: '100vw', mt: 1, display: { xs: 'none', md: 'block' } }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>Estados de servicio</Typography>
-          <Table sx={{ border: 'none', minWidth: 700 }} size="small">
+          <Table
+            size="small"
+            sx={{
+              border: 'none',
+              minWidth: { xs: 640, md: 700 },
+              '& .MuiTableCell-root': {
+                fontSize: { xs: '0.80rem', md: 12 },
+                py: { xs: 0.5, md: 0.5 },
+                px: { xs: 0.75, md: 1 },
+              },
+            }}
+          >
             <TableHead>
               <TableRow sx={{ height: 28 }}>
                 <TableCell sx={{

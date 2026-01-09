@@ -88,9 +88,14 @@ export default function UsuariosGestion() {
 
   const handleConfirmAdmin = async () => {
     if (selectedUser) {
-      await actualizarUsuario(selectedUser.id, { admin: !selectedUser.admin });
-      const nuevosUsuarios = await obtenerUsuarios();
-      setUsuarios(nuevosUsuarios);
+      setSavingAdminId(selectedUser.id);
+      try {
+        await actualizarUsuario(selectedUser.id, { admin: !selectedUser.admin });
+        const nuevosUsuarios = await obtenerUsuarios();
+        setUsuarios(nuevosUsuarios);
+      } finally {
+        setSavingAdminId(null);
+      }
     }
     setConfirmOpen(false);
     setSelectedUser(null);
@@ -101,6 +106,9 @@ export default function UsuariosGestion() {
   const [userToDelete, setUserToDelete] = useState(null);
   const [deletingUser, setDeletingUser] = useState(false);
   const [deleteUserMsg, setDeleteUserMsg] = useState("");
+  // Microfeedback de guardado en toggles
+  const [savingAdminId, setSavingAdminId] = useState(null);
+  const [savingOwnerId, setSavingOwnerId] = useState(null);
 
   const handleDelete = (id) => {
     const user = usuarios.find((u) => u.id === id);
@@ -175,9 +183,94 @@ export default function UsuariosGestion() {
           </span>
         </Button>
       </Box>
-      {/* Mostrar usuarios registrados */}
-          <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
-            <Table sx={{ border: "none", minWidth: 600 }} size="small">
+      {/* Vista móvil en tarjetas */}
+      <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 1 }}>
+        {usuarios.map((u) => (
+          <Box
+            key={u.id}
+            sx={{
+              border: '1px solid #eee',
+              borderRadius: 2,
+              p: 1.5,
+              mb: 1,
+              bgcolor: 'grey.50',
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+              {u.email || u.usuario}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption">Admin</Typography>
+                  <Checkbox
+                    checked={u.admin}
+                    onChange={() => isOwner && handleAdminChange(u)}
+                    color="primary"
+                    sx={{ p: 0.5 }}
+                    disabled={!isOwner || savingAdminId === u.id}
+                  />
+                  {savingAdminId === u.id && (
+                    <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                  )}
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption">Owner</Typography>
+                  <Checkbox
+                    checked={u.owner}
+                    onChange={async () => {
+                      if (isOwner) {
+                        setSavingOwnerId(u.id);
+                        try {
+                          await actualizarUsuario(u.id, { owner: !u.owner });
+                          const nuevosUsuarios = await obtenerUsuarios();
+                          setUsuarios(nuevosUsuarios);
+                        } finally {
+                          setSavingOwnerId(null);
+                        }
+                      }
+                    }}
+                    color="secondary"
+                    sx={{ p: 0.5 }}
+                    disabled={!isOwner || savingOwnerId === u.id}
+                  />
+                  {savingOwnerId === u.id && (
+                    <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                  )}
+                </Box>
+              </Box>
+              <Tooltip title="Eliminar">
+                <span>
+                  <IconButton
+                    onClick={() => isOwner && handleDelete(u.id)}
+                    size="small"
+                    sx={{ p: 0.5, color: 'error.main' }}
+                    disabled={!isOwner}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+            {/* Diálogo de eliminación centralizado al final */}
+          </Box>
+        ))}
+      </Box>
+
+      {/* Mostrar usuarios registrados (desktop) */}
+          <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' }, display: { xs: 'none', md: 'block' } }}>
+            <Table
+              size="small"
+              sx={{
+                border: 'none',
+                minWidth: { xs: 560, md: 600 },
+                '& .MuiTableCell-root': {
+                  fontSize: { xs: '0.80rem', md: 12 },
+                  py: { xs: 0.25, md: 0.5 },
+                  px: { xs: 0.75, md: 1 },
+                },
+              }}
+            >
               <TableHead>
                 <TableRow
                   sx={{
@@ -281,8 +374,11 @@ export default function UsuariosGestion() {
                           onChange={() => isOwner && handleAdminChange(u)}
                           color="primary"
                           sx={{ p: 0.5 }}
-                          disabled={!isOwner}
+                          disabled={!isOwner || savingAdminId === u.id}
                         />
+                        {savingAdminId === u.id && (
+                          <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell
@@ -298,21 +394,25 @@ export default function UsuariosGestion() {
                       >
                         <Checkbox
                           checked={u.owner}
-                          onChange={() => {
+                          onChange={async () => {
                             if (isOwner) {
-                              actualizarUsuario(u.id, {
-                                owner: !u.owner,
-                              }).then(async () => {
-                                const nuevosUsuarios =
-                                  await obtenerUsuarios();
+                              setSavingOwnerId(u.id);
+                              try {
+                                await actualizarUsuario(u.id, { owner: !u.owner });
+                                const nuevosUsuarios = await obtenerUsuarios();
                                 setUsuarios(nuevosUsuarios);
-                              });
+                              } finally {
+                                setSavingOwnerId(null);
+                              }
                             }
                           }}
                           color="secondary"
                           sx={{ p: 0.5 }}
-                          disabled={!isOwner}
+                          disabled={!isOwner || savingOwnerId === u.id}
                         />
+                        {savingOwnerId === u.id && (
+                          <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell
@@ -331,56 +431,7 @@ export default function UsuariosGestion() {
                         </span>
                       </Tooltip>
                     </TableCell>
-                    {/* Modal de confirmación de borrado de usuario (fuera del mapeo de filas) */}
-                    <Dialog
-                      open={deleteUserDialogOpen}
-                      onClose={() => setDeleteUserDialogOpen(false)}
-                    >
-                      <DialogTitle>Confirmar eliminación</DialogTitle>
-                      <DialogContent>
-                        <Typography>
-                          ¿Seguro que deseas eliminar al usuario{" "}
-                          <b>
-                            {userToDelete?.email || userToDelete?.usuario}
-                          </b>
-                          ?
-                        </Typography>
-                        {deletingUser && (
-                          <Box sx={{ mt: 2 }}>
-                            <CircularProgress size={24} />
-                          </Box>
-                        )}
-                        {deleteUserMsg && (
-                          <Typography
-                            sx={{ mt: 2 }}
-                            color={
-                              deleteUserMsg.startsWith("Usuario eliminado")
-                                ? "success.main"
-                                : "error"
-                            }
-                          >
-                            {deleteUserMsg}
-                          </Typography>
-                        )}
-                      </DialogContent>
-                      <DialogActions>
-                        <Button
-                          onClick={() => setDeleteUserDialogOpen(false)}
-                          color="primary"
-                          disabled={deletingUser}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          onClick={confirmDeleteUser}
-                          color="error"
-                          variant="contained"
-                          disabled={deletingUser}
-                        >
-                          Eliminar
-                        </Button>
-                      </DialogActions>
-                    </Dialog>
+                    {/* Diálogo de eliminación centralizado al final */}
                   </TableRow>
                 ))}
               </TableBody>
@@ -395,6 +446,35 @@ export default function UsuariosGestion() {
             </Box>
           )}
       {/* Fin mostrar usuarios registrados */}
+      {/* Diálogo único de eliminación de usuario (unificado) */}
+      <Dialog
+        open={deleteUserDialogOpen}
+        onClose={() => setDeleteUserDialogOpen(false)}
+      >
+        <DialogTitle>Confirmar eliminación</DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Seguro que deseas eliminar al usuario <b>{userToDelete?.email || userToDelete?.usuario}</b>?
+          </Typography>
+          {deletingUser && (
+            <Box sx={{ mt: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          )}
+          {deleteUserMsg && (
+            <Typography
+              sx={{ mt: 2 }}
+              color={deleteUserMsg.startsWith('Usuario eliminado') ? 'success.main' : 'error'}
+            >
+              {deleteUserMsg}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteUserDialogOpen(false)} color="primary" disabled={deletingUser}>Cancelar</Button>
+          <Button onClick={confirmDeleteUser} color="error" variant="contained" disabled={deletingUser}>Eliminar</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Crear usuario</DialogTitle>
         <DialogContent>

@@ -27,19 +27,21 @@ export default function ConfiguracionCajaChica({ isOwner }) {
       {/* Mostrar configuración de caja chica */}
           <Box
             sx={{
-              display: { xs: 'block', sm: 'flex' },
+              display: { xs: 'flex', sm: 'flex' },
               alignItems: { sm: 'center' },
               gap: 2,
               mb: 2,
+              flexWrap: 'wrap',
+              width: '100%'
             }}
           >
             <Typography
               color="text.secondary"
               sx={{
                 minWidth: { xs: 0, sm: 180 },
-                width: { xs: '100%', sm: 'auto' },
-                display: { xs: 'block', sm: 'inline-block' },
-                mb: { xs: 1, sm: 0 },
+                width: { xs: '65%', sm: 'auto' },
+                display: { xs: 'inline-block', sm: 'inline-block' },
+                mb: { xs: 0, sm: 0 },
               }}
             >
               Fondo en caja chica (USD):
@@ -55,14 +57,14 @@ export default function ConfiguracionCajaChica({ isOwner }) {
                 }
               }}
               size="small"
-              sx={{ width: 120 }}
+              sx={{ width: { xs: '35%', sm: 120 }, minWidth: 0 }}
               disabled={loading || guardando || !isOwner}
               placeholder={loading ? 'Cargando...' : '0.00'}
             />
             <Button
               variant="contained"
               size="small"
-              sx={{ ml: 2, mt: { xs: 1, sm: 0 } }}
+              sx={{ mt: { xs: 1, sm: 0 } }}
               disabled={
                 loading || guardando || inputValue === '' || Number(Number(inputValue).toFixed(2)) === Number(Number(valorGuardado).toFixed(2)) || !isOwner
               }

@@ -61,11 +61,11 @@ export default function ConfiguracionReporte() {
       <Typography variant="h5" fontWeight={700} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
         <AssignmentIcon /> Definición de estados para Reporte del día
       </Typography>
-      <Paper sx={{ p: 2, mb: 2 }} elevation={0}>
+      <Paper sx={{ p: { xs: 1.5, md: 2 }, mb: 2 }} elevation={0}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Selecciona qué estados harán que un servicio cuente para cada sección del reporte del día. Puedes elegir varios estados por sección.
         </Typography>
-        <Grid container spacing={2}>
+        <Grid container spacing={{ xs: 1.5, md: 2 }}>
           {secciones.map((s) => (
             <Grid item xs={12} md={6} key={s.key}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>{s.label}</Typography>
