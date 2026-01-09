@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Skeleton } from "@mui/material";
 import PaymentModal from "./PaymentModal";
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Paper, TextField, Button, Accordion, AccordionSummary, AccordionDetails, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import ConfirmDialog from "./common/ConfirmDialog";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PaidIcon from '@mui/icons-material/Paid';
@@ -447,44 +448,37 @@ export default function CuentasPorCobrar() {
         </DialogActions>
       </Dialog>
       {/* Modal de confirmación de cobro para documento */}
-      <Dialog open={!!confirmCobroId} onClose={() => setConfirmCobroId(null)}>
-        <DialogTitle>¿Confirmar cobro de cuenta?</DialogTitle>
-        <DialogContent>
-          <Typography>Esta acción enviará la cuenta a ingresos y la eliminará de la lista de cuentas por cobrar. ¿Deseas continuar?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmCobroId(null)} color="primary">Cancelar</Button>
-          <Button
-            onClick={async () => {
-              const cuenta = cuentas.find(c => c.id === confirmCobroId);
-              if (!cuenta) return;
-              const { db } = await import('../firebase');
-              const { addDoc, collection, doc, deleteDoc } = await import('firebase/firestore');
-              // Trasladar a ingresos manuales
-              const hoy = new Date();
-              const d = String(hoy.getDate()).padStart(2, '0');
-              const m = String(hoy.getMonth() + 1).padStart(2, '0');
-              const y = hoy.getFullYear();
-              await addDoc(collection(db, 'ingresosMovimientos'), {
-                tipo: 'manual',
-                descripcion: `${cuenta.documento?.toUpperCase() || ''} - ${cuenta.cliente?.toUpperCase() || ''}`,
-                montoUSD: cuenta.montoUSD || cuenta.precio || 0,
-                montoBs: cuenta.montoBs || cuenta.precioBs || 0,
-                concepto: cuenta.concepto?.toUpperCase() || '',
-                fecha: `${d}/${m}/${y}`
-              });
-              await deleteDoc(doc(db, 'cuentasPorCobrar', cuenta.id));
-              setConfirmCobroId(null);
-              setSnackbarMsg('Cobro realizado exitosamente');
-              setSnackbarOpen(true);
-            }}
-            color="success"
-            variant="contained"
-          >
-            Cobrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={!!confirmCobroId}
+        title="¿Confirmar cobro de cuenta?"
+        message="Esta acción enviará la cuenta a ingresos y la eliminará de la lista de cuentas por cobrar. ¿Deseas continuar?"
+        cancelText="Cancelar"
+        confirmText="Cobrar"
+        confirmColor="success"
+        onCancel={() => setConfirmCobroId(null)}
+        onConfirm={async () => {
+          const cuenta = cuentas.find(c => c.id === confirmCobroId);
+          if (!cuenta) return;
+          const { db } = await import('../firebase');
+          const { addDoc, collection, doc, deleteDoc } = await import('firebase/firestore');
+          const hoy = new Date();
+          const d = String(hoy.getDate()).padStart(2, '0');
+          const m = String(hoy.getMonth() + 1).padStart(2, '0');
+          const y = hoy.getFullYear();
+          await addDoc(collection(db, 'ingresosMovimientos'), {
+            tipo: 'manual',
+            descripcion: `${cuenta.documento?.toUpperCase() || ''} - ${cuenta.cliente?.toUpperCase() || ''}`,
+            montoUSD: cuenta.montoUSD || cuenta.precio || 0,
+            montoBs: cuenta.montoBs || cuenta.precioBs || 0,
+            concepto: cuenta.concepto?.toUpperCase() || '',
+            fecha: `${d}/${m}/${y}`
+          });
+          await deleteDoc(doc(db, 'cuentasPorCobrar', cuenta.id));
+          setConfirmCobroId(null);
+          setSnackbarMsg('Cobro realizado exitosamente');
+          setSnackbarOpen(true);
+        }}
+      />
 
       {/* Modal de facturación para servicios */}
       <PaymentModal
@@ -523,16 +517,16 @@ export default function CuentasPorCobrar() {
         }}
       />
       {/* Modal de confirmación de eliminación */}
-      <Dialog open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)}>
-        <DialogTitle>¿Eliminar cuenta por cobrar?</DialogTitle>
-        <DialogContent>
-          <Typography>Esta acción no se puede deshacer. ¿Deseas continuar?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDeleteId(null)} color="primary">Cancelar</Button>
-          <Button onClick={() => handleDelete(confirmDeleteId)} color="error" variant="contained">Eliminar</Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="¿Eliminar cuenta por cobrar?"
+        message="Esta acción no se puede deshacer. ¿Deseas continuar?"
+        cancelText="Cancelar"
+        confirmText="Eliminar"
+        confirmColor="error"
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={() => handleDelete(confirmDeleteId)}
+      />
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3000}

@@ -10,12 +10,21 @@ import {
   Select,
   MenuItem,
   Button,
-  CircularProgress
+  CircularProgress,
+  Checkbox,
+  FormControlLabel,
+  FormControl,
+  FormHelperText,
+  Divider,
+  useMediaQuery
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import ReceiptOutlinedIcon from '@mui/icons-material/ReceiptOutlined';
 
 
 export default function PaymentModal({ open, onClose, form, onRegister }) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [salidaInventario, setSalidaInventario] = useState(form.salidaInventario || false);
   const [loading, setLoading] = useState(false);
   const [facturaForm, setFacturaForm] = useState({
@@ -35,6 +44,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
     setFacturaIntento(true);
     // Validación mínima: campos obligatorios
     if (!facturaForm.numeroFactura || !facturaForm.formaPago || !facturaForm.monto) return;
+    setLoading(true);
     let formasPago = [];
     // Primera forma de pago
     formasPago.push({
@@ -73,12 +83,23 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
           onClose();
         }
       }}
+      fullWidth
+      maxWidth="sm"
+      fullScreen={fullScreen}
+      scroll="paper"
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1.5 }}>
         <ReceiptOutlinedIcon color="default" fontSize="medium" />
         Facturación
       </DialogTitle>
-      <DialogContent sx={{ minWidth: 350, maxWidth: 400 }}>
+      <DialogContent
+        sx={{
+          pt: 1.5,
+          px: { xs: 2, sm: 3 },
+          maxHeight: { xs: 'calc(100dvh - 140px)', sm: 'unset' },
+          overflowY: { xs: 'auto', sm: 'visible' }
+        }}
+      >
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2" color="primary" fontWeight={600}>Modelo</Typography>
           <Typography variant="body1" sx={{ mb: 1 }}>{form.vehiculo}</Typography>
@@ -107,18 +128,12 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             </Typography>
           )}
         </Box>
-        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <input
-            type="checkbox"
-            id="salidaInventario"
-            checked={salidaInventario}
-            onChange={e => setSalidaInventario(e.target.checked)}
-            style={{ marginRight: 8 }}
-          />
-          <label htmlFor="salidaInventario" style={{ fontSize: 15, cursor: 'pointer' }}>
-            Salida de inventario
-          </label>
-        </Box>
+        <FormControlLabel
+          sx={{ mb: 2 }}
+          control={<Checkbox checked={salidaInventario} onChange={e => setSalidaInventario(e.target.checked)} />}
+          label="Salida de inventario"
+        />
+        <Divider sx={{ mb: 2 }} />
         <Box sx={{ mb: 2 }}>
           <TextField
             label="No. de factura"
@@ -132,35 +147,38 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             helperText={facturaIntento && !facturaForm.numeroFactura ? 'Campo obligatorio' : ''}
           />
         </Box>
-        <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
-          <Select
-            name="formaPago"
-            size="small"
-            value={facturaForm.formaPago}
-            onChange={e => setFacturaForm({ ...facturaForm, formaPago: e.target.value })}
-            displayEmpty
-            sx={{ flex: 1 }}
-            required
-            error={facturaIntento && !facturaForm.formaPago}
-          >
-            <MenuItem value="">Forma de pago...</MenuItem>
-            <MenuItem value="efectivo">Efectivo ($)</MenuItem>
-            <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
-            <MenuItem value="zelle">Zelle ($)</MenuItem>
-            <MenuItem value="transferencia" disabled>Transferencia</MenuItem>
-            <MenuItem value="credito" disabled>Crédito</MenuItem>
-          </Select>
+        <Box sx={{ mb: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+          <FormControl size="small" fullWidth error={facturaIntento && !facturaForm.formaPago}>
+            <Select
+              name="formaPago"
+              value={facturaForm.formaPago}
+              onChange={e => setFacturaForm({ ...facturaForm, formaPago: e.target.value })}
+              displayEmpty
+              required
+            >
+              <MenuItem value="">Forma de pago...</MenuItem>
+              <MenuItem value="efectivo">Efectivo ($)</MenuItem>
+              <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
+              <MenuItem value="zelle">Zelle ($)</MenuItem>
+              <MenuItem value="transferencia" disabled>Transferencia</MenuItem>
+              <MenuItem value="credito" disabled>Crédito</MenuItem>
+            </Select>
+            {facturaIntento && !facturaForm.formaPago && (
+              <FormHelperText>Campo obligatorio</FormHelperText>
+            )}
+          </FormControl>
           <TextField
             label="Monto"
             name="monto"
             size="small"
             type="number"
+            inputProps={{ step: "0.01", min: 0 }}
             value={facturaForm.monto}
             onChange={e => setFacturaForm({ ...facturaForm, monto: e.target.value })}
-            sx={{ flex: 1 }}
             required
             error={facturaIntento && !facturaForm.monto}
             helperText={facturaIntento && !facturaForm.monto ? 'Campo obligatorio' : ''}
+            fullWidth
           />
         </Box>
         <TextField
@@ -172,49 +190,45 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
           onChange={e => setFacturaForm({ ...facturaForm, referencia: e.target.value })}
           sx={{ mb: 2 }}
         />
-        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <input
-            type="checkbox"
-            id="agregarFormaPago"
-            checked={agregarFormaPago}
-            onChange={e => setAgregarFormaPago(e.target.checked)}
-            style={{ marginRight: 8 }}
-          />
-          <label htmlFor="agregarFormaPago" style={{ fontSize: 15, cursor: 'pointer' }}>
-            Agregar segunda forma de pago
-          </label>
-        </Box>
+        <FormControlLabel
+          sx={{ mb: 2 }}
+          control={<Checkbox checked={agregarFormaPago} onChange={e => setAgregarFormaPago(e.target.checked)} />}
+          label="Agregar segunda forma de pago"
+        />
         {agregarFormaPago && (
           <>
-            <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
-              <Select
-                name="formaPago2"
-                size="small"
-                value={facturaForm.formaPago2}
-                onChange={e => setFacturaForm({ ...facturaForm, formaPago2: e.target.value })}
-                displayEmpty
-                sx={{ flex: 1 }}
-                required
-                error={facturaIntento && !facturaForm.formaPago2}
-              >
-                <MenuItem value="">Forma de pago...</MenuItem>
-                <MenuItem value="efectivo">Efectivo ($)</MenuItem>
-                <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
-                <MenuItem value="zelle">Zelle ($)</MenuItem>
-                <MenuItem value="transferencia" disabled>Transferencia</MenuItem>
-                <MenuItem value="credito" disabled>Crédito</MenuItem>
-              </Select>
+            <Box sx={{ mb: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              <FormControl size="small" fullWidth error={facturaIntento && !facturaForm.formaPago2}>
+                <Select
+                  name="formaPago2"
+                  value={facturaForm.formaPago2}
+                  onChange={e => setFacturaForm({ ...facturaForm, formaPago2: e.target.value })}
+                  displayEmpty
+                  required
+                >
+                  <MenuItem value="">Forma de pago...</MenuItem>
+                  <MenuItem value="efectivo">Efectivo ($)</MenuItem>
+                  <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
+                  <MenuItem value="zelle">Zelle ($)</MenuItem>
+                  <MenuItem value="transferencia" disabled>Transferencia</MenuItem>
+                  <MenuItem value="credito" disabled>Crédito</MenuItem>
+                </Select>
+                {facturaIntento && !facturaForm.formaPago2 && (
+                  <FormHelperText>Campo obligatorio</FormHelperText>
+                )}
+              </FormControl>
               <TextField
                 label="Monto"
                 name="monto2"
                 size="small"
                 type="number"
+                inputProps={{ step: "0.01", min: 0 }}
                 value={facturaForm.monto2}
                 onChange={e => setFacturaForm({ ...facturaForm, monto2: e.target.value })}
-                sx={{ flex: 1 }}
                 required
                 error={facturaIntento && !facturaForm.monto2}
                 helperText={facturaIntento && !facturaForm.monto2 ? 'Campo obligatorio' : ''}
+                fullWidth
               />
             </Box>
             <TextField
@@ -229,8 +243,8 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
           </>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'flex-end', gap: 2 }}>
-        <Button onClick={onClose} variant="outlined" color="primary" size="small" disabled={loading}>Cerrar</Button>
+      <DialogActions sx={{ px: 3, pb: 2, justifyContent: { xs: 'stretch', sm: 'flex-end' }, gap: 2, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+        <Button onClick={onClose} variant="outlined" color="primary" size="small" disabled={loading} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cerrar</Button>
         <Button
           variant="contained"
           color="success"
@@ -238,6 +252,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
           onClick={handleRegister}
           disabled={loading || !(form.precio || form.precioBs)}
           startIcon={loading ? <CircularProgress color="inherit" size={18} /> : null}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           {loading ? "Registrando..." : "Registrar pago"}
         </Button>
