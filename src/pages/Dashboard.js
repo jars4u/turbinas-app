@@ -807,7 +807,7 @@ export default function Dashboard() {
                   p: 1,
                   borderRadius: 1.5,
                   boxShadow: 1,
-                  bgcolor: 'background.paper',
+                  bgcolor: 'grey.50',
                   border: '1px solid',
                   borderColor: 'divider',
                 }}
@@ -1008,12 +1008,12 @@ export default function Dashboard() {
             {/* Skeleton de creación mientras se registra un nuevo servicio (al final, con fade) */}
             <Fade in={creatingSkeleton && isRegistering} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
               <Box
-                sx={{
+                    sx={{
                   mb: 1.5,
                   p: 1,
                   borderRadius: 1.5,
                   boxShadow: 1,
-                  bgcolor: 'background.paper',
+                      bgcolor: 'grey.50',
                   border: '1px solid',
                   borderColor: 'divider',
                 }}
@@ -1153,16 +1153,16 @@ export default function Dashboard() {
         open={open}
         fullScreen={isXs}
         fullWidth
+        onClose={(event, reason) => {
+          if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+          handleClose();
+        }}
         PaperProps={{
           sx: {
             borderRadius: { xs: 0, sm: 1 },
             m: { xs: 0, sm: 'auto' },
-          }
-        }}
-        onClose={(event, reason) => {
-          if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
-            handleClose();
-          }
+            bgcolor: 'grey.50',
+          },
         }}
       >
         <DialogContent
