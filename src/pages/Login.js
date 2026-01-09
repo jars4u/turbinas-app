@@ -17,6 +17,13 @@ const Login = () => {
     return () => unsubscribe();
   }, []);
 
+  // Si ya hay sesión activa, redirigir al dashboard automáticamente
+  useEffect(() => {
+    if (usuarioActual) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [usuarioActual, navigate]);
+
   useEffect(() => {
     // Cargar usuarios registrados para el autocomplete
     obtenerUsuarios().then(us => setUsuarios(us.map(u => u.email)));

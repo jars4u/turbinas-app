@@ -1,6 +1,11 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import {
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDl43vMgKdjhEoRvTaRypXfB550mJodwn8",
@@ -14,4 +19,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const auth = getAuth(app);
+
+// Mantener la sesión abierta hasta cerrar sesión explícitamente.
+// Prioriza IndexedDB; si no está disponible, cae a localStorage y luego a sessionStorage.
+export const auth = initializeAuth(app, {
+  persistence: [
+    indexedDBLocalPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+  ],
+});
