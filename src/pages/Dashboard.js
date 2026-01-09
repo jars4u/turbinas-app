@@ -1,37 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
-  Container,
-  Typography,
-  Grid,
-  Button,
-  Divider,
-  Box,
-  IconButton,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  Box,
+  Typography,
+  Button,
+  Chip,
+  Divider,
   TextField,
   Select,
   MenuItem,
   Snackbar,
   Alert,
-  Autocomplete,
   useMediaQuery,
+  Container,
+  Grid,
+  Skeleton,
   Fade,
 } from "@mui/material";
-import Skeleton from "@mui/material/Skeleton";
-import PaymentModal from "../components/PaymentModal";
-import ReporteDia from "../components/ReporteDia";
-// ...otros imports...
-import CircularProgress from "@mui/material/CircularProgress";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
-import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { useNavigate } from "react-router-dom";
 import VehicleCard from "../components/VehicleCard";
 import AppHeader from "../components/AppHeader";
@@ -45,8 +34,12 @@ import {
 } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import SortIcon from "@mui/icons-material/Sort";
+import AddIcon from "@mui/icons-material/Add";
+import ReporteDia from "../components/ReporteDia";
+import PaymentModal from "../components/PaymentModal";
 import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/reporteDiaSnapshotFirebase";
-import CloseIcon from "@mui/icons-material/Close";
+import ServicioEditorDialog from "../components/dashboard/ServicioEditorDialog";
+import EstadoChangeDialog from "../components/dashboard/EstadoChangeDialog";
 
 // Sanitiza cualquier undefined en null, recursivamente
 function sanitizeDeep(obj) {
@@ -97,11 +90,7 @@ export default function Dashboard() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
-  // Estado para el modal de confirmación de ocultar servicio
-  const [confirmOcultar, setConfirmOcultar] = useState({
-    open: false,
-    estado: null,
-  });
+  // Estado para el modal de confirmación de ocultar servicio (migrado al componente EstadoChangeDialog)
   const { usuario, handleLogout } = useAuth();
   // Estado para modal de cambio de estado
   const [openEstadoModal, setOpenEstadoModal] = useState(false);
@@ -1149,1132 +1138,304 @@ export default function Dashboard() {
           </Grid>
         </>
       )}
-      <Dialog
+      <ServicioEditorDialog
         open={open}
-        fullScreen={isXs}
-        fullWidth
-        onClose={(event, reason) => {
+        isXs={isXs}
+        onDialogClose={(event, reason) => {
           if (reason === "backdropClick" || reason === "escapeKeyDown") return;
           handleClose();
         }}
-        PaperProps={{
-          sx: {
-            borderRadius: { xs: 0, sm: 1 },
-            m: { xs: 0, sm: 'auto' },
-            bgcolor: 'grey.50',
-          },
+        actionLoading={actionLoading}
+        editId={editId}
+        onDeleteClick={handleDeleteClick}
+        onClose={handleClose}
+        estadoActual={(() => {
+          const v = vehiculos.find((x) => x.id === editId);
+          return estadosServicio.find(
+            (e) => e.nombre === (v?.status || v?.estado)
+          );
+        })()}
+        vehiculoActual={vehiculos.find((v) => v.id === editId)}
+        chipColor={(() => {
+          const v = vehiculos.find((x) => x.id === editId);
+          const est = estadosServicio.find(
+            (e) => e.nombre === (v?.status || v?.estado)
+          );
+          const validColors = [
+            "default",
+            "primary",
+            "secondary",
+            "error",
+            "info",
+            "success",
+            "warning",
+          ];
+          return validColors.includes(est?.color) ? est?.color : "default";
+        })()}
+        onOpenEstadoModal={() => {
+          const v = vehiculos.find((x) => x.id === editId);
+          setVehiculoEstadoModal(v);
+          setOpenEstadoModal(true);
         }}
-      >
-        <DialogContent
-          sx={{
-            minWidth: { xs: "auto", sm: 400 },
-            maxWidth: { xs: "100vw", sm: 500 },
-            py: 2,
-            position: "relative",
-            display: { xs: "flex", sm: "block" },
-            flexDirection: { xs: "column", sm: "initial" },
-            alignItems: { xs: "center", sm: "initial" },
-            justifyContent: { xs: "center", sm: "initial" },
-            px: { xs: 2, sm: 3 },
-          }}
-        >
-          {actionLoading && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                bgcolor: "rgba(255,255,255,0.7)",
-                zIndex: 10,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <CircularProgress color="primary" size={40} />
-            </Box>
-          )}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Typography variant="h6">
-              {editId ? "Información del servicio" : "Registrar servicio"}
-            </Typography>
-            {editId && (
-              <Box>
-                <IconButton
-                  onClick={handleDeleteClick}
-                  color="error"
-                  sx={{
-                    display: { xs: "inline-flex", sm: "none" },
-                    p: 0.5,
-                    ml: 5,
-                  }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-                <Button
-                  onClick={handleDeleteClick}
-                  variant="outlined"
-                  size="small"
-                  color="error"
-                  sx={{
-                    display: { xs: "none", sm: "inline-flex" },
-                    minWidth: 40,
-                    px: 2,
-                  }}
-                >
-                  Eliminar
-                </Button>
-              </Box>
-            )}
-            {/* Cerrar en móvil */}
-            <IconButton
-              aria-label="Cerrar"
-              onClick={handleClose}
-              sx={{ display: { xs: 'inline-flex', sm: 'none' }, ml: 1 }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Box>
-          {editId &&
-            (() => {
-              const vehiculoActual = vehiculos.find((v) => v.id === editId);
-              const estadoActual = estadosServicio.find(
-                (e) =>
-                  e.nombre ===
-                  (vehiculoActual?.status || vehiculoActual?.estado)
-              );
-              // Validar color permitido por MUI
-              const validColors = [
-                "default",
-                "primary",
-                "secondary",
-                "error",
-                "info",
-                "success",
-                "warning",
-              ];
-              const chipColor = validColors.includes(estadoActual?.color)
-                ? estadoActual?.color
-                : "default";
-              return (
-                <Box sx={{ width: "100%", display: "block" }}>
-                  <Chip
-                    label={
-                      estadoActual?.label ||
-                      vehiculoActual?.status ||
-                      vehiculoActual?.estado ||
-                      "Sin estado"
-                    }
-                    color={chipColor}
-                    size="small"
-                    sx={{
-                      fontSize: "0.85rem",
-                      height: 26,
-                      mx: 0,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => {
-                      setVehiculoEstadoModal(vehiculoActual);
-                      setOpenEstadoModal(true);
-                    }}
-                  />
-                </Box>
-              );
-            })()}
-          {/* Modal para cambiar estado */}
-          <Dialog
-            open={openEstadoModal}
-            onClose={() => setOpenEstadoModal(false)}
-            fullWidth
-            maxWidth="xs"
-          >
-            <DialogTitle>Cambiar estado</DialogTitle>
-            <DialogContent>
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  minWidth: 220,
-                }}
-              >
-                {estadosServicio.map((estado) => {
-                  const validColors = [
-                    "default",
-                    "primary",
-                    "secondary",
-                    "error",
-                    "info",
-                    "success",
-                    "warning",
-                  ];
-                  let buttonColor = validColors.includes(estado.color)
-                    ? estado.color
-                    : "primary";
-                  let sxButton = {
-                    justifyContent: "flex-start",
-                    textTransform: "none",
-                    fontWeight: 600,
-                  };
-                  if (estado.color === "grey") {
-                    buttonColor = "inherit";
-                    sxButton = {
-                      ...sxButton,
-                      bgcolor: "#e0e0e0",
-                      color: "#424242",
-                      "&:hover": { bgcolor: "#bdbdbd" },
-                    };
-                  }
-                  const esOcultar = !!estado.dejarDeMostrar;
-                  return (
-                    <>
-                      <Button
-                        key={estado.nombre}
-                        variant={
-                          vehiculoEstadoModal &&
-                            (vehiculoEstadoModal.status === estado.nombre ||
-                              vehiculoEstadoModal.estado === estado.nombre)
-                            ? "contained"
-                            : "outlined"
-                        }
-                        color={buttonColor}
-                        onClick={() => {
-                          if (!vehiculoEstadoModal) return;
-                          if (esOcultar) {
-                            setConfirmOcultar({ open: true, estado });
-                          } else {
-                            setOpenEstadoModal(false);
-                            const esOcultar = !!estado.dejarDeMostrar;
-                            const data = sanitizeDeep({
-                              ...vehiculoEstadoModal,
-                              status: estado.nombre,
-                              ...(esOcultar ? { fechaEntrega: Date.now(), entregadoPor: (usuarioActivo ? String(usuarioActivo).split('@')[0] : null) } : {}),
-                            });
-                            actualizarVehiculo(
-                              vehiculoEstadoModal.id,
-                              data
-                            ).then(async () => {
-                              const actualizados = await obtenerVehiculos();
-                              setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
-                            });
-                          }
-                        }}
-                        sx={sxButton}
-                      >
-                        {estado.label}
-                      </Button>
-                      {/* Modal de confirmación para dejar de mostrar */}
-                      {esOcultar &&
-                        confirmOcultar?.open &&
-                        confirmOcultar.estado?.nombre === estado.nombre && (
-                          <Dialog
-                            open={true}
-                            onClose={() =>
-                              setConfirmOcultar({ open: false, estado: null })
-                            }
-                            fullWidth
-                            maxWidth="xs"
-                          >
-                            <DialogTitle>Confirmar acción</DialogTitle>
-                            <DialogContent>
-                              <Typography>
-                                Este servicio desaparecerá del Dashboard. ¿Desea
-                                continuar?
-                              </Typography>
-                            </DialogContent>
-                            <DialogActions>
-                              <Button
-                                onClick={() =>
-                                  setConfirmOcultar({
-                                    open: false,
-                                    estado: null,
-                                  })
-                                }
-                                color="primary"
-                                sx={{ width: { xs: '100%', sm: 'auto' } }}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                onClick={async () => {
-                                  setConfirmOcultar({
-                                    open: false,
-                                    estado: null,
-                                  });
-                                  setOpenEstadoModal(false);
-                                  const data = sanitizeDeep({
-                                    ...vehiculoEstadoModal,
-                                    status: estado.nombre,
-                                  });
-                                  await actualizarVehiculo(
-                                    vehiculoEstadoModal.id,
-                                    data
-                                  );
-                                  const actualizados = await obtenerVehiculos();
-                                  setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
-                                }}
-                                color="error"
-                                variant="contained"
-                                sx={{ width: { xs: '100%', sm: 'auto' } }}
-                              >
-                                Confirmar
-                              </Button>
-                            </DialogActions>
-                          </Dialog>
-                        )}
-                    </>
-                  );
-                })}
-              </Box>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setOpenEstadoModal(false)} color="primary">
-                Cancelar
-              </Button>
-            </DialogActions>
-          </Dialog>
-          {/* Modal de confirmación para eliminar */}
-          <Dialog
-            open={confirmDeleteOpen}
-            onClose={(event, reason) => {
-              if (reason !== "backdropClick") {
-                handleCancelDelete();
-              }
-            }}
-            fullWidth
-            maxWidth="xs"
-          >
-            <DialogTitle>Confirmar eliminación</DialogTitle>
-            <DialogContent>
-              <Typography>
-                ¿Estás seguro que deseas eliminar este servicio? Esta acción no
-                se puede deshacer.
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCancelDelete} color="primary" sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                Cancelar
-              </Button>
-              <Button onClick={handleDelete} color="error" variant="contained" sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                Eliminar
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </DialogContent>
-        <DialogContent
-          sx={{
-            minWidth: { xs: "auto", sm: 400 },
-            maxWidth: { xs: "100vw", sm: 500 },
-            display: { xs: "flex", sm: "block" },
-            flexDirection: { xs: "column", sm: "initial" },
-            alignItems: { xs: "center", sm: "initial" },
-            justifyContent: { xs: "center", sm: "initial" },
-            px: { xs: 1, sm: 3 },
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              mb: { xs: 0, sm: 1 },
-            }}
-          >
-            <Typography
-              variant="subtitle2"
-              fontWeight={600}
-              color="primary"
-              gutterBottom
-            >
-              Datos de la turbina
-            </Typography>
-            {editSection !== "vehiculo" && !isRegistering && (
-              <IconButton
-                size="small"
-                onClick={() => setEditSection("vehiculo")}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-          <Divider sx={{ mb: { xs: 0, sm: 1 } }} />
-          <Box
-            sx={{
-              minHeight: 80,
-              display: "flex",
-              flexDirection: "column",
-              gap: 0.5,
-              alignItems: { xs: "center", sm: "flex-start" },
-              width: { xs: "100%", sm: "auto" },
-              pl: { xs: 1, sm: 0 },
-            }}
-          >
-            {editSection === "vehiculo" || isRegistering ? (
-              <TextField
-                margin="none"
-                label="Modelo"
-                name="vehiculo"
-                fullWidth
-                size="small"
-                value={form.vehiculo}
-                onChange={handleChange}
-                sx={{ mb: 1.5 }}
-                InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-              />
-            ) : (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: { xs: "row", sm: "column" },
-                  alignItems: { xs: "center", sm: "flex-start" },
-                  gap: { xs: 1, sm: 0 },
-                  width: "100%",
-                  mb: 0.5,
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontSize: { xs: "0.90rem", sm: "0.80rem" },
-                    color: "text.secondary",
-                    minWidth: 60,
-                  }}
-                >
-                  Modelo:
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontSize: { xs: "1rem", sm: "1rem" },
-                    fontWeight: 500,
-                  }}
-                >
-                  {form.vehiculo && form.vehiculo.toUpperCase()}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-
-          {/* Sección: Datos del servicio */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <Typography
-              variant="subtitle2"
-              fontWeight={600}
-              color="primary"
-              gutterBottom
-            >
-              Datos del servicio
-            </Typography>
-            {editSection !== "servicio" && !isRegistering && (
-              <IconButton
-                size="small"
-                onClick={() => setEditSection("servicio")}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-          <Divider sx={{ mb: { xs: 0, sm: 1 } }} />
-          <Box
-            sx={{
-              minHeight: 110,
-              display: "flex",
-              flexDirection: "column",
-              gap: 0.5,
-              alignItems: { xs: "center", sm: "flex-start" },
-              width: { xs: "100%", sm: "auto" },
-              pl: { xs: 1, sm: 0 },
-            }}
-          >
-            {editSection === "servicio" || isRegistering ? (
-              <>
-                <TextField
-                  margin="none"
-                  label="Servicio"
-                  name="servicio"
-                  fullWidth
-                  size="small"
-                  value={form.servicio}
-                  onChange={handleChange}
-                  sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                />
-                <TextField
-                  margin="none"
-                  label="Observaciones"
-                  name="observaciones"
-                  fullWidth
-                  size="small"
-                  value={form.observaciones}
-                  onChange={handleChange}
-                  sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                />
-                <Box sx={{ display: "flex", gap: 2, mb: 1.5 }}>
-                  <TextField
-                    margin="none"
-                    label="Precio en $"
-                    name="precio"
-                    type="number"
-                    size="small"
-                    value={form.precio}
-                    onChange={handleChange}
-                    InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                    sx={{ flex: 1 }}
-                  />
-                  <TextField
-                    margin="none"
-                    label="Precio en Bs"
-                    name="precioBs"
-                    type="number"
-                    size="small"
-                    value={form.precioBs || ""}
-                    onChange={handleChange}
-                    InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                    sx={{ flex: 1 }}
-                  />
-                </Box>
-                {/* Resultado de conversión */}
-                {/* <PrecioConvertido precio={form.precio} /> */}
-              </>
-            ) : (
-              <>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: { xs: "row", sm: "column" },
-                    alignItems: { xs: "flex-start", sm: "flex-start" },
-                    gap: { xs: 0.5, sm: 0 },
-                    width: "100%",
-                    mb: 0.5,
-                    flexWrap: { xs: "wrap", sm: "nowrap" },
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
-                      color: "text.secondary",
-                      minWidth: 60,
-                      flexShrink: 0,
-                    }}
-                  >
-                    Servicio:
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: { xs: "1rem", sm: "1rem" },
-                      fontWeight: 500,
-                      wordBreak: "break-word",
-                      whiteSpace: { xs: "pre-line", sm: "normal" },
-                      maxWidth: { xs: "calc(100% - 70px)", sm: "100%" },
-                    }}
-                  >
-                    {form.servicio}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: { xs: "row", sm: "column" },
-                    alignItems: { xs: "flex-start", sm: "flex-start" },
-                    gap: { xs: 0.5, sm: 0 },
-                    width: "100%",
-                    mb: 0.5,
-                    flexWrap: { xs: "wrap", sm: "nowrap" },
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
-                      color: "text.secondary",
-                      minWidth: 60,
-                      flexShrink: 0,
-                    }}
-                  >
-                    Observaciones:
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: { xs: "1rem", sm: "1rem" },
-                      fontWeight: 500,
-                      wordBreak: "break-word",
-                      whiteSpace: { xs: "pre-line", sm: "normal" },
-                      maxWidth: { xs: "calc(100% - 70px)", sm: "100%" },
-                    }}
-                  >
-                    {form.observaciones}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: { xs: "row", sm: "column" },
-                    alignItems: { xs: "flex-start", sm: "flex-start" },
-                    gap: { xs: 0.5, sm: 0 },
-                    width: "100%",
-                    mb: 0.5,
-                    flexWrap: { xs: "wrap", sm: "nowrap" },
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: "1rem",
-                      color: "text.secondary",
-                      minWidth: 60,
-                      flexShrink: 0,
-                    }}
-                  >
-                    Precio:
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: "1rem",
-                      fontWeight: 500,
-                      wordBreak: "break-word",
-                      maxWidth: "100%",
-                    }}
-                  >
-                    ${form.precio} / Bs {form.precioBs || "-"}
-                  </Typography>
-                </Box>
-                {/* <PrecioConvertido precio={form.precio} /> */}
-              </>
-            )}
-          </Box>
-
-          {/* Sección: Datos del cliente */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              mt: 2,
-            }}
-          >
-            <Typography
-              variant="subtitle2"
-              fontWeight={600}
-              color="primary"
-              gutterBottom
-            >
-              Datos del cliente
-            </Typography>
-            {editSection !== "cliente" && !isRegistering && (
-              <IconButton
-                size="small"
-                onClick={() => setEditSection("cliente")}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-          <Divider sx={{ mb: 1 }} />
-          <Box
-            sx={{
-              minHeight: 80,
-              display: "flex",
-              flexDirection: "column",
-              gap: 0.5,
-              alignItems: { xs: "center", sm: "flex-start" },
-              width: { xs: "100%", sm: "auto" },
-              pl: { xs: 1, sm: 0 },
-            }}
-          >
-            {editSection === "cliente" || isRegistering ? (
-              <>
-                <Autocomplete
-                  options={clientes}
-                  getOptionLabel={(opt) =>
-                    opt.nombre + (opt.telefono ? ` (${opt.telefono})` : "")
-                  }
-                  value={null}
-                  inputValue={form.customerName}
-                  onInputChange={(e, newInputValue, reason) => {
-                    if (reason === "input") {
-                      setForm({ ...form, customerName: newInputValue });
-                      setIsEditing(true);
-                    }
-                  }}
-                  onChange={(e, value) => {
-                    if (value && value.nombre) {
-                      setForm({
-                        ...form,
-                        customerName: value.nombre,
-                        customerPhone: value.telefono,
-                      });
-                      setIsEditing(true);
-                    }
-                  }}
-                  sx={{ width: "100%" }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      margin="none"
-                      label="Cliente (Nombre)"
-                      name="customerName"
-                      fullWidth
-                      size="small"
-                      sx={{ mb: 1.5, width: "100%" }}
-                      InputProps={{
-                        ...params.InputProps,
-                        sx: { fontSize: "1rem", py: 0.5 },
-                      }}
-                    />
-                  )}
-                />
-                <TextField
-                  margin="none"
-                  label="Cliente (Teléfono)"
-                  name="customerPhone"
-                  fullWidth
-                  size="small"
-                  value={
-                    form.customerPhone.startsWith("+58")
-                      ? form.customerPhone
-                      : "+58" + form.customerPhone.replace(/^0+/, "")
-                  }
-                  onChange={(e) => {
-                    let value = e.target.value;
-                    // Forzar el prefijo +58
-                    if (!value.startsWith("+58")) {
-                      value = "+58" + value.replace(/^0+/, "");
-                    }
-                    // Solo permitir números después de +58
-                    value = value.replace(/^\+58/, "+58");
-                    const soloNumeros = value.slice(3).replace(/[^\d]/g, "");
-                    value = "+58" + soloNumeros;
-                    setForm({ ...form, customerPhone: value });
-                    setIsEditing(true);
-                  }}
-                  sx={{ mb: 1.5 }}
-                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                  placeholder="+58-424-xxxxxxx"
-                  helperText={
-                    /^\+58\d{10}$/.test(
-                      form.customerPhone.replace(/[-\s]/g, "")
-                    )
-                      ? "Formato: +58-424-xxxxxxx"
-                      : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)"
-                  }
-                  error={
-                    !/^\+58\d{10}$/.test(
-                      form.customerPhone.replace(/[-\s]/g, "")
-                    )
-                  }
-                />
-              </>
-            ) : (
-              <>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: { xs: "row", sm: "column" },
-                    alignItems: { xs: "center", sm: "flex-start" },
-                    gap: { xs: 1, sm: 0 },
-                    width: "100%",
-                    mb: 0.5,
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
-                      color: "text.secondary",
-                      minWidth: 60,
-                    }}
-                  >
-                    Cliente:
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: { xs: "1rem", sm: "1rem" },
-                      fontWeight: 500,
-                    }}
-                  >
-                    {form.customerName}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: { xs: "row", sm: "column" },
-                    alignItems: { xs: "center", sm: "flex-start" },
-                    gap: { xs: 1, sm: 0 },
-                    width: "100%",
-                    mb: 0.5,
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: { xs: "0.90rem", sm: "0.80rem" },
-                      color: "text.secondary",
-                      minWidth: 60,
-                    }}
-                  >
-                    Teléfono:
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontSize: { xs: "1rem", sm: "1rem" },
-                      fontWeight: 500,
-                    }}
-                  >
-                    {form.customerPhone}
-                  </Typography>
-                </Box>
-              </>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            justifyContent: "space-between",
-            px: { xs: 2, sm: 3 },
-            py: { xs: 1.5, sm: 2 },
-            mb: { xs: 0, sm: 2 },
-            gap: { xs: 1, sm: 0 },
-            borderTop: { xs: '1px solid', sm: 'none' },
-            borderColor: { xs: 'divider', sm: 'transparent' },
-            bgcolor: { xs: 'background.paper', sm: 'transparent' },
-          }}
-        >
-          {isRegistering ? (
-            <>
-              <Button
-                onClick={handleClose}
-                variant="outlined"
-                size="small"
-                color="error"
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => {
-                  handleSave();
-                  setOpen(false);
-                  setEditSection(null);
-                  setIsEditing(false);
-                }}
-                variant="contained"
-                size="small"
-                color="primary"
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-                disabled={
-                  !form.vehiculo ||
-                  !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
-                }
-              >
-                Guardar
-              </Button>
-            </>
-          ) : (
-            <>
-              {editSection ? (
-                <>
-                  <Button
-                    onClick={() => {
-                      if (formOriginal) {
-                        setForm(formOriginal);
-                      }
-                      setEditSection(null);
-                      setIsEditing(false);
-                    }}
-                    variant="outlined"
-                    size="small"
-                    color="error"
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  >
-                    Cancelar
-                  </Button>
-                  {isEditing && (
-                    <Button
-                      onClick={handleSave}
-                      variant="contained"
-                      size="small"
-                      color="primary"
-                      disabled={actionLoading}
-                      sx={{ width: { xs: '100%', sm: 'auto' } }}
-                      startIcon={
-                        actionLoading ? (
-                          <CircularProgress color="inherit" size={18} />
-                        ) : null
-                      }
-                    >
-                      {actionLoading ? "Guardando..." : "Guardar"}
-                    </Button>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* WhatsApp button: siempre en una fila separada, por encima del grupo de botones */}
-                  {editId && !editSection && !isRegistering && (
-                    <>
-                      <Button
-                        onClick={handleClose}
-                        variant="outlined"
-                        size="small"
-                        color="primary"
-                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        color="success"
-                        endIcon={<WhatsAppIcon />}
-                        onClick={() => {
-                          if (form.customerPhone) {
-                            let phone = form.customerPhone.trim();
-                            phone = phone.replace(/[-\s]/g, "");
-                            phone = phone.replace(/^\+/, "");
-                            if (phone.startsWith("58")) {
-                            } else if (phone.startsWith("0")) {
-                              phone = "58" + phone.slice(1);
-                            }
-                            window.open(`https://wa.me/${phone}`, "_blank");
-                          }
-                        }}
-                        disabled={!form.customerPhone}
-                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
-                      >
-                        Enviar
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="warning"
-                        size="small"
-                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
-                        onClick={async () => {
-                          // Enviar servicio a cuentas por cobrar
-                          const { db } = await import('../firebase');
-                          const { addDoc, collection } = await import('firebase/firestore');
-                          // Construir objeto para cuentasPorCobrar modalidad servicio
-                          const nuevaCuenta = {
-                            modalidad: 'servicio',
-                            vehiculo: form.vehiculo || '',
-                            servicio: form.servicio || '',
-                            precio: parseFloat(form.precio) || 0,
-                            precioBs: parseFloat(form.precioBs) || 0,
-                            observaciones: `${form.customerName || ''} - ${form.customerPhone || ''}`,
-                            status: 'por_cobrar'
-                          };
-                          await addDoc(collection(db, 'cuentasPorCobrar'), nuevaCuenta);
-                          // Cambiar estado del vehículo a 'por_cobrar' en la colección 'vehiculo'
-                          try {
-                            if (editId) {
-                              const vehiculoActual = vehiculos.find(v => v.id === editId);
-                              if (vehiculoActual) {
-                                const data = sanitizeDeep({ ...vehiculoActual, status: 'por_cobrar' });
-                                await actualizarVehiculo(editId, data);
-                              } else {
-                                // Fallback conservador si no se encuentra en memoria
-                                await actualizarVehiculo(editId, { status: 'por_cobrar' });
-                              }
-                            }
-                          } catch (e) {
-                            console.error('Error actualizando estado a por_cobrar:', e);
-                          }
-                          // Eliminar el vehículo del estado local para que desaparezca del dashboard
-                          if (editId) {
-                            setVehiculos(prev => prev.filter(v => v.id !== editId));
-                          }
-                          setSnackbarMsg('Servicio enviado a cuentas por cobrar');
-                          setSnackbarOpen(true);
-                          setOpen(false);
-                        }}
-                        disabled={(() => {
-                          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.nombre;
-                          const vehiculoActual = vehiculos.find(v => v.id === editId);
-                          const actual = vehiculoActual?.status || vehiculoActual?.estado;
-                          if (!actual) return false;
-                          // Deshabilitar si está en estado final de facturación o ya está en por_cobrar
-                          return (estadoFact && actual === estadoFact) || actual === 'por_cobrar';
-                        })()}
-                        title={(() => {
-                          const estadoFactObj = estadosServicio.find(e => e.defaultFacturar);
-                          const estadoFact = estadoFactObj?.nombre;
-                          const vehiculoActual = vehiculos.find(v => v.id === editId);
-                          const actual = vehiculoActual?.status || vehiculoActual?.estado;
-                          if (!actual) return undefined;
-                          if (estadoFact && actual === estadoFact) {
-                            return `Este servicio ya está en estado "${estadoFactObj?.label || estadoFact}" y no puede ir a Por Cobrar`;
-                          }
-                          if (actual === 'por_cobrar') {
-                            return 'Este servicio ya está en Por Cobrar';
-                          }
-                          return undefined;
-                        })()}
-                      >
-                        Por Cobrar
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        size="small"
-                        startIcon={<PointOfSaleIcon />}
-                        sx={{ width: '100%', minWidth: 120, justifyContent: 'center', textAlign: 'center', px: 2 }}
-                        onClick={() => setFacturaOpen(true)}
-                        disabled={(() => {
-                          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.nombre;
-                          if (!estadoFact) return false;
-                          const vehiculoActual = vehiculos.find(v => v.id === editId);
-                          const actual = vehiculoActual?.status || vehiculoActual?.estado;
-                          return actual === estadoFact;
-                        })()}
-                        title={(() => {
-                          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.label || estadosServicio.find(e => e.defaultFacturar)?.nombre;
-                          const vehiculoActual = vehiculos.find(v => v.id === editId);
-                          const actual = vehiculoActual?.status || vehiculoActual?.estado;
-                          return actual && estadoFact && actual === (estadosServicio.find(e => e.defaultFacturar)?.nombre)
-                            ? 'Este servicio ya está en el estado final de facturación'
-                            : undefined;
-                        })()}
-                      >
-                        Facturar
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </DialogActions>
-        <PaymentModal
-          open={facturaOpen}
-          onClose={() => setFacturaOpen(false)}
-          form={form}
-          onRegister={async (facturaData) => {
-            // Validar que exista al menos un precio
-            if (
-              (form.precio === "" || form.precio === null) &&
-              (form.precioBs === "" || form.precioBs === null)
-            ) {
-              setSnackbarMsg(
-                "No se ha definido un precio para este servicio. No se puede registrar el pago."
-              );
-              setSnackbarOpen(true);
-              return;
+        confirmDeleteOpen={confirmDeleteOpen}
+        onCancelDelete={handleCancelDelete}
+        onConfirmDelete={handleDelete}
+        form={form}
+        onChange={handleChange}
+        editSection={editSection}
+        setEditSection={setEditSection}
+        isRegistering={isRegistering}
+        clientes={clientes}
+        onClienteInputChange={(e, newInputValue, reason) => {
+          if (reason === "input") {
+            setForm({ ...form, customerName: newInputValue });
+            setIsEditing(true);
+          }
+        }}
+        onClienteChange={(e, value) => {
+          if (value && value.nombre) {
+            setForm({
+              ...form,
+              customerName: value.nombre,
+              customerPhone: value.telefono,
+            });
+            setIsEditing(true);
+          }
+        }}
+        onCustomerPhoneChange={(e) => {
+          let value = e.target.value;
+          if (!value.startsWith("+58")) {
+            value = "+58" + value.replace(/^0+/, "");
+          }
+          value = value.replace(/^\+58/, "+58");
+          const soloNumeros = value.slice(3).replace(/[^\d]/g, "");
+          value = "+58" + soloNumeros;
+          setForm({ ...form, customerPhone: value });
+          setIsEditing(true);
+        }}
+        isEditing={isEditing}
+        onSave={handleSave}
+        onCancelEditSection={() => {
+          if (formOriginal) {
+            setForm(formOriginal);
+          }
+          setEditSection(null);
+          setIsEditing(false);
+        }}
+        onRegisterSave={() => {
+          handleSave();
+          setOpen(false);
+          setEditSection(null);
+          setIsEditing(false);
+        }}
+        onWhatsAppSend={() => {
+          if (form.customerPhone) {
+            let phone = form.customerPhone.trim();
+            phone = phone.replace(/[-\s]/g, "");
+            phone = phone.replace(/^\+/, "");
+            if (phone.startsWith("58")) {
+            } else if (phone.startsWith("0")) {
+              phone = "58" + phone.slice(1);
             }
-            // Si el modal envía formasPago, usarlo y eliminar los campos sueltos
-            let nuevoIngreso = {
-              descripcion: `${form.vehiculo} - ${form.servicio}`,
-              factura: facturaData.numeroFactura,
-              fecha: new Date().toLocaleDateString("es-VE"),
-              vehiculoId: editId || null,
-              montoBs:
-                form.precioBs !== undefined &&
-                  form.precioBs !== "" &&
-                  form.precioBs !== null
-                  ? Number(form.precioBs)
-                  : null,
-              monto2:
-                form.precio !== undefined &&
-                  form.precio !== "" &&
-                  form.precio !== null
-                  ? Number(form.precio)
-                  : null,
-            };
-            // monto2 SIEMPRE debe crearse con el input precio en $
-            nuevoIngreso.monto2 =
+            window.open(`https://wa.me/${phone}`, "_blank");
+          }
+        }}
+        onPorCobrar={async () => {
+          const { db } = await import('../firebase');
+          const { addDoc, collection } = await import('firebase/firestore');
+          const nuevaCuenta = {
+            modalidad: 'servicio',
+            vehiculo: form.vehiculo || '',
+            servicio: form.servicio || '',
+            precio: parseFloat(form.precio) || 0,
+            precioBs: parseFloat(form.precioBs) || 0,
+            observaciones: `${form.customerName || ''} - ${form.customerPhone || ''}`,
+            status: 'por_cobrar'
+          };
+          await addDoc(collection(db, 'cuentasPorCobrar'), nuevaCuenta);
+          try {
+            if (editId) {
+              const vehiculoActual = vehiculos.find(v => v.id === editId);
+              if (vehiculoActual) {
+                const data = sanitizeDeep({ ...vehiculoActual, status: 'por_cobrar' });
+                await actualizarVehiculo(editId, data);
+              } else {
+                await actualizarVehiculo(editId, { status: 'por_cobrar' });
+              }
+            }
+          } catch (e) {
+            console.error('Error actualizando estado a por_cobrar:', e);
+          }
+          if (editId) {
+            setVehiculos(prev => prev.filter(v => v.id !== editId));
+          }
+          setSnackbarMsg('Servicio enviado a cuentas por cobrar');
+          setSnackbarOpen(true);
+          setOpen(false);
+        }}
+        porCobrarDisabled={(() => {
+          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.nombre;
+          const vehiculoActual = vehiculos.find(v => v.id === editId);
+          const actual = vehiculoActual?.status || vehiculoActual?.estado;
+          if (!actual) return false;
+          return (estadoFact && actual === estadoFact) || actual === 'por_cobrar';
+        })()}
+        porCobrarTitle={(() => {
+          const estadoFactObj = estadosServicio.find(e => e.defaultFacturar);
+          const estadoFact = estadoFactObj?.nombre;
+          const vehiculoActual = vehiculos.find(v => v.id === editId);
+          const actual = vehiculoActual?.status || vehiculoActual?.estado;
+          if (!actual) return undefined;
+          if (estadoFact && actual === estadoFact) {
+            return `Este servicio ya está en estado "${estadoFactObj?.label || estadoFact}" y no puede ir a Por Cobrar`;
+          }
+          if (actual === 'por_cobrar') {
+            return 'Este servicio ya está en Por Cobrar';
+          }
+          return undefined;
+        })()}
+        onOpenFactura={() => setFacturaOpen(true)}
+        facturarDisabled={(() => {
+          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.nombre;
+          if (!estadoFact) return false;
+          const vehiculoActual = vehiculos.find(v => v.id === editId);
+          const actual = vehiculoActual?.status || vehiculoActual?.estado;
+          return actual === estadoFact;
+        })()}
+        facturarTitle={(() => {
+          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.label || estadosServicio.find(e => e.defaultFacturar)?.nombre;
+          const vehiculoActual = vehiculos.find(v => v.id === editId);
+          const actual = vehiculoActual?.status || vehiculoActual?.estado;
+          return actual && estadoFact && actual === (estadosServicio.find(e => e.defaultFacturar)?.nombre)
+            ? 'Este servicio ya está en el estado final de facturación'
+            : undefined;
+        })()}
+      />
+      <PaymentModal
+        open={facturaOpen}
+        onClose={() => setFacturaOpen(false)}
+        form={form}
+        onRegister={async (facturaData) => {
+          // Validar que exista al menos un precio
+          if (
+            (form.precio === "" || form.precio === null) &&
+            (form.precioBs === "" || form.precioBs === null)
+          ) {
+            setSnackbarMsg(
+              "No se ha definido un precio para este servicio. No se puede registrar el pago."
+            );
+            setSnackbarOpen(true);
+            return;
+          }
+          let nuevoIngreso = {
+            descripcion: `${form.vehiculo} - ${form.servicio}`,
+            factura: facturaData.numeroFactura,
+            fecha: new Date().toLocaleDateString("es-VE"),
+            vehiculoId: editId || null,
+            montoBs:
+              form.precioBs !== undefined &&
+                form.precioBs !== "" &&
+                form.precioBs !== null
+                ? Number(form.precioBs)
+                : null,
+            monto2:
               form.precio !== undefined &&
                 form.precio !== "" &&
                 form.precio !== null
                 ? Number(form.precio)
-                : null;
-            if (
-              Array.isArray(facturaData.formasPago) &&
-              facturaData.formasPago.length > 0
-            ) {
-              nuevoIngreso.formasPago = facturaData.formasPago;
-            } else {
-              // Lógica anterior para una sola forma de pago
-              let monto =
-                facturaData.monto !== undefined &&
-                  facturaData.monto !== null &&
-                  facturaData.monto !== ""
-                  ? Number(facturaData.monto)
+                : null,
+          };
+          nuevoIngreso.monto2 =
+            form.precio !== undefined &&
+              form.precio !== "" &&
+              form.precio !== null
+              ? Number(form.precio)
+              : null;
+          if (
+            Array.isArray(facturaData.formasPago) &&
+            facturaData.formasPago.length > 0
+          ) {
+            nuevoIngreso.formasPago = facturaData.formasPago;
+          } else {
+            let monto =
+              facturaData.monto !== undefined &&
+                facturaData.monto !== null &&
+                facturaData.monto !== ""
+                ? Number(facturaData.monto)
+                : facturaData.formaPago &&
+                  /pago[ _-]?movil/i.test(facturaData.formaPago)
+                  ? Number(form.precioBs) || 0
                   : facturaData.formaPago &&
-                    /pago[ _-]?movil/i.test(facturaData.formaPago)
-                    ? Number(form.precioBs) || 0
-                    : facturaData.formaPago &&
-                      (/zelle/i.test(facturaData.formaPago) ||
-                        /efectivo/i.test(facturaData.formaPago))
-                      ? Number(form.precio) || 0
-                      : Number(form.precio) || Number(form.precioBs) || 0;
-              nuevoIngreso.monto = monto;
-              nuevoIngreso.formaPago = facturaData.formaPago;
-              nuevoIngreso.referencia = facturaData.referencia;
-            }
-            try {
-              const { guardarIngreso } = await import(
-                "../lib/ingresosFirebase"
-              );
-              await guardarIngreso(nuevoIngreso);
-            } catch (e) {
-              setSnackbarMsg("Error al registrar el ingreso");
-              setSnackbarOpen(true);
-              return;
-            }
-            // Actualizar el estado del vehículo al estado defaultFacturar y guardar entregadoPor y fechaEntrega
-            if (editId) {
-              // Buscar el estado defaultFacturar
-              const estadoFacturar = estadosServicio.find(
-                (e) => e.defaultFacturar
-              );
-              const statusFacturar = estadoFacturar
-                ? estadoFacturar.nombre
-                : "entregado";
-              const vehiculoUpdate = {
-                ...form,
-                status: statusFacturar,
-                entregadoPor: (usuarioActivo ? String(usuarioActivo).split('@')[0] : null),
-                fechaEntrega: Date.now(),
-                registradoPor:
-                  vehiculos.find((v) => v.id === editId)?.registradoPor ||
-                  vehiculos.find((v) => v.id === editId)?.usuario ||
-                  null,
-                precioBs: Number(form.precioBs) || null,
-              };
-              Object.keys(vehiculoUpdate).forEach((k) => {
-                if (vehiculoUpdate[k] === undefined) vehiculoUpdate[k] = null;
-              });
-              await actualizarVehiculo(editId, vehiculoUpdate);
-              const actualizados = await obtenerVehiculos();
-              setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
-            }
-            setSnackbarMsg("Pago registrado exitosamente");
+                    (/zelle/i.test(facturaData.formaPago) || /efectivo/i.test(facturaData.formaPago))
+                    ? Number(form.precio) || 0
+                    : Number(form.precio) || Number(form.precioBs) || 0;
+            nuevoIngreso.monto = monto;
+            nuevoIngreso.formaPago = facturaData.formaPago;
+            nuevoIngreso.referencia = facturaData.referencia;
+          }
+          try {
+            const { guardarIngreso } = await import("../lib/ingresosFirebase");
+            await guardarIngreso(nuevoIngreso);
+          } catch (e) {
+            setSnackbarMsg("Error al registrar el ingreso");
             setSnackbarOpen(true);
-            setOpen(false);
+            return;
+          }
+          if (editId) {
+            const estadoFacturar = estadosServicio.find((e) => e.defaultFacturar);
+            const statusFacturar = estadoFacturar ? estadoFacturar.nombre : "entregado";
+            const vehiculoUpdate = {
+              ...form,
+              status: statusFacturar,
+              entregadoPor: (usuarioActivo ? String(usuarioActivo).split('@')[0] : null),
+              fechaEntrega: Date.now(),
+              registradoPor:
+                vehiculos.find((v) => v.id === editId)?.registradoPor ||
+                vehiculos.find((v) => v.id === editId)?.usuario ||
+                null,
+              precioBs: Number(form.precioBs) || null,
+            };
+            Object.keys(vehiculoUpdate).forEach((k) => {
+              if (vehiculoUpdate[k] === undefined) vehiculoUpdate[k] = null;
+            });
+            await actualizarVehiculo(editId, vehiculoUpdate);
+            const actualizados = await obtenerVehiculos();
+            setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
+          }
+          setSnackbarMsg("Pago registrado exitosamente");
+          setSnackbarOpen(true);
+          setOpen(false);
+        }}
+      />
+        {/* Modal para cambiar estado extraído */}
+        <EstadoChangeDialog
+          open={openEstadoModal}
+          onClose={() => setOpenEstadoModal(false)}
+          estados={estadosServicio}
+          vehiculo={vehiculoEstadoModal}
+          onApplyEstado={async (estado, { ocultar }) => {
+            if (!vehiculoEstadoModal) return;
+            const data = sanitizeDeep({
+              ...vehiculoEstadoModal,
+              status: estado.nombre,
+              ...(ocultar
+                ? {
+                    fechaEntrega: Date.now(),
+                    entregadoPor: usuarioActivo
+                      ? String(usuarioActivo).split("@")[0]
+                      : null,
+                  }
+                : {}),
+            });
+            await actualizarVehiculo(vehiculoEstadoModal.id, data);
+            const actualizados = await obtenerVehiculos();
+            setVehiculos(
+              actualizados.filter(
+                (v) => (v.status || v.estado) !== "por_cobrar"
+              )
+            );
           }}
         />
-      </Dialog>
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3500}

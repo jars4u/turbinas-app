@@ -120,6 +120,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
         flexDirection: "column",
         justifyContent: "space-between",
         p: 0.8,
+        bgcolor: 'grey.50',
         cursor: "pointer",
         transition: "box-shadow 0.2s, border-color 0.2s",
         position: "relative",
