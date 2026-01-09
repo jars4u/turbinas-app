@@ -68,12 +68,17 @@ export default function ServicioEditorDialog({
       open={open}
       fullScreen={isXs}
       fullWidth
+      maxWidth="sm"
+      scroll="paper"
+      disableScrollLock={false}
       onClose={onDialogClose}
       PaperProps={{
         sx: {
           borderRadius: { xs: 0, sm: 1 },
-          m: { xs: 0, sm: "auto" },
+          m: { xs: 0, sm: 'auto' },
           bgcolor: "grey.50",
+          height: { xs: 'auto', sm: 'auto' },
+          display: 'block',
         },
       }}
     >
@@ -114,11 +119,12 @@ export default function ServicioEditorDialog({
       <DialogContent
         sx={{
           minWidth: { xs: "auto", sm: 400 },
-          maxWidth: { xs: "100vw", sm: 500 },
-          py: 2,
+          maxWidth: { xs: "100vw", sm: "100%" },
+          py: { xs: 1, sm: 2 },
           position: "relative",
           display: 'block',
-          px: { xs: 2, sm: 3 },
+          overflow: 'visible',
+          px: { xs: 1, sm: 3 },
         }}
       >
         {actionLoading && (
@@ -172,15 +178,17 @@ export default function ServicioEditorDialog({
       <DialogContent
         sx={{
           minWidth: { xs: "auto", sm: 400 },
-          maxWidth: { xs: "100vw", sm: 500 },
+          maxWidth: { xs: "100vw", sm: "100%" },
           display: 'block',
+          overflow: 'visible',
           px: { xs: 1, sm: 3 },
+          py: { xs: 1, sm: 2 },
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={{ xs: 1, sm: 2 }}>
           {/* Tarjeta: Datos de la turbina */}
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+            <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <EngineeringIcon color="primary" fontSize="small" />
@@ -203,7 +211,7 @@ export default function ServicioEditorDialog({
 
           {/* Tarjeta: Datos del servicio */}
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+            <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <BuildCircleIcon color="primary" fontSize="small" />
@@ -231,7 +239,7 @@ export default function ServicioEditorDialog({
                   onChange={onChange}
                   InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
                 />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }}>
                   <TextField
                     margin="none"
                     label="Precio"
@@ -267,7 +275,7 @@ export default function ServicioEditorDialog({
 
           {/* Tarjeta: Datos del cliente */}
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+            <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <PersonIcon color="primary" fontSize="small" />
@@ -331,19 +339,21 @@ export default function ServicioEditorDialog({
         sx={{
           display: "flex",
           flexDirection: { xs: "column", sm: "row" },
-          justifyContent: "space-between",
-          px: { xs: 2, sm: 3 },
-          py: { xs: 1.5, sm: 2 },
-          mb: { xs: 0, sm: 2 },
-          gap: { xs: 1, sm: 0 },
-          borderTop: { xs: "1px solid", sm: "none" },
-          borderColor: { xs: "divider", sm: "transparent" },
-          bgcolor: { xs: "background.paper", sm: "transparent" },
+          alignItems: { xs: "stretch", sm: "center" },
+          justifyContent: "flex-start",
+          px: { xs: 2, sm: 2 },
+          py: { xs: 1.5, sm: 1.5 },
+          mb: 0,
+          gap: 1,
+          borderTop: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          flexWrap: { xs: "nowrap", sm: "nowrap" },
         }}
       >
         {isRegistering ? (
-          <>
-            <Button onClick={onClose} variant="outlined" size="small" color="error" sx={{ width: { xs: "100%", sm: "auto" } }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: '100%' }}>
+            <Button onClick={onClose} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}>
               Cancelar
             </Button>
             <Button
@@ -351,17 +361,44 @@ export default function ServicioEditorDialog({
               variant="contained"
               size="small"
               color="primary"
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}
               disabled={!form.vehiculo || !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))}
             >
               Guardar
             </Button>
-          </>
+          </Box>
         ) : (
-          <>
-             {editSection ? (
-              <>
-                <Button onClick={onCancelEditSection} variant="outlined" size="small" color="error" sx={{ width: { xs: "100%", sm: "auto" } }}>
+          editSection ? (
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: '100%' }}>
+              <Button onClick={onCancelEditSection} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}>
+                Cancelar
+              </Button>
+              {isEditing && (
+                <Button
+                  onClick={onSave}
+                  variant="contained"
+                  size="small"
+                  color="primary"
+                  disabled={actionLoading}
+                  sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}
+                  startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                >
+                  {actionLoading ? "Guardando..." : "Guardar"}
+                </Button>
+              )}
+            </Box>
+          ) : (
+            editId && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                  gap: 1,
+                  width: '100%'
+                }}
+              >
+                <Button onClick={onClose} variant="outlined" size="small" color="primary" sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}>
                   Cancelar
                 </Button>
                 {isEditing && (
@@ -371,72 +408,49 @@ export default function ServicioEditorDialog({
                     size="small"
                     color="primary"
                     disabled={actionLoading}
-                    sx={{ width: { xs: "100%", sm: "auto" } }}
+                    sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
                     startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
                   >
                     {actionLoading ? "Guardando..." : "Guardar"}
                   </Button>
                 )}
-              </>
-            ) : (
-              <>
-                {editId && !editSection && !isRegistering && (
-                  <>
-                    <Button onClick={onClose} variant="outlined" size="small" color="primary" sx={{ width: "100%", minWidth: 120, justifyContent: "center", textAlign: "center", px: 2 }}>
-                      Cancelar
-                    </Button>
-                     {isEditing && (
-                       <Button
-                         onClick={onSave}
-                         variant="contained"
-                         size="small"
-                         color="primary"
-                         disabled={actionLoading}
-                         sx={{ width: "100%", minWidth: 120, justifyContent: "center", textAlign: "center", px: 2 }}
-                         startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
-                       >
-                         {actionLoading ? "Guardando..." : "Guardar"}
-                       </Button>
-                     )}
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="success"
-                      endIcon={<WhatsAppIcon />}
-                      onClick={onWhatsAppSend}
-                      disabled={!form.customerPhone}
-                      sx={{ width: "100%", minWidth: 120, justifyContent: "center", textAlign: "center", px: 2 }}
-                    >
-                      Enviar
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="warning"
-                      size="small"
-                      sx={{ width: "100%", minWidth: 120, justifyContent: "center", textAlign: "center", px: 2 }}
-                      onClick={onPorCobrar}
-                      disabled={porCobrarDisabled}
-                      title={porCobrarTitle}
-                    >
-                      Por Cobrar
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      startIcon={<PointOfSaleIcon />}
-                      sx={{ width: "100%", minWidth: 120, justifyContent: "center", textAlign: "center", px: 2 }}
-                      onClick={onOpenFactura}
-                      disabled={facturarDisabled}
-                      title={facturarTitle}
-                    >
-                      Facturar
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
-          </>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="success"
+                  endIcon={<WhatsAppIcon />}
+                  onClick={onWhatsAppSend}
+                  disabled={!form.customerPhone}
+                  sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
+                >
+                  Enviar
+                </Button>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  size="small"
+                  sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
+                  onClick={onPorCobrar}
+                  disabled={porCobrarDisabled}
+                  title={porCobrarTitle}
+                >
+                  Por Cobrar
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  size="small"
+                  startIcon={<PointOfSaleIcon />}
+                  sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
+                  onClick={onOpenFactura}
+                  disabled={facturarDisabled}
+                  title={facturarTitle}
+                >
+                  Facturar
+                </Button>
+              </Box>
+            )
+          )
         )}
       </DialogActions>
     </Dialog>
