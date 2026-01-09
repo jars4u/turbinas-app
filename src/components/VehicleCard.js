@@ -120,7 +120,6 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
         flexDirection: "column",
         justifyContent: "space-between",
         p: 0.8,
-        bgcolor: 'grey.50',
         cursor: "pointer",
         transition: "box-shadow 0.2s, border-color 0.2s",
         position: "relative",
@@ -215,7 +214,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
             justifyContent: "space-between",
             width: "100%",
             overflow: "hidden",
-            gap: 4
+            gap: 4,
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", minWidth: 60 }}>
