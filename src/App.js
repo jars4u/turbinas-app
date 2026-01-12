@@ -10,6 +10,7 @@ import Configuracion from "./pages/Configuracion";
 import CierreDia from "./pages/CierreDia";
 import AccesoDenegado from "./pages/AccesoDenegado";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import NotasFlotantes from "./components/NotasFlotantes";
 
 function App() {
   return (
@@ -83,6 +84,8 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
       </Routes>
+      {/* Componente de notas flotantes global */}
+      <NotasFlotantes />
     </BrowserRouter>
   );
 }
