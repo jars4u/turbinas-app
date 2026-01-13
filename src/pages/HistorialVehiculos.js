@@ -842,15 +842,17 @@ export default function HistorialVehiculos() {
                 }, 0);
                 return (
                   <>
-                    <Box sx={{ mb: 1, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: 'grey.100', fontWeight: 700 }}>
-                        <span style={{ color: '#666', fontWeight: 500, marginRight: 6 }}>Total efectivo ($)</span>{totalEfectivoUSD.toFixed(2)}
-                      </Box>
-                      <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: 'grey.100', fontWeight: 700 }}>
-                        <span style={{ color: '#666', fontWeight: 500, marginRight: 6 }}>Total Zelle ($)</span>{totalZelleUSD.toFixed(2)}
-                      </Box>
-                      <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: 'grey.100', fontWeight: 700 }}>
-                        <span style={{ color: '#666', fontWeight: 500, marginRight: 6 }}>Total (Bs)</span>{totalBs.toFixed(2)}
+                    <Box sx={{ mb: 0.75, px: 0.75, py: 0.5, bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.200', borderRadius: 1 }}>
+                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', width: '100%' }}>
+                        <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, bgcolor: 'grey.100', fontWeight: 700, fontSize: 11, lineHeight: 1 }}>
+                          <span style={{ color: '#666', fontWeight: 600, marginRight: 4 }}>Ef $</span>{totalEfectivoUSD.toFixed(2)}
+                        </Box>
+                        <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, bgcolor: 'grey.100', fontWeight: 700, fontSize: 11, lineHeight: 1 }}>
+                          <span style={{ color: '#666', fontWeight: 600, marginRight: 4 }}>Ze $</span>{totalZelleUSD.toFixed(2)}
+                        </Box>
+                        <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, bgcolor: 'grey.100', fontWeight: 700, fontSize: 11, lineHeight: 1 }}>
+                          <span style={{ color: '#666', fontWeight: 600, marginRight: 4 }}>Bs</span>{totalBs.toFixed(2)}
+                        </Box>
                       </Box>
                     </Box>
                     {pageRows.map((v, idx) => {
