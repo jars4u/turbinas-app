@@ -1584,11 +1584,11 @@ export default function HistorialVehiculos() {
                           return "Referencia";
                         
                         case "montoEfectivoUSD":
-                          return "Monto efectivo ($)";
+                          return "Efectivo ($)";
                         case "montoZelleUSD":
-                          return "Monto Zelle ($)";
+                          return "Zelle ($)";
                         case "montoBs":
-                          return "Monto pagado (Bs)";
+                          return "Pago móvil (Bs)";
                         case "estadoFactura":
                           return "Estado de facturación";
                         case "status":
