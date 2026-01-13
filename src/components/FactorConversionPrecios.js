@@ -9,6 +9,12 @@ import {
   Divider,
   CircularProgress,
   LinearProgress,
+  Grid,
+  Card,
+  CardContent,
+  Chip,
+  Stack,
+  Tooltip,
 } from "@mui/material";
 
 export default function FactorConversionPrecios({ initialFactor = 1, onSave }) {
@@ -103,6 +109,68 @@ export default function FactorConversionPrecios({ initialFactor = 1, onSave }) {
           </>
         )}
       </Box>
+
+      {/* Ejemplos visuales de conversión */}
+      <Divider sx={{ my: 3 }} />
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Ejemplos de conversión
+        </Typography>
+        <Tooltip title="Los valores se actualizan con el factor">
+          <Chip label={`Factor: ${factor}`} color="primary" variant="outlined" size="small" />
+        </Tooltip>
+      </Stack>
+
+      <Grid container spacing={2}>
+        {[
+          { nombre: 'Servicio', precioUSD: 100 },
+          { nombre: 'Pasta y sello', precioUSD: 120 },
+        ].map(({ nombre, precioUSD }) => {
+          const convertido = precioUSD * (Number(factor) || 1);
+          const formatUSD = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+          const formatVES = (v) => `Bs. ${new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)}`;
+          return (
+            <Grid item xs={12} sm={6} key={nombre}>
+              <Card elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                <CardContent>
+                  <Stack spacing={1.2}>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {nombre}
+                    </Typography>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <Chip label={formatUSD(precioUSD)} size="small" color="success" variant="outlined" />
+                      <Typography variant="caption" color="text.secondary">
+                        Precio base
+                      </Typography>
+                    </Stack>
+
+                    <Divider sx={{ my: 1 }} />
+
+                    <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Typography variant="body2" color="text.secondary">
+                          Conversión
+                        </Typography>
+                        <Chip label={`x ${factor}`} size="small" variant="outlined" />
+                      </Stack>
+                      <Stack direction="row" alignItems="center" spacing={1} sx={{ ml: { sm: 'auto' } }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Valor convertido:
+                        </Typography>
+                        <Chip label={formatVES(convertido)} size="small" color="primary" />
+                      </Stack>
+                    </Stack>
+
+                    <Typography variant="caption" color="text.disabled">
+                      Este cálculo es ilustrativo y cambia al modificar el factor.
+                    </Typography>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
     </Box>
   );
 }
