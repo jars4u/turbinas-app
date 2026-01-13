@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      // El campo customClaims.owner no se usa aquí; usamos el doc de usuarios
+      return isSignedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.owner == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.admin == true
+              || isOwner());
+    }
+
+    // Colección de usuarios
+    match /usuarios/{uid} {
+      allow read: if isAdmin(); // Solo admin/owner pueden listar/leer otros usuarios
+
+      // Un usuario puede leer su propio doc
+      allow get: if isSignedIn() && uid == request.auth.uid;
+
+      // Crear usuario: solo Owner
+      allow create: if isOwner();
+
+      // Actualizar: el usuario puede actualizar su propio perfil excepto admin/owner
+      allow update: if isSignedIn() && uid == request.auth.uid &&
+                       !("admin" in request.resource.data.diff(resource.data).changedKeys() ||
+                         "owner" in request.resource.data.diff(resource.data).changedKeys());
+
+      // Actualizar roles admin/owner: solo Owner
+      allow update: if isOwner();
+
+      // Eliminar usuario: solo Owner
+      allow delete: if isOwner();
+    }
+
+    // EJEMPLO para otras colecciones: permitir escribir solo a admin/owner
+    match /configuraciones/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Por defecto, denegar todo
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

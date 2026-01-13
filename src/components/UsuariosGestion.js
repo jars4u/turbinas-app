@@ -53,6 +53,7 @@ export default function UsuariosGestion() {
     clave: "",
     admin: false,
     owner: false,
+    observer: false,
   });
   const [repeatClave, setRepeatClave] = useState("");
   const [claveError, setClaveError] = useState("");
@@ -68,6 +69,7 @@ export default function UsuariosGestion() {
       await registrarUsuario(form.usuario, form.clave, {
         admin: form.admin,
         owner: form.owner,
+        observer: form.observer,
       });
       const nuevosUsuarios = await obtenerUsuarios();
       setUsuarios(nuevosUsuarios);
@@ -109,6 +111,7 @@ export default function UsuariosGestion() {
   // Microfeedback de guardado en toggles
   const [savingAdminId, setSavingAdminId] = useState(null);
   const [savingOwnerId, setSavingOwnerId] = useState(null);
+  const [savingObserverId, setSavingObserverId] = useState(null);
 
   const handleDelete = (id) => {
     const user = usuarios.find((u) => u.id === id);
@@ -238,6 +241,30 @@ export default function UsuariosGestion() {
                     <CircularProgress size={14} sx={{ ml: 0.5 }} />
                   )}
                 </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption">Observer</Typography>
+                  <Checkbox
+                    checked={!!u.observer}
+                    onChange={async () => {
+                      if (isOwner) {
+                        setSavingObserverId(u.id);
+                        try {
+                          await actualizarUsuario(u.id, { observer: !u.observer });
+                          const nuevosUsuarios = await obtenerUsuarios();
+                          setUsuarios(nuevosUsuarios);
+                        } finally {
+                          setSavingObserverId(null);
+                        }
+                      }
+                    }}
+                    color="default"
+                    sx={{ p: 0.5 }}
+                    disabled={!isOwner || savingObserverId === u.id}
+                  />
+                  {savingObserverId === u.id && (
+                    <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                  )}
+                </Box>
               </Box>
               <Tooltip title="Eliminar">
                 <span>
@@ -316,6 +343,17 @@ export default function UsuariosGestion() {
                     }}
                   >
                     Owner
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      py: 0.5,
+                      px: 1,
+                      fontSize: 12,
+                      flex: 1,
+                      textAlign: "center",
+                    }}
+                  >
+                    Observer
                   </TableCell>
                   <TableCell
                     sx={{
@@ -411,6 +449,40 @@ export default function UsuariosGestion() {
                           disabled={!isOwner || savingOwnerId === u.id}
                         />
                         {savingOwnerId === u.id && (
+                          <CircularProgress size={14} sx={{ ml: 0.5 }} />
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell
+                      sx={{ py: 0.5, px: 1, flex: 1, textAlign: "center" }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          height: "100%",
+                        }}
+                      >
+                        <Checkbox
+                          checked={!!u.observer}
+                          onChange={async () => {
+                            if (isOwner) {
+                              setSavingObserverId(u.id);
+                              try {
+                                await actualizarUsuario(u.id, { observer: !u.observer });
+                                const nuevosUsuarios = await obtenerUsuarios();
+                                setUsuarios(nuevosUsuarios);
+                              } finally {
+                                setSavingObserverId(null);
+                              }
+                            }
+                          }}
+                          color="default"
+                          sx={{ p: 0.5 }}
+                          disabled={!isOwner || savingObserverId === u.id}
+                        />
+                        {savingObserverId === u.id && (
                           <CircularProgress size={14} sx={{ ml: 0.5 }} />
                         )}
                       </Box>
@@ -530,6 +602,15 @@ export default function UsuariosGestion() {
                 disabled={!isOwner}
               />
               <Typography>Owner</Typography>
+              <Checkbox
+                checked={form.observer}
+                onChange={(e) =>
+                  isOwner && setForm({ ...form, observer: e.target.checked })
+                }
+                sx={{ ml: 2 }}
+                disabled={!isOwner}
+              />
+              <Typography>Observer</Typography>
             </Box>
           </Box>
         </DialogContent>

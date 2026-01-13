@@ -1,6 +1,6 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 
 import {
@@ -39,6 +39,7 @@ import { guardarCierreDiario } from "../lib/cierresDiariosFirebase";
 
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
+import AccesoDenegado from "./AccesoDenegado";
 
 export default function CierreDia() {
   const { isAdmin, isOwner } = useAuth();
@@ -58,11 +59,13 @@ export default function CierreDia() {
     obtenerVehiculos().then(setVehiculos);
     obtenerEstadosServicio().then(setEstadosServicio);
     fetchTasaBCV();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Guardar cierre automáticamente al final del día
   useEffect(() => {
     async function guardarCierreAutomatico() {
+      if (!(isAdmin || isOwner)) return; // Solo admin/owner pueden guardar
       if (vehiculos.length === 0 || estadosServicio.length === 0 || !tasaBCV || cierreGuardado) return;
       // Calcular totales
       const hoy = new Date();
@@ -96,10 +99,10 @@ export default function CierreDia() {
     if (ahora.getHours() === 23 && ahora.getMinutes() >= 55) {
       guardarCierreAutomatico();
     }
-  }, [vehiculos, estadosServicio, tasaBCV, cierreGuardado]);
+  }, [vehiculos, estadosServicio, tasaBCV, cierreGuardado, isAdmin, isOwner]);
 
   // --- Función para obtener la tasa del BCV ---
-  const fetchTasaBCV = async () => {
+  const fetchTasaBCV = useCallback(async () => {
     setLoadingTasa(true);
     setMostrarInputTasa(false);
     try {
@@ -110,7 +113,9 @@ export default function CierreDia() {
       const data = await response.json();
       if (data && data.price) {
         setTasaBCV(data.price);
-        guardarTasaBCV(data.price); // Guardar en Firestore
+        if (isAdmin || isOwner) {
+          guardarTasaBCV(data.price); // Guardar en Firestore solo admin/owner
+        }
         if (!sessionStorage.getItem("tasaBCVManual")) {
           sessionStorage.removeItem("tasaBCVManual");
         }
@@ -127,7 +132,9 @@ export default function CierreDia() {
           : null;
         if (oficialObj && oficialObj.promedio) {
           setTasaBCV(oficialObj.promedio);
-          guardarTasaBCV(oficialObj.promedio); // Guardar en Firestore
+          if (isAdmin || isOwner) {
+            guardarTasaBCV(oficialObj.promedio); // Guardar en Firestore solo admin/owner
+          }
           if (!sessionStorage.getItem("tasaBCVManual")) {
             sessionStorage.removeItem("tasaBCVManual");
           }
@@ -167,7 +174,7 @@ export default function CierreDia() {
       }
     }
     setLoadingTasa(false);
-  };
+  }, [isAdmin, isOwner]);
 
   // Calcular totales por estado sincronizado
   const totalesPorEstado = estadosServicio
@@ -180,36 +187,7 @@ export default function CierreDia() {
     .filter((estado) => estado.nombre !== "entregado");
 
   if (!isAdmin && !isOwner) {
-    return (
-      <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
-        <Button
-          variant="text"
-          startIcon={<ArrowBackIcon />}
-          size="small"
-          sx={{ mb: 2 }}
-          onClick={() => navigate("/dashboard")}
-        >
-          Atrás
-        </Button>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-          <PointOfSaleIcon fontSize="small" />
-          <Typography variant="h5" fontWeight={600}>
-            Cierre del día
-          </Typography>
-        </Box>
-        <Divider sx={{ mb: 2 }} />
-        <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img
-            src="/animaciones/User%20Authentication.gif"
-            alt="Sin permisos de administrador"
-            style={{ maxWidth: 220, marginBottom: 16 }}
-          />
-          <Typography variant="body1" align="center" px={15}>
-            No tienes permisos de administrador para acceder a la configuración, contacta a un administrador o solicita acceso.
-          </Typography>
-        </Box>
-      </Container>
-    );
+    return <AccesoDenegado />;
   }
   return (
   <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
@@ -291,12 +269,14 @@ export default function CierreDia() {
                   color="primary"
                   size="small"
                   sx={{ mt: 1, ml: 1 }}
-                  disabled={!tasaManual}
+                  disabled={!tasaManual || !(isAdmin || isOwner)}
                   onClick={async () => {
                     setTasaBCV(parseFloat(tasaManual));
                     sessionStorage.setItem("tasaBCVManual", tasaManual);
                     setMostrarInputTasa(false);
-                    await guardarTasaBCV(parseFloat(tasaManual)); // Guardar manual en Firestore
+                    if (isAdmin || isOwner) {
+                      await guardarTasaBCV(parseFloat(tasaManual)); // Guardar manual en Firestore
+                    }
                   }}
                 >
                   Usar tasa

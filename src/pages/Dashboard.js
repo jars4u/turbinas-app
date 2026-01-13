@@ -91,7 +91,7 @@ export default function Dashboard() {
     };
   }, []);
   // Estado para el modal de confirmación de ocultar servicio (migrado al componente EstadoChangeDialog)
-  const { usuario, handleLogout } = useAuth();
+  const { usuario, handleLogout, isObserver } = useAuth();
   // Estado para modal de cambio de estado
   const [openEstadoModal, setOpenEstadoModal] = useState(false);
   const [vehiculoEstadoModal, setVehiculoEstadoModal] = useState(null);
@@ -156,6 +156,11 @@ export default function Dashboard() {
   // usuario.email está disponible desde el contexto
   const usuarioActivo = usuario?.email || "";
   const handleStatusChange = async (id, newStatus) => {
+    if (isObserver) {
+      setSnackbarMsg("Rol observador: no puedes cambiar estados.");
+      setSnackbarOpen(true);
+      return;
+    }
     const vehiculo = vehiculos.find((v) => v.id === id);
     if (!vehiculo) return;
     // Verificar si el estado destino es "dejar de mostrar"
@@ -256,6 +261,11 @@ export default function Dashboard() {
   }, [loadingVehiculos, calcularInicioHoy, vehiculosRaw]);
 
   const confirmarInicioDia = async () => {
+    if (isObserver) {
+      setSnackbarMsg("Rol observador: no puedes guardar el inicio del día.");
+      setSnackbarOpen(true);
+      return;
+    }
     try {
       const d = new Date();
       const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -323,6 +333,11 @@ export default function Dashboard() {
   const isRegistering = editId === null;
 
   const handleOpen = (vehiculo) => {
+    if (isObserver) {
+      setSnackbarMsg("Rol observador: no puedes registrar ni editar servicios.");
+      setSnackbarOpen(true);
+      return;
+    }
     if (vehiculo) {
       const nuevoForm = {
         vehiculo: vehiculo.vehiculo || "",
@@ -404,6 +419,11 @@ export default function Dashboard() {
   };
 
   const handleSave = async () => {
+    if (isObserver) {
+      setSnackbarMsg("Rol observador: no puedes guardar cambios.");
+      setSnackbarOpen(true);
+      return;
+    }
     const vehiculoData = {
       vehiculo: form.vehiculo ? form.vehiculo.toUpperCase() : "",
       placa: form.placa ? form.placa.toUpperCase() : "",
@@ -495,6 +515,11 @@ export default function Dashboard() {
   };
 
   const handleDelete = async () => {
+    if (isObserver) {
+      setSnackbarMsg("Rol observador: no puedes eliminar servicios.");
+      setSnackbarOpen(true);
+      return;
+    }
     if (!editId) {
       setSnackbarMsg("No se pudo eliminar: servicio no válido.");
       setSnackbarOpen(true);
@@ -545,6 +570,7 @@ export default function Dashboard() {
           navigate("/");
         }}
         navigate={navigate}
+        isObserver={isObserver}
         searchValue={busqueda}
         onSearchChange={setBusqueda}
       />
@@ -640,6 +666,7 @@ export default function Dashboard() {
               width: { xs: "100%", sm: "auto" },
               maxWidth: { xs: 320, sm: "none" },
             }}
+            disabled={isObserver}
           >
             Registrar servicio
           </Button>
@@ -1316,6 +1343,11 @@ export default function Dashboard() {
         onClose={() => setFacturaOpen(false)}
         form={form}
         onRegister={async (facturaData) => {
+          if (isObserver) {
+            setSnackbarMsg("Rol observador: no puedes registrar pagos.");
+            setSnackbarOpen(true);
+            return;
+          }
           // Validar que exista al menos un precio
           if (
             (form.precio === "" || form.precio === null) &&
@@ -1414,6 +1446,11 @@ export default function Dashboard() {
           estados={estadosServicio}
           vehiculo={vehiculoEstadoModal}
           onApplyEstado={async (estado, { ocultar }) => {
+            if (isObserver) {
+              setSnackbarMsg("Rol observador: no puedes cambiar estados.");
+              setSnackbarOpen(true);
+              return;
+            }
             if (!vehiculoEstadoModal) return;
             const data = sanitizeDeep({
               ...vehiculoEstadoModal,

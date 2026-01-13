@@ -24,7 +24,7 @@ export default function AccesoDenegado() {
           color="primary"
           onClick={() => navigate("/")}
         >
-          Ir a Login
+          Volver
         </Button>
       </Box>
     </Container>

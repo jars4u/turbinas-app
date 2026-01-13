@@ -11,7 +11,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
 
-export default function AppHeader({ usuarioActivo, onLogout, navigate, searchValue = "", onSearchChange, searchPlaceholder = "Buscar cliente, modelo, servicio..." }) {
+export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserver = false, searchValue = "", onSearchChange, searchPlaceholder = "Buscar cliente, modelo, servicio..." }) {
   const [actionsAnchor, setActionsAnchor] = React.useState(null);
   const actionsOpen = Boolean(actionsAnchor);
   const handleOpenActions = (e) => setActionsAnchor(e.currentTarget);
@@ -237,13 +237,14 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, searchVal
                   </IconButton>
                 </span>
               </Tooltip>
-              <Tooltip title="Configuración" arrow>
+              <Tooltip title={isObserver ? "Sin acceso" : "Configuración"} arrow>
                 <span>
                   <IconButton
                     color="default"
                     size="small"
                     sx={{ color: "#757575" }}
-                    onClick={() => navigate("/configuracion")}
+                    onClick={() => !isObserver && navigate("/configuracion")}
+                    disabled={isObserver}
                     aria-label="Ir a configuración"
                   >
                     <SettingsIcon />
@@ -284,7 +285,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, searchVal
                 <ListItemIcon><PointOfSaleIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Cierre del día" />
               </MenuItem>
-              <MenuItem onClick={() => { handleCloseActions(); navigate('/configuracion'); }}>
+              <MenuItem disabled={isObserver} onClick={() => { handleCloseActions(); if (!isObserver) navigate('/configuracion'); }}>
                 <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Configuración" />
               </MenuItem>

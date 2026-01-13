@@ -13,8 +13,11 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import ResumenInventario from "../components/ResumenInventario";
 import MovimientosInventario from "../components/MovimientosInventario";
+import { useAuth } from "../context/AuthContext";
+import AccesoDenegado from "./AccesoDenegado";
 
 export default function Inventario({ usuarioActivo }) {
+  const { isObserver } = useAuth();
   const [movimientos, setMovimientos] = React.useState([]);
   // Sincronización en tiempo real con Firestore para movimientos
   React.useEffect(() => {
@@ -135,6 +138,9 @@ export default function Inventario({ usuarioActivo }) {
     }
   }
 
+  if (isObserver) {
+    return <AccesoDenegado />;
+  }
   return (
     <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
       <Button
