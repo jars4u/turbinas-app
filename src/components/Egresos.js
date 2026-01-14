@@ -3,7 +3,6 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs from "dayjs";
-import { Timestamp } from "firebase/firestore";
 import { guardarEgreso, obtenerEgresos } from "../lib/egresosFirebase";
 import {
   Box,
@@ -24,6 +23,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import LinearProgress from "@mui/material/LinearProgress";
+import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -113,6 +113,8 @@ export default function Egresos({ tasaBCV, isOwner }) {
   const handleAddEgreso = async () => {
     if (!descripcion || (!montoUSD && !montoBs) || (montoUSD && montoBs))
       return;
+    setLoading(true);
+    try {
     const hoy = new Date();
     const d = String(hoy.getDate()).padStart(2, "0");
     const m = String(hoy.getMonth() + 1).padStart(2, "0");
@@ -169,6 +171,9 @@ export default function Egresos({ tasaBCV, isOwner }) {
     setMontoUSD("");
     setMontoBs("");
     setTasa(tasaBCV || "");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Eliminar egreso
@@ -179,6 +184,8 @@ export default function Egresos({ tasaBCV, isOwner }) {
 
   const confirmDelete = async () => {
     if (deleteId) {
+      setLoading(true);
+      try {
       const { getFirestore, doc, deleteDoc } = await import(
         "firebase/firestore"
       );
@@ -188,6 +195,9 @@ export default function Egresos({ tasaBCV, isOwner }) {
       setEgresos((prev) => prev.filter((e) => e.id !== deleteId));
       setConfirmOpen(false);
       setDeleteId(null);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -221,18 +231,25 @@ export default function Egresos({ tasaBCV, isOwner }) {
 
   // Guardar edición
   const handleSaveEdit = async (id) => {
-    if (!editDescripcion || (!editMontoUSD && !editMontoBs)) return;
-    const { getFirestore, doc, updateDoc } = await import("firebase/firestore");
+    if (!editDescripcion) return;
+    setLoading(true);
+    const { getFirestore, doc, updateDoc, deleteField } = await import("firebase/firestore");
     const firestore = getFirestore();
     const egresoEditado = {
       descripcion: editDescripcion,
-      fecha: Timestamp.now(),
     };
-    if (editMontoUSD) egresoEditado.montoUSD = Number(editMontoUSD);
-    if (editMontoBs) egresoEditado.montoBs = Number(editMontoBs);
-    if (editTasa) egresoEditado.tasa = Number(editTasa);
-    await updateDoc(doc(firestore, "egresos", id), egresoEditado);
-    const actualizados = await obtenerEgresos();
+    egresoEditado.montoUSD = (editMontoUSD !== "" && !isNaN(Number(editMontoUSD)))
+      ? Number(editMontoUSD)
+      : deleteField();
+    egresoEditado.montoBs = (editMontoBs !== "" && !isNaN(Number(editMontoBs)))
+      ? Number(editMontoBs)
+      : deleteField();
+    egresoEditado.tasa = (editTasa !== "" && !isNaN(Number(editTasa)))
+      ? Number(editTasa)
+      : deleteField();
+    try {
+      await updateDoc(doc(firestore, "egresos", id), egresoEditado);
+      const actualizados = await obtenerEgresos();
     const egresosConFecha = actualizados.map((e) => {
       let fechaDate = null;
       let fechaStr = "";
@@ -269,6 +286,9 @@ export default function Egresos({ tasaBCV, isOwner }) {
     setEditMontoUSD("");
     setEditMontoBs("");
     setEditTasa("");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Cancelar edición
@@ -293,7 +313,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
           <Button onClick={cancelDelete} color="primary">
             Cancelar
           </Button>
-          <Button onClick={confirmDelete} color="error" autoFocus>
+          <Button onClick={confirmDelete} color="error" autoFocus disabled={loading} startIcon={loading ? <CircularProgress size={16} /> : null}>
             Eliminar
           </Button>
         </DialogActions>
@@ -364,7 +384,8 @@ export default function Egresos({ tasaBCV, isOwner }) {
               variant="contained"
               color="primary"
               onClick={handleAddEgreso}
-              disabled={!descripcion || (!montoUSD && !montoBs)}
+              disabled={!descripcion || (!montoUSD && !montoBs) || (montoUSD && montoBs) || loading}
+              startIcon={loading ? <CircularProgress size={16} /> : null}
             >
               +
             </Button>
@@ -425,7 +446,8 @@ export default function Egresos({ tasaBCV, isOwner }) {
                   variant="contained"
                   color="primary"
                   onClick={handleAddEgreso}
-                  disabled={!descripcion || (!montoUSD && !montoBs)}
+                  disabled={!descripcion || (!montoUSD && !montoBs) || (montoUSD && montoBs) || loading}
+                  startIcon={loading ? <CircularProgress size={16} /> : null}
                   sx={{ mb: 1 }}
                 >
                   Agregar
@@ -642,8 +664,8 @@ export default function Egresos({ tasaBCV, isOwner }) {
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
                         {enEdicion ? (
                           <>
-                            <Button color="success" size="small" onClick={() => handleSaveEdit(e.id)} sx={{ minWidth: 32 }}>Guardar</Button>
-                            <Button color="error" size="small" onClick={handleCancelEdit} sx={{ minWidth: 32 }}>Cancelar</Button>
+                            <Button color="success" size="small" onClick={() => handleSaveEdit(e.id)} sx={{ minWidth: 32 }} disabled={loading} startIcon={loading ? <CircularProgress size={14} /> : null}>Guardar</Button>
+                            <Button color="error" size="small" onClick={handleCancelEdit} sx={{ minWidth: 32 }} disabled={loading}>Cancelar</Button>
                           </>
                         ) : (
                           <>
@@ -873,6 +895,8 @@ export default function Egresos({ tasaBCV, isOwner }) {
                               size="small"
                               onClick={() => handleSaveEdit(e.id)}
                               sx={{ minWidth: 32 }}
+                              disabled={loading}
+                              startIcon={loading ? <CircularProgress size={14} /> : null}
                             >
                               Guardar
                             </Button>
@@ -881,6 +905,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
                               size="small"
                               onClick={handleCancelEdit}
                               sx={{ minWidth: 32 }}
+                              disabled={loading}
                             >
                               Cancelar
                             </Button>

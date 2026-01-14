@@ -1,9 +1,11 @@
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc } from "firebase/firestore";
+import { obtenerFactorConversion } from "./factorConversionFirebase";
 
 const db = getFirestore();
 const INGRESOS_COLLECTION = "ingresosMovimientos";
 
 export async function guardarIngreso(ingreso) {
+  const factor = await obtenerFactorConversion();
   const fechaStr = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   // Filtra todos los campos undefined o null
   let mov = Object.fromEntries(
@@ -12,6 +14,24 @@ export async function guardarIngreso(ingreso) {
   );
   // Si ya existe formasPago como array, respétalo y no reproceses los campos sueltos
   if (Array.isArray(mov.formasPago) && mov.formasPago.length > 0) {
+    // Asegurar factor/usdEquiv para pago movil y normalizar montoBs
+    mov.formasPago = mov.formasPago.map(fp => {
+      const formaNorm = (fp.formaPago || '').toString().trim().toLowerCase();
+      if (formaNorm === 'pago movil') {
+        const montoBs = fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))
+          ? Number(fp.montoBs)
+          : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : undefined);
+        if (montoBs !== undefined) {
+          return {
+            ...fp,
+            montoBs,
+            factorConversion: Number(factor),
+            usdEquiv: Number(factor) ? (montoBs / Number(factor)) : undefined,
+          };
+        }
+      }
+      return fp;
+    });
     // Elimina los campos sueltos para evitar duplicidad
     delete mov.formaPago;
     delete mov.monto;
@@ -24,13 +44,13 @@ export async function guardarIngreso(ingreso) {
       Object.fromEntries(Object.entries({
         formaPago: mov.formaPago,
         ...(mov.formaPago === 'pago movil'
-          ? { montoBs: Number(mov.monto), referencia: mov.referencia }
+          ? { montoBs: Number(mov.monto), referencia: mov.referencia, factorConversion: Number(factor), usdEquiv: Number(factor) ? (Number(mov.monto) / Number(factor)) : undefined }
           : { monto: Number(mov.monto), referencia: mov.referencia })
       }).filter(([_, v]) => v !== undefined && v !== null)),
       Object.fromEntries(Object.entries({
         formaPago: mov.formaPago2,
         ...(mov.formaPago2 === 'pago movil'
-          ? { montoBs: Number(mov.monto2), referencia: mov.referencia2 }
+          ? { montoBs: Number(mov.monto2), referencia: mov.referencia2, factorConversion: Number(factor), usdEquiv: Number(factor) ? (Number(mov.monto2) / Number(factor)) : undefined }
           : { monto: Number(mov.monto2), referencia: mov.referencia2 })
       }).filter(([_, v]) => v !== undefined && v !== null))
     ];
@@ -45,7 +65,7 @@ export async function guardarIngreso(ingreso) {
       Object.fromEntries(Object.entries({
         formaPago: mov.formaPago,
         ...(mov.formaPago === 'pago movil'
-          ? { montoBs: Number(mov.monto), referencia: mov.referencia }
+          ? { montoBs: Number(mov.monto), referencia: mov.referencia, factorConversion: Number(factor), usdEquiv: Number(factor) ? (Number(mov.monto) / Number(factor)) : undefined }
           : { monto: Number(mov.monto), referencia: mov.referencia })
       }).filter(([_, v]) => v !== undefined && v !== null))
     ];

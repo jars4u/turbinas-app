@@ -592,12 +592,31 @@ export default function ResumenContable({ tasaBCV }) {
                                 (fp) =>
                                   (fp.formaPago || "").trim().toLowerCase() ===
                                   "pago movil" &&
-                                  fp.monto !== undefined &&
-                                  fp.monto !== null &&
-                                  !isNaN(Number(fp.monto))
+                                  ((fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) || (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))))
                               )
-                              .reduce((sum, fp) => sum + Number(fp.monto), 0)
+                              .reduce((sum, fp) => {
+                                const montoBs = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                                  ? Number(fp.montoBs)
+                                  : Number(fp.monto);
+                                return sum + montoBs;
+                              }, 0)
                           );
+                        }
+                        return acc;
+                      }, 0);
+                      let totalBsUSD = ingresos.reduce((acc, i) => {
+                        if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
+                          return acc + i.formasPago
+                            .filter(fp => (fp.formaPago || '').trim().toLowerCase() === 'pago movil')
+                            .reduce((sum, fp) => {
+                              const montoBs = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                                ? Number(fp.montoBs)
+                                : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
+                              const usdEq = (fp.usdEquiv !== undefined && fp.usdEquiv !== null && !isNaN(Number(fp.usdEquiv)))
+                                ? Number(fp.usdEquiv)
+                                : (factorConversion ? (montoBs / factorConversion) : 0);
+                              return sum + usdEq;
+                            }, 0);
                         }
                         return acc;
                       }, 0);
@@ -627,9 +646,9 @@ export default function ResumenContable({ tasaBCV }) {
                       )}`;
                       texto += `\n`;
                       // Total Pago Móvil en Bs y en $
-                      texto += `Total Pago Movil: Bs. ${totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })} / $ ${(totalBs / factorConversion).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+                      texto += `Total Pago Movil: Bs. ${totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })} / $ ${totalBsUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
                       // Total $ en cierre
-                      const totalCierreUSD = totalUSD + (totalBs / factorConversion);
+                      const totalCierreUSD = totalUSD + totalBsUSD;
                       texto += `\nTotal $ en cierre: $ ${totalCierreUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
                       // Abrir WhatsApp con el texto
                       const url = `https://wa.me/?text=${encodeURIComponent(
@@ -765,7 +784,7 @@ export default function ResumenContable({ tasaBCV }) {
                               .trim()
                               .toLowerCase();
                             if (!desglose[formaNorm])
-                              desglose[formaNorm] = { usd: 0, bs: 0 };
+                              desglose[formaNorm] = { usd: 0, bs: 0, usdEquivBs: 0 };
                             if (
                               ["zelle", "efectivo", "$", "usd"].includes(
                                 formaNorm
@@ -776,13 +795,15 @@ export default function ResumenContable({ tasaBCV }) {
                             ) {
                               desglose[formaNorm].usd += Number(fp.monto);
                             }
-                            if (
-                              formaNorm === "pago movil" &&
-                              fp.monto !== undefined &&
-                              fp.monto !== null &&
-                              !isNaN(Number(fp.monto))
-                            ) {
-                              desglose[formaNorm].bs += Number(fp.monto);
+                            if (formaNorm === "pago movil") {
+                              const montoBs = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                                ? Number(fp.montoBs)
+                                : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
+                              desglose[formaNorm].bs += montoBs;
+                              const usdEquiv = (fp.usdEquiv !== undefined && fp.usdEquiv !== null && !isNaN(Number(fp.usdEquiv)))
+                                ? Number(fp.usdEquiv)
+                                : (factorConversion ? (montoBs / factorConversion) : 0);
+                              desglose[formaNorm].usdEquivBs += usdEquiv;
                             }
                           });
                         }
@@ -804,9 +825,7 @@ export default function ResumenContable({ tasaBCV }) {
                               {formaNorm === "pago movil"
                                 ? ` Bs. ${montos.bs.toLocaleString("de-DE", {
                                   minimumFractionDigits: 2,
-                                })} ($ ${(
-                                  montos.bs / factorConversion
-                                ).toLocaleString("en-US", {
+                                })} ($ ${montos.usdEquivBs.toLocaleString("en-US", {
                                   minimumFractionDigits: 2,
                                 })})  `
                                 : ` $ ${montos.usd.toLocaleString("en-US", {
@@ -838,7 +857,7 @@ export default function ResumenContable({ tasaBCV }) {
                       })}`;
                     })()}
                   </Typography>
-                  <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                  {/* <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Utilidad:</b>
                     {(() => {
                       // Calcular utilidad por divisa: ingresos menos egresos en cada moneda
@@ -871,7 +890,7 @@ export default function ResumenContable({ tasaBCV }) {
                       const utilidadBs = ingresosBs - egresosBs;
                       return ` $ ${utilidadUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${utilidadBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
                     })()}
-                  </Typography>
+                  </Typography> */}
                   <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Caja chica:</b>
                     {(() => {

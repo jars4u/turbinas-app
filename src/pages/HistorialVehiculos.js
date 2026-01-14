@@ -137,6 +137,7 @@ export default function HistorialVehiculos() {
     montoEfectivoUSD: true,
     montoZelleUSD: true,
     montoBs: true,
+    factor: true,
     status: true,
     registradoPor: true,
     entregadoPor: true,
@@ -241,6 +242,8 @@ export default function HistorialVehiculos() {
       const val = v[k];
       if (val) values.push(String(val));
     });
+    // Factor (para pagos en Bs)
+    if (v.factor) values.push(String(v.factor));
     return values;
   }, [getEstadoLabel]);
 
@@ -297,6 +300,7 @@ export default function HistorialVehiculos() {
         let montosEfectivoUSD = [];
         let montosZelleUSD = [];
         let montosBs = [];
+          let factores = [];
         let estadosFactura = [];
         const pagoMovilRegex = /pago[\s\u00A0_-]*m[oó]vil/i;
         const usdRegex = /zelle|efectivo|d[oó]lar(es)?|usd/i;
@@ -310,6 +314,9 @@ export default function HistorialVehiculos() {
               if (fp.formaPago && pagoMovilRegex.test(fp.formaPago)) {
                 if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
                 else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
+                  if (fp.factorConversion !== undefined && fp.factorConversion !== null && !isNaN(Number(fp.factorConversion))) {
+                    factores.push(Number(fp.factorConversion).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                  }
               } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
                 if (fp.monto !== undefined) {
                   montosUSD.push(`$${fp.monto}`);
@@ -324,6 +331,9 @@ export default function HistorialVehiculos() {
             if (ing.formaPago && pagoMovilRegex.test(ing.formaPago)) {
               if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
               else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
+                if (ing.factorConversion !== undefined && ing.factorConversion !== null && !isNaN(Number(ing.factorConversion))) {
+                  factores.push(Number(ing.factorConversion).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                }
             } else if (ing.formaPago && usdRegex.test(ing.formaPago)) {
               if (ing.monto !== undefined) {
                 montosUSD.push(`$${ing.monto}`);
@@ -344,6 +354,7 @@ export default function HistorialVehiculos() {
           montoEfectivoUSD: montosEfectivoUSD.length ? montosEfectivoUSD.join(", ") : "-",
           montoZelleUSD: montosZelleUSD.length ? montosZelleUSD.join(", ") : "-",
           montoBs: montosBs.length ? montosBs.join(", ") : "-",
+            factor: factores.length ? factores.join(", ") : "-",
           estadoFactura: estadosFactura.length ? estadosFactura.join(", ") : "-",
         };
       });
@@ -357,6 +368,7 @@ export default function HistorialVehiculos() {
         let montosEfectivoUSD = [];
         let montosZelleUSD = [];
         let montosBs = [];
+        let factores = [];
         const pagoMovilRegex = /pago[\s\u00A0_-]*m[oó]vil/i;
         const usdRegex = /zelle|efectivo|d[oó]lar(es)?|usd/i;
         const efectivoRegex = /efectivo/i;
@@ -368,6 +380,9 @@ export default function HistorialVehiculos() {
             if (fp.formaPago && pagoMovilRegex.test(fp.formaPago)) {
               if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
               else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
+              if (fp.factorConversion !== undefined && fp.factorConversion !== null && !isNaN(Number(fp.factorConversion))) {
+                factores.push(Number(fp.factorConversion).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+              }
             } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
               if (fp.monto !== undefined) {
                 montosUSD.push(`$${fp.monto}`);
@@ -382,6 +397,9 @@ export default function HistorialVehiculos() {
           if (ing.formaPago && pagoMovilRegex.test(ing.formaPago)) {
             if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
             else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
+            if (ing.factorConversion !== undefined && ing.factorConversion !== null && !isNaN(Number(ing.factorConversion))) {
+              factores.push(Number(ing.factorConversion).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+            }
           } else if (ing.formaPago && usdRegex.test(ing.formaPago)) {
             if (ing.monto !== undefined) {
               montosUSD.push(`$${ing.monto}`);
@@ -401,6 +419,7 @@ export default function HistorialVehiculos() {
           montoEfectivoUSD: montosEfectivoUSD.length ? montosEfectivoUSD.join(", ") : "-",
           montoZelleUSD: montosZelleUSD.length ? montosZelleUSD.join(", ") : "-",
           montoBs: montosBs.length ? montosBs.join(", ") : "-",
+          factor: factores.length ? factores.join(", ") : "-",
           fecha: ing.fecha || "-",
         };
       });
@@ -418,6 +437,7 @@ export default function HistorialVehiculos() {
         referencia: '-',
         
         montoBs: c.precioBs || '-',
+        factor: '-',
         fechaEntrega: '-',
         arrivalTime: c.fechaRegistro || '-',
         status: 'Por Cobrar',
@@ -741,6 +761,8 @@ export default function HistorialVehiculos() {
                     "montoEfectivoUSD",
                     "montoZelleUSD",
                     "montoBs",
+                    "factor",
+                    "factor",
                     "estadoFactura",
                     "status",
                     "registradoPor",
@@ -1016,7 +1038,7 @@ export default function HistorialVehiculos() {
                       }
                       style={{ cursor: "pointer" }}
                     >
-                      Fecha de registro{" "}
+                      Registro{" "}
                       {ordenCol === "arrivalTime" ? (ordenAsc ? "▲" : "▼") : ""}
                     </TableCell>
                   )}
@@ -1030,7 +1052,7 @@ export default function HistorialVehiculos() {
                       }
                       style={{ cursor: "pointer" }}
                     >
-                      Fecha de entrega{" "}
+                      Entrega{" "}
                       {ordenCol === "fechaEntrega"
                         ? ordenAsc
                           ? "▲"
@@ -1135,6 +1157,9 @@ export default function HistorialVehiculos() {
                   )}
                   {columnasVisibles.montoBs && (
                     <TableCell>Pago móvil (Bs)</TableCell>
+                  )}
+                  {columnasVisibles.factor && (
+                    <TableCell>Factor</TableCell>
                   )}
                   {/* columna estadoFactura eliminada */}
                   {columnasVisibles.status && (
@@ -1400,6 +1425,18 @@ export default function HistorialVehiculos() {
                             {v.montoBs && v.montoBs !== "-" ? v.montoBs : "-"}
                           </TableCell>
                         )}
+                        {columnasVisibles.factor && (
+                          <TableCell
+                            sx={{
+                              whiteSpace: "nowrap",
+                              maxWidth: 90,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {v.factor && v.factor !== "-" ? v.factor : "-"}
+                          </TableCell>
+                        )}
                         {/* columna estadoFactura eliminada */}
                         {columnasVisibles.status && (
                           <TableCell
@@ -1474,6 +1511,7 @@ export default function HistorialVehiculos() {
                   {columnasVisibles.montoBs && (
                     <TableCell sx={{ fontWeight: 700 }}>{totalBs > 0 ? totalBs.toFixed(2) : "-"}</TableCell>
                   )}
+                  {columnasVisibles.factor && (<TableCell />)}
                   {columnasVisibles.status && (<TableCell />)}
                   {columnasVisibles.registradoPor && (<TableCell />)}
                   {columnasVisibles.entregadoPor && (<TableCell />)}
@@ -1591,6 +1629,8 @@ export default function HistorialVehiculos() {
                           return "Zelle ($)";
                         case "montoBs":
                           return "Pago móvil (Bs)";
+                        case "factor":
+                          return "Factor";
                         case "estadoFactura":
                           return "Estado de facturación";
                         case "status":
