@@ -315,7 +315,7 @@ export default function HistorialVehiculos() {
                 if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
                 else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
                   if (fp.factorConversion !== undefined && fp.factorConversion !== null && !isNaN(Number(fp.factorConversion))) {
-                    factores.push(Number(fp.factorConversion).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                    factores.push(Number(fp.factorConversion).toLocaleString("de-DE", { maximumFractionDigits: 0 }));
                   }
               } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
                 if (fp.monto !== undefined) {
@@ -332,7 +332,7 @@ export default function HistorialVehiculos() {
               if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
               else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
                 if (ing.factorConversion !== undefined && ing.factorConversion !== null && !isNaN(Number(ing.factorConversion))) {
-                  factores.push(Number(ing.factorConversion).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                  factores.push(Number(ing.factorConversion).toLocaleString("de-DE", { maximumFractionDigits: 0 }));
                 }
             } else if (ing.formaPago && usdRegex.test(ing.formaPago)) {
               if (ing.monto !== undefined) {
@@ -381,7 +381,7 @@ export default function HistorialVehiculos() {
               if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
               else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
               if (fp.factorConversion !== undefined && fp.factorConversion !== null && !isNaN(Number(fp.factorConversion))) {
-                factores.push(Number(fp.factorConversion).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                factores.push(Number(fp.factorConversion).toLocaleString("de-DE", { maximumFractionDigits: 0 }));
               }
             } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
               if (fp.monto !== undefined) {
@@ -398,7 +398,7 @@ export default function HistorialVehiculos() {
             if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
             else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
             if (ing.factorConversion !== undefined && ing.factorConversion !== null && !isNaN(Number(ing.factorConversion))) {
-              factores.push(Number(ing.factorConversion).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+              factores.push(Number(ing.factorConversion).toLocaleString("de-DE", { maximumFractionDigits: 0 }));
             }
           } else if (ing.formaPago && usdRegex.test(ing.formaPago)) {
             if (ing.monto !== undefined) {
