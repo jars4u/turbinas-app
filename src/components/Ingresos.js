@@ -13,31 +13,38 @@ import {
   Paper,
   Divider,
   LinearProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   useMediaQuery,
 } from "@mui/material";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { guardarIngreso, obtenerIngresos, eliminarIngreso } from "../lib/ingresosFirebase";
+import { obtenerIngresos, eliminarIngreso } from "../lib/ingresosFirebase";
+import { migrarNumeroFacturaAFactura } from "../lib/migrarNumeroFactura";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
+import ServicioEditorDialog from "./dashboard/ServicioEditorDialog";
+import { obtenerClientes } from "../lib/clientesFirebase";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 
-export default function Ingresos({ tasaBCV }) {
+export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
   const isMobile = useMediaQuery('(max-width:600px)');
   const { isOwner } = useAuth();
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editIngreso, setEditIngreso] = useState(null);
-  const [ingresoFactura, setIngresoFactura] = useState("");
-  const [ingresoDescripcion, setIngresoDescripcion] = useState("");
-  const [ingresoMontoUSD, setIngresoMontoUSD] = useState("");
-  const [ingresoMontoBs, setIngresoMontoBs] = useState("");
-  const [formaPago, setFormaPago] = useState("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    vehiculo: "",
+    servicio: "",
+    observaciones: "",
+    precio: "",
+    precioBs: "",
+    customerName: "",
+    customerPhone: "",
+    factura: "",
+    paymentUSDMethod: "efectivo",
+  });
+  const [editId, setEditId] = useState(null);
+  const [clientes, setClientes] = useState([]);
+  // UI de ingreso manual legacy eliminada
   // El ingreso manual no debe tener vehiculoId
   const [ingresos, setIngresos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,8 +52,7 @@ export default function Ingresos({ tasaBCV }) {
   const hoy = new Date();
   const hoyStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
   const [fechaSeleccionada, setFechaSeleccionada] = useState(hoyStr);
-  // Estado para guardar el ingreso original antes de editar
-  const [originalIngreso, setOriginalIngreso] = useState(null);
+  // Estado para guardar el ingreso original antes de editar (eliminado por no uso)
 
   // Depuración: mostrar ingresos en consola
   useEffect(() => {
@@ -66,136 +72,103 @@ export default function Ingresos({ tasaBCV }) {
     });
   }, []);
 
-  const handleEditarIngreso = (ingreso) => {
-    // Si el ingreso tiene formasPago (array), tomar el primer elemento
-    let monto = ingreso.monto;
-    let montoBs = ingreso.montoBs;
-    let formaPago = ingreso.formaPago;
-    let descripcion = ingreso.descripcion;
-    if (Array.isArray(ingreso.formasPago) && ingreso.formasPago.length > 0) {
-      monto = ingreso.formasPago[0].monto ?? monto;
-      montoBs = ingreso.formasPago[0].montoBs ?? montoBs;
-      formaPago = ingreso.formasPago[0].formaPago ?? ingreso.formasPago[0].metodo ?? formaPago;
-      descripcion = ingreso.descripcion ?? ingreso.formasPago[0].descripcion ?? '';
+  useEffect(() => {
+    obtenerClientes().then(setClientes).catch(() => setClientes([]));
+  }, []);
+
+  const handleEditarIngreso = (ing) => {
+    // Mapear ingreso a formulario del ServicioEditorDialog
+    let pagoMetodo = 'efectivo';
+    let precioUSD = '';
+    let precioBs = '';
+    if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
+      // Priorizar pago movil para Bs, de lo contrario primer no "pago movil" para USD
+      const pm = ing.formasPago.find(fp => (fp.formaPago || '').trim().toLowerCase() === 'pago movil');
+      const usd = ing.formasPago.find(fp => (fp.formaPago || '').trim().toLowerCase() !== 'pago movil');
+      if (pm) {
+        pagoMetodo = 'pago movil';
+        precioBs = (pm.montoBs !== undefined && pm.montoBs !== null) ? pm.montoBs : (pm.monto !== undefined && pm.monto !== null ? pm.monto : '');
+      } else if (usd) {
+        pagoMetodo = (usd.formaPago || usd.metodo || 'efectivo').toString().trim().toLowerCase();
+        precioUSD = usd.monto !== undefined && usd.monto !== null ? usd.monto : '';
+      }
+    } else {
+      // Legacy campos
+      if ((ing.formaPago || '').trim().toLowerCase() === 'pago movil') {
+        pagoMetodo = 'pago movil';
+        precioBs = ing.montoBs ?? ing.monto ?? '';
+      } else {
+        pagoMetodo = (ing.formaPago || 'efectivo').toString().trim().toLowerCase();
+        precioUSD = ing.monto ?? '';
+      }
     }
-    const mappedIngreso = {
-      ...ingreso,
-      monto,
-      montoBs,
-      formaPago,
-      descripcion,
-    };
-    setEditIngreso(mappedIngreso);
-    setOriginalIngreso(mappedIngreso);
-    setEditModalOpen(true);
+    // Derivar vehículo y servicio desde la descripción si no existen en el objeto
+    let vehiculoVal = ing.vehiculo || '';
+    let servicioVal = ing.servicio || '';
+    if (!vehiculoVal && !servicioVal && typeof ing.descripcion === 'string') {
+      const parts = ing.descripcion.split('-');
+      vehiculoVal = (parts[0] || '').trim();
+      servicioVal = parts.slice(1).join('-').trim();
+    }
+    setEditForm({
+      vehiculo: vehiculoVal,
+      servicio: servicioVal,
+      observaciones: ing.observaciones || '',
+      precio: precioUSD !== '' ? Number(precioUSD) : '',
+      precioBs: precioBs !== '' ? Number(precioBs) : '',
+      customerName: ing.customerName || ing.cliente || '',
+      customerPhone: ing.customerPhone || '+580000000000',
+      factura: ing.factura || ing.numeroFactura || '',
+      paymentUSDMethod: pagoMetodo || 'efectivo',
+    });
+    setEditId(ing.id || null);
+    setEditDialogOpen(true);
   };
 
-  const handleGuardarEdicion = async (actualizado) => {
+  const handleGuardarEdicion = async () => {
+    if (!editId) return;
     const db = getFirestore();
-    const ingresoId = actualizado.id;
-    if (!ingresoId) return;
-    // Filtra los campos undefined/null y elimina monto/montoBs si no son numéricos
-    const ingresoEditadoRaw = { ...actualizado };
-    if (ingresoEditadoRaw.monto !== undefined && isNaN(Number(ingresoEditadoRaw.monto))) delete ingresoEditadoRaw.monto;
-    if (ingresoEditadoRaw.montoBs !== undefined && isNaN(Number(ingresoEditadoRaw.montoBs))) delete ingresoEditadoRaw.montoBs;
-    // Actualiza también el array formasPago si existe y filtra sus campos
-    if (Array.isArray(ingresoEditadoRaw.formasPago) && ingresoEditadoRaw.formasPago.length > 0) {
-      ingresoEditadoRaw.formasPago = [
-        Object.fromEntries(Object.entries({
-          ...ingresoEditadoRaw.formasPago[0],
-          monto: ingresoEditadoRaw.monto,
-          montoBs: ingresoEditadoRaw.montoBs,
-          formaPago: ingresoEditadoRaw.formaPago,
-          descripcion: ingresoEditadoRaw.descripcion,
-        }).filter(([_, v]) => v !== undefined && v !== null))
-      ];
+    // Construir formasPago según método
+    const metodo = (editForm.paymentUSDMethod || 'efectivo').toString().trim().toLowerCase();
+    const formasPago = [];
+    if (metodo === 'pago movil') {
+      const montoParaBs = editForm.precioBs !== undefined && editForm.precioBs !== null && editForm.precioBs !== '' ? Number(editForm.precioBs) : (editForm.precio !== undefined && editForm.precio !== null && editForm.precio !== '' ? Number(editForm.precio) : undefined);
+      if (montoParaBs !== undefined && !isNaN(montoParaBs) && montoParaBs > 0) {
+        formasPago.push({ formaPago: 'pago movil', montoBs: montoParaBs });
+      }
+    } else {
+      const montoUSD = editForm.precio !== undefined && editForm.precio !== null && editForm.precio !== '' ? Number(editForm.precio) : undefined;
+      if (montoUSD !== undefined && !isNaN(montoUSD) && montoUSD > 0) {
+        formasPago.push({ formaPago: metodo, monto: montoUSD });
+      }
     }
-    const ingresoEditado = Object.fromEntries(
-      Object.entries(ingresoEditadoRaw).filter(([_, v]) => v !== undefined && v !== null)
-    );
-    await updateDoc(doc(db, "ingresosMovimientos", ingresoId), ingresoEditado);
-    setEditModalOpen(false);
-    setEditIngreso(null);
+    const ingresoEditadoRaw = {
+      vehiculo: editForm.vehiculo || undefined,
+      servicio: editForm.servicio || undefined,
+      observaciones: editForm.observaciones || undefined,
+      customerName: editForm.customerName || undefined,
+      customerPhone: editForm.customerPhone || undefined,
+      factura: editForm.factura || undefined,
+      formasPago: formasPago.length > 0 ? formasPago : undefined,
+      // Limpiar legacy
+      formaPago: undefined,
+      monto: undefined,
+      referencia: undefined,
+      formaPago2: undefined,
+      monto2: undefined,
+      referencia2: undefined,
+    };
+    const ingresoEditado = Object.fromEntries(Object.entries(ingresoEditadoRaw).filter(([_, v]) => v !== undefined && v !== null));
+    await updateDoc(doc(db, "ingresosMovimientos", editId), ingresoEditado);
+    setEditDialogOpen(false);
+    setEditId(null);
     setLoading(true);
     const actualizados = await obtenerIngresos();
     setIngresos(actualizados);
     setLoading(false);
   };
 
-  const handleAgregarIngreso = async () => {
-    const montoUSD = ingresoMontoUSD !== '' ? Number(ingresoMontoUSD) : undefined;
-    const montoBs = ingresoMontoBs !== '' ? Number(ingresoMontoBs) : undefined;
-    if (!ingresoFactura || (!montoUSD && !montoBs) || !formaPago) {
-      alert('Debes completar todos los campos obligatorios.');
-      return;
-    }
-    const hoy = new Date();
-    const d = String(hoy.getDate()).padStart(2, '0');
-    const m = String(hoy.getMonth() + 1).padStart(2, '0');
-    const y = hoy.getFullYear();
-    // Construir formasPago: cada monto va como 'monto', el backend adapta montoBs si es pago movil
-    let formasPago = [];
-    if (montoUSD) {
-      formasPago.push({ formaPago, monto: montoUSD });
-    }
-    if (montoBs) {
-      formasPago.push({ formaPago, monto: montoBs });
-    }
-    // Generar vehiculoId único para ingresos manuales
-    const vehiculoIdManual = `manual-${Date.now()}`;
-    // Construye el objeto y elimina cualquier campo undefined o null
-    const nuevoIngresoRaw = {
-      factura: ingresoFactura ? ingresoFactura.toUpperCase() : undefined,
-      descripcion: ingresoDescripcion || undefined,
-      formaPago: formaPago || undefined,
-      fecha: `${d}/${m}/${y}`,
-      formasPago: formasPago.length > 0 ? formasPago : undefined,
-      vehiculoId: vehiculoIdManual,
-    };
-    const nuevoIngreso = Object.fromEntries(
-      Object.entries(nuevoIngresoRaw).filter(([_, v]) => v !== undefined && v !== null)
-    );
-    await guardarIngreso(nuevoIngreso);
-
-    // Crear vehículo virtual para el ingreso manual
-    const { crearVehiculo } = await import("../lib/vehiculosFirebase");
-    // Obtener el estado dejarDeMostrar
-    let estadoDejarDeMostrar = "oculto";
-    try {
-      const { obtenerEstadosServicio } = await import("../lib/estadosServicioFirebase");
-      const estados = await obtenerEstadosServicio();
-      const estadoOcultar = estados.find(e => e.dejarDeMostrar);
-      if (estadoOcultar) {
-        estadoDejarDeMostrar = estadoOcultar.nombre;
-      }
-    } catch (e) {
-      // Si falla, usar "oculto" por defecto
-      estadoDejarDeMostrar = "oculto";
-    }
-    await crearVehiculo({
-      vehiculo: "Ingreso manual",
-      servicio: "-",
-      customerName: "-",
-      customerPhone: "-",
-      arrivalTime: Date.now(),
-      precio: null,
-      precioBs: null,
-      status: estadoDejarDeMostrar,
-      registradoPor: "-",
-      entregadoPor: "-",
-      id: vehiculoIdManual,
-    });
-
-    const actualizados = await obtenerIngresos();
-    setIngresos(actualizados);
-    const hoyStr = `${d}/${m}/${y}`;
-    setFechaSeleccionada(hoyStr);
-    setIngresoFactura("");
-    setIngresoDescripcion("");
-    setIngresoMontoUSD("");
-    setIngresoMontoBs("");
-    setFormaPago("");
-  };
+  // UI y lógica de agregar ingreso manual legacy eliminadas
 
   const handleEliminarIngreso = async (ingreso) => {
     if (!window.confirm("¿Seguro que deseas eliminar este ingreso?")) return;
@@ -210,302 +183,145 @@ export default function Ingresos({ tasaBCV }) {
     setLoading(false);
   };
 
-  // Función para comparar si hubo cambios
-  const ingresoEditadoEsIgual = () => {
-    if (!editIngreso || !originalIngreso) return true;
-    return (
-      editIngreso.factura === originalIngreso.factura &&
-      editIngreso.descripcion === originalIngreso.descripcion &&
-      editIngreso.monto === originalIngreso.monto &&
-      editIngreso.montoBs === originalIngreso.montoBs &&
-      editIngreso.formaPago === originalIngreso.formaPago
-    );
-  };
+  // Edición mediante ServicioEditorDialog
 
   return (
   <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
-    {/* Modal de edición */}
-    {isOwner && editModalOpen && editIngreso && (
-      <Paper sx={{ position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, p: 3, minWidth: 320 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Editar ingreso</Typography>
-        <TextField
-          label="N° Factura"
+    {isOwner && (
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+        <Button
+          variant="outlined"
           size="small"
-          value={editIngreso.factura || ''}
-          onChange={e => setEditIngreso({ ...editIngreso, factura: e.target.value })}
-          sx={{ mb: 2, width: '100%' }}
-        />
-        <TextField
-          label="Descripción"
-          size="small"
-          value={editIngreso.descripcion || ''}
-          onChange={e => setEditIngreso({ ...editIngreso, descripcion: e.target.value })}
-          sx={{ mb: 2, width: '100%' }}
-        />
-        <TextField
-          select
-          label="Forma de pago"
-          size="small"
-          value={editIngreso.formaPago || ''}
-          onChange={e => setEditIngreso({ ...editIngreso, formaPago: e.target.value })}
-          sx={{ mb: 2, width: '100%' }}
-          SelectProps={{ native: true, displayEmpty: true }}
-          InputLabelProps={{ shrink: true }}
+          color="primary"
+          disabled={loading}
+          onClick={async () => {
+            setLoading(true);
+            try {
+              const res = await migrarNumeroFacturaAFactura();
+              const actualizados = await obtenerIngresos();
+              setIngresos(actualizados);
+              alert(`Migración completada. Actualizados: ${res.actualizados}. Omitidos: ${res.omitidos}. Errores: ${res.errores}.`);
+            } catch (e) {
+              alert('Error ejecutando la migración.');
+            }
+            setLoading(false);
+          }}
         >
-          <option value="" disabled hidden>Selecciona una forma</option>
-          <option value="efectivo">Efectivo</option>
-          <option value="pago movil">Pago móvil</option>
-          <option value="zelle">Zelle</option>
-          <option value="divisas">Divisas</option>
-          <option value="transferencia" disabled>Transferencia</option>
-          <option value="credito" disabled>Credito</option>
-        </TextField>
-        <TextField
-          label="Monto ($)"
-          type="number"
-          size="small"
-          value={editIngreso.monto || ''}
-          onChange={e => setEditIngreso({ ...editIngreso, monto: Number(e.target.value) })}
-          sx={{ mb: 2, width: '100%' }}
-        />
-        <TextField
-          label="Monto (Bs)"
-          type="number"
-          size="small"
-          value={editIngreso.montoBs || ''}
-          onChange={e => setEditIngreso({ ...editIngreso, montoBs: Number(e.target.value) })}
-          sx={{ mb: 2, width: '100%' }}
-        />
-        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => handleGuardarEdicion(editIngreso)}
-            disabled={ingresoEditadoEsIgual()}
-          >
-            Guardar
-          </Button>
-          <Button variant="outlined" color="secondary" onClick={() => { setEditModalOpen(false); setEditIngreso(null); }}>Cancelar</Button>
-        </Box>
-      </Paper>
+          Migrar numeroFactura → factura
+        </Button>
+      </Box>
+    )}
+    {/* Dialogo de edición con ServicioEditorDialog */}
+    {isOwner && editDialogOpen && (
+      <ServicioEditorDialog
+        open={editDialogOpen}
+        isXs={isMobile}
+        onDialogClose={() => setEditDialogOpen(false)}
+        actionLoading={false}
+        onClose={() => setEditDialogOpen(false)}
+        editId={editId}
+        editSection={true}
+        onCancelEditSection={() => setEditDialogOpen(false)}
+        form={editForm}
+        onChange={(e) => {
+          const { name, value } = e.target;
+          setEditForm((prev) => ({ ...prev, [name]: value }));
+        }}
+        isRegistering={false}
+        clientes={clientes}
+        onClienteInputChange={(_e, value) => setEditForm((prev) => ({ ...prev, customerName: value }))}
+        onClienteChange={(_e, opt) => {
+          if (!opt) return;
+          setEditForm((prev) => ({
+            ...prev,
+            customerName: opt.nombre || prev.customerName,
+            customerPhone: opt.telefono ? (opt.telefono.startsWith('+58') ? opt.telefono : '+58' + opt.telefono.replace(/^0+/, '')) : prev.customerPhone,
+          }));
+        }}
+        onCustomerPhoneChange={(e) => {
+          const val = e.target.value || '';
+          setEditForm((prev) => ({ ...prev, customerPhone: val }));
+        }}
+        isEditing={true}
+        onSave={handleGuardarEdicion}
+        paymentUSDEnabled={true}
+        paymentUSDMethod={editForm.paymentUSDMethod}
+        onPaymentUSDMethodChange={(val) => setEditForm((prev) => ({ ...prev, paymentUSDMethod: val }))}
+        isManualIngreso={true}
+      />
     )}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6" sx={{ mb: 0 }}>
           Registro de Ingresos
         </Typography>
-  <LocalizationProvider dateAdapter={AdapterDayjs}>
-    <DatePicker
-      label="Día"
-      views={["year", "month", "day"]}
-      value={fechaSeleccionada ? dayjs(fechaSeleccionada.split('/').reverse().join('-')) : null}
-      onChange={date => {
-        if (date && dayjs(date).isValid()) {
-          const d = String(dayjs(date).date()).padStart(2, '0');
-          const m = String(dayjs(date).month() + 1).padStart(2, '0');
-          const y = dayjs(date).year();
-          setFechaSeleccionada(`${d}/${m}/${y}`);
-        }
-      }}
-      renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
-      disableFuture
-      minDate={ingresos.length > 0 ? (() => {
-        const fechas = ingresos.map(i => {
-          if (i.fecha && typeof i.fecha === 'string') return i.fecha;
-          if (i.fecha && i.fecha.seconds) {
-            const d = String(new Date(i.fecha.seconds * 1000).getDate()).padStart(2, '0');
-            const m = String(new Date(i.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
-            const y = new Date(i.fecha.seconds * 1000).getFullYear();
-            return `${d}/${m}/${y}`;
-          }
-          return null;
-        }).filter(Boolean);
-        const min = fechas.sort((a, b) => {
-          const fa = Date.parse(a.split("/").reverse().join("-"));
-          const fb = Date.parse(b.split("/").reverse().join("-"));
-          return fa - fb;
-        })[0];
-        return dayjs(min.split('/').reverse().join('-'));
-      })() : undefined}
-      maxDate={dayjs().startOf('day')}
-      shouldDisableDate={date => {
-        if (!dayjs(date).isValid()) return true;
-        const d = String(dayjs(date).date()).padStart(2, '0');
-        const m = String(dayjs(date).month() + 1).padStart(2, '0');
-        const y = dayjs(date).year();
-        const fechaStr = `${d}/${m}/${y}`;
-        return !ingresos.some(i => {
-          let ingresoFecha = '';
-          if (i.fecha && typeof i.fecha === 'string') {
-            const parts = i.fecha.split(/[/-]/);
-            if (parts.length === 3) {
-              ingresoFecha = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
-            } else {
-              ingresoFecha = i.fecha;
-            }
-          } else if (i.fecha && i.fecha.seconds) {
-            const dd = String(new Date(i.fecha.seconds * 1000).getDate()).padStart(2, '0');
-            const mm = String(new Date(i.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
-            const yy = new Date(i.fecha.seconds * 1000).getFullYear();
-            ingresoFecha = `${dd}/${mm}/${yy}`;
-          }
-          return ingresoFecha === fechaStr;
-        });
-      }}
-    />
-  </LocalizationProvider>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label="Día"
+              views={["year", "month", "day"]}
+              value={fechaSeleccionada ? dayjs(fechaSeleccionada.split('/').reverse().join('-')) : null}
+              onChange={date => {
+                if (date && dayjs(date).isValid()) {
+                  const d = String(dayjs(date).date()).padStart(2, '0');
+                  const m = String(dayjs(date).month() + 1).padStart(2, '0');
+                  const y = dayjs(date).year();
+                  setFechaSeleccionada(`${d}/${m}/${y}`);
+                }
+              }}
+              renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 120 }} />}
+              disableFuture
+              minDate={ingresos.length > 0 ? (() => {
+                const fechas = ingresos.map(i => {
+                  if (i.fecha && typeof i.fecha === 'string') return i.fecha;
+                  if (i.fecha && i.fecha.seconds) {
+                    const d = String(new Date(i.fecha.seconds * 1000).getDate()).padStart(2, '0');
+                    const m = String(new Date(i.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+                    const y = new Date(i.fecha.seconds * 1000).getFullYear();
+                    return `${d}/${m}/${y}`;
+                  }
+                  return null;
+                }).filter(Boolean);
+                const min = fechas.sort((a, b) => {
+                  const fa = Date.parse(a.split("/").reverse().join("-"));
+                  const fb = Date.parse(b.split("/").reverse().join("-"));
+                  return fa - fb;
+                })[0];
+                return dayjs(min.split('/').reverse().join('-'));
+              })() : undefined}
+              maxDate={dayjs().startOf('day')}
+              shouldDisableDate={date => {
+                if (!dayjs(date).isValid()) return true;
+                const d = String(dayjs(date).date()).padStart(2, '0');
+                const m = String(dayjs(date).month() + 1).padStart(2, '0');
+                const y = dayjs(date).year();
+                const fechaStr = `${d}/${m}/${y}`;
+                return !ingresos.some(i => {
+                  let ingresoFecha = '';
+                  if (i.fecha && typeof i.fecha === 'string') {
+                    const parts = i.fecha.split(/[/-]/);
+                    if (parts.length === 3) {
+                      ingresoFecha = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+                    } else {
+                      ingresoFecha = i.fecha;
+                    }
+                  } else if (i.fecha && i.fecha.seconds) {
+                    const dd = String(new Date(i.fecha.seconds * 1000).getDate()).padStart(2, '0');
+                    const mm = String(new Date(i.fecha.seconds * 1000).getMonth() + 1).padStart(2, '0');
+                    const yy = new Date(i.fecha.seconds * 1000).getFullYear();
+                    ingresoFecha = `${dd}/${mm}/${yy}`;
+                  }
+                  return ingresoFecha === fechaStr;
+                });
+              }}
+            />
+          </LocalizationProvider>
+          {onOpenRegistrarIngreso && (
+            <Button variant="contained" size="small" onClick={onOpenRegistrarIngreso}>Registrar ingreso</Button>
+          )}
+        </Box>
       </Box>
       <Divider sx={{ mb: 2 }} />
-      {/* Accordion para ingreso manual en móviles, box normal en desktop */}
-      <Box sx={{ mb: 2 }}>
-        <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
-          <Accordion sx={{ mb: 1 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle1" fontWeight={600} color="text.secondary">Ingreso manual</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                {/* El campo de vehículoId se asigna automáticamente y no se muestra */}
-                <TextField
-                  label="N° Factura"
-                  size="small"
-                  value={ingresoFactura}
-                  onChange={e => setIngresoFactura(e.target.value)}
-                  sx={{ minWidth: 180, width: '100%' }}
-                />
-                <TextField
-                  label="Descripción"
-                  size="small"
-                  value={ingresoDescripcion}
-                  onChange={e => setIngresoDescripcion(e.target.value)}
-                  sx={{ minWidth: 180, width: '100%' }}
-                />
-                <TextField
-                  select
-                  label="Forma de pago"
-                  size="small"
-                  value={formaPago}
-                  onChange={e => setFormaPago(e.target.value)}
-                  sx={{ minWidth: 180, width: '100%' }}
-                  SelectProps={{ native: true, displayEmpty: true }}
-                  InputLabelProps={{ shrink: true }}
-                >
-                  <option value="" disabled hidden>Selecciona una forma</option>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="pago movil">Pago móvil</option>
-                  <option value="zelle">Zelle</option>
-                  <option value="divisas">Divisas</option>
-                  <option value="otro">Otro</option>
-                </TextField>
-                <TextField
-                  label="Monto ($)"
-                  type="number"
-                  size="small"
-                  value={ingresoMontoUSD}
-                  onChange={e => setIngresoMontoUSD(e.target.value)}
-                  sx={{ bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 180, width: '100%' }}
-                  inputProps={{ min: 0 }}
-                />
-                <TextField
-                  label="Monto (Bs)"
-                  type="number"
-                  size="small"
-                  value={ingresoMontoBs}
-                  onChange={e => setIngresoMontoBs(e.target.value)}
-                  sx={{ bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 180, width: '100%' }}
-                  inputProps={{ min: 0 }}
-                />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleAgregarIngreso}
-                  disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs) || !formaPago}
-                  sx={{ width: '100%' }}
-                >
-                  Agregar
-                </Button>
-              </Box>
-            </AccordionDetails>
-          </Accordion>
-        </Box>
-        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-          <Typography variant="subtitle1" fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>
-            Ingreso manual
-          </Typography>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 2,
-              flexWrap: 'wrap',
-              justifyContent: 'flex-start',
-              mb: 1,
-            }}
-          >
-            {/* El campo de vehículoId se asigna automáticamente y no se muestra */}
-            <TextField
-              label="N° Factura"
-              size="small"
-              value={ingresoFactura}
-              onChange={e => setIngresoFactura(e.target.value)}
-              sx={{ flex: 2, minWidth: 120 }}
-            />
-            <TextField
-              label="Descripción"
-              size="small"
-              value={ingresoDescripcion}
-              onChange={e => setIngresoDescripcion(e.target.value)}
-              sx={{ flex: 2, minWidth: 120 }}
-            />
-            <TextField
-              select
-              label="Forma de pago"
-              size="small"
-              value={formaPago}
-              onChange={e => setFormaPago(e.target.value)}
-              sx={{ flex: 1, minWidth: 90 }}
-              SelectProps={{ native: true, displayEmpty: true }}
-              InputLabelProps={{ shrink: true }}
-            >
-              <option value="" disabled hidden>Selecciona una forma</option>
-              <option value="efectivo">Efectivo</option>
-              {/* <option value="transferencia">Transferencia</option> */}
-              <option value="pago movil">Pago móvil</option>
-              <option value="zelle">Zelle</option>
-              {/* <option value="divisas">Divisas</option>
-              <option value="otro">Otro</option> */}
-            </TextField>
-            <TextField
-              label="Monto ($)"
-              type="number"
-              size="small"
-              value={ingresoMontoUSD}
-              onChange={e => setIngresoMontoUSD(e.target.value)}
-              sx={{ flex: 1, bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 90 }}
-              inputProps={{ min: 0 }}
-            />
-            <TextField
-              label="Monto (Bs)"
-              type="number"
-              size="small"
-              value={ingresoMontoBs}
-              onChange={e => setIngresoMontoBs(e.target.value)}
-              sx={{ flex: 1, bgcolor: '#f5f5f5', color: 'text.secondary', minWidth: 90 }}
-              inputProps={{ min: 0 }}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleAgregarIngreso}
-              disabled={!ingresoFactura || (!ingresoMontoUSD && !ingresoMontoBs) || !formaPago}
-              sx={{ minWidth: 90 }}
-            >
-              +
-            </Button>
-          </Box>
-        </Box>
-      </Box>
+      {/* UI de ingreso manual legacy removida */}
       <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' } }}>
         {isMobile ? (
           <Box>
@@ -538,10 +354,11 @@ export default function Ingresos({ tasaBCV }) {
                     ingresosFiltrados.forEach(ing => {
                       if (Array.isArray(ing.formasPago)) {
                         ing.formasPago.forEach(fp => {
-                          if (fp.formaPago && ["zelle", "efectivo", "$", "usd"].includes(fp.formaPago.trim().toLowerCase()) && fp.monto != null && !isNaN(Number(fp.monto))) {
+                          const forma = (fp.formaPago || '').trim().toLowerCase();
+                          if (forma !== 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
                             totalUSD += Number(fp.monto);
                           }
-                          if (fp.formaPago && fp.formaPago.trim().toLowerCase() === "pago movil" && fp.monto != null && !isNaN(Number(fp.monto))) {
+                          if (forma === 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
                             totalBs += Number(fp.monto);
                           }
                         });
@@ -594,7 +411,7 @@ export default function Ingresos({ tasaBCV }) {
                       refs = ing.formasPago.map(fp => fp.referencia || '-');
                       ing.formasPago.forEach(fp => {
                         const f = (fp.formaPago || '').trim().toLowerCase();
-                        if (["zelle", "efectivo", "$", "usd"].includes(f) && fp.monto != null && !isNaN(Number(fp.monto))) {
+                        if (f !== 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
                           totalUSD += Number(fp.monto);
                         }
                         if (f === 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
@@ -690,10 +507,11 @@ export default function Ingresos({ tasaBCV }) {
                     ingresosFiltrados.forEach(ing => {
                       if (Array.isArray(ing.formasPago)) {
                         ing.formasPago.forEach(fp => {
-                          if (fp.formaPago && ["zelle", "efectivo", "$", "usd"].includes(fp.formaPago.trim().toLowerCase()) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                          const forma = (fp.formaPago || '').trim().toLowerCase();
+                          if (forma !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
                             totalUSD += Number(fp.monto);
                           }
-                          if (fp.formaPago && fp.formaPago.trim().toLowerCase() === "pago movil" && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                          if (forma === 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
                             totalBs += Number(fp.monto);
                           }
                         });
@@ -783,13 +601,24 @@ export default function Ingresos({ tasaBCV }) {
                       ? new Date(ing.fecha.seconds * 1000).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
                       : '-'
                 }</TableCell>
-                <TableCell>{ing.factura || ing.descripcion || '-'}</TableCell>
+                <TableCell>
+                  {(() => {
+                    const esManual = !ing.vehiculoId || (ing.vehiculoId && ing.vehiculoId.startsWith('manual'));
+                    if (esManual) {
+                      return ing.factura || ing.numeroFactura || '-';
+                    }
+                    return ing.factura || ing.descripcion || '-';
+                  })()}
+                </TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                   {(() => {
                     // Mostrar monto en $ solo si la forma de pago es Zelle, Efectivo, USD, $
                     if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
                       const montosUSD = ing.formasPago
-                        .filter(fp => fp.formaPago && ["zelle", "efectivo", "$", "usd"].includes(fp.formaPago.trim().toLowerCase()) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
+                        .filter(fp => {
+                          const f = (fp.formaPago || '').trim().toLowerCase();
+                          return f !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto));
+                        })
                         .map(fp => Number(fp.monto).toLocaleString("en-US", { minimumFractionDigits: 2 }));
                       return montosUSD.length > 0 ? montosUSD.join(' + ') : "-";
                     }
@@ -819,15 +648,11 @@ export default function Ingresos({ tasaBCV }) {
                 </TableCell>
                 <TableCell>
                   {(() => {
-                    // Si es ingreso manual y tiene descripción, mostrarla junto con la referencia
-                    if (!ing.vehiculoId || (ing.vehiculoId && ing.vehiculoId.startsWith('manual'))) {
-                      let desc = ing.descripcion ? ing.descripcion : '';
-                      let ref = Array.isArray(ing.formasPago) && ing.formasPago.length > 0
-                        ? ing.formasPago.map(fp => fp.referencia || '-').join(' + ')
-                        : (ing.referencia || '-');
-                      return desc ? `${desc} ${ref !== '-' ? '| ' + ref : ''}` : ref;
+                    const esManual = !ing.vehiculoId || (ing.vehiculoId && ing.vehiculoId.startsWith('manual'));
+                    if (esManual) {
+                      return ing.observaciones || '-';
                     }
-                    // Si no es manual, mostrar referencia normal
+                    // No manual: referencias normales
                     return Array.isArray(ing.formasPago) && ing.formasPago.length > 0
                       ? ing.formasPago.map(fp => fp.referencia || '-').join(' + ')
                       : (ing.referencia || '-');

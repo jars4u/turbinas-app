@@ -322,7 +322,7 @@ export default function Dashboard() {
     precio: "",
     precioBs: "",
     customerName: "",
-    customerPhone: "",
+    customerPhone: "+58",
     observaciones: "",
   });
   const [formOriginal, setFormOriginal] = useState(null);
@@ -346,7 +346,7 @@ export default function Dashboard() {
         precio: vehiculo.precio || "",
         precioBs: vehiculo.precioBs || "",
         customerName: vehiculo.customerName || "",
-        customerPhone: vehiculo.customerPhone || "",
+        customerPhone: vehiculo.customerPhone || "+58",
         observaciones: vehiculo.observaciones || "",
       };
       setForm(nuevoForm);
@@ -362,7 +362,7 @@ export default function Dashboard() {
         precio: "",
         precioBs: "",
         customerName: "",
-        customerPhone: "",
+        customerPhone: "+58",
         observaciones: "",
       };
       setForm(nuevoForm);
@@ -383,7 +383,7 @@ export default function Dashboard() {
       precio: "",
       precioBs: "",
       customerName: "",
-      customerPhone: "",
+      customerPhone: "+58",
       observaciones: "",
     });
     setFormOriginal(null);
@@ -424,6 +424,32 @@ export default function Dashboard() {
       setSnackbarOpen(true);
       return;
     }
+    // Validación y normalización del teléfono: formato +58 seguido de 10 dígitos, sin ceros iniciales
+    let telefono = (form.customerPhone || "").trim();
+    telefono = telefono.replace(/[-\s]/g, "");
+    if (telefono) {
+      // Si no empieza con +58, intentar normalizar de formatos comunes (0412..., 412..., etc)
+      if (!telefono.startsWith("+58")) {
+        if (telefono.startsWith("58")) {
+          telefono = "+" + telefono;
+        } else if (telefono.startsWith("0") && telefono.length >= 11) {
+          telefono = "+58" + telefono.slice(1); // quita el 0 inicial
+        } else if (/^\d{10}$/.test(telefono)) {
+          telefono = "+58" + telefono;
+        }
+      }
+      // Asegurar que no haya ceros iniciales en la parte local después de +58
+      if (telefono.startsWith("+58")) {
+        const local = telefono.slice(3).replace(/[^\d]/g, "");
+        telefono = "+58" + local.replace(/^0+/, "");
+      }
+      // Validar finalmente el patrón requerido
+      if (!/^\+58\d{10}$/.test(telefono)) {
+        setSnackbarMsg("Teléfono inválido: use +58 y 10 dígitos sin ceros iniciales.");
+        setSnackbarOpen(true);
+        return;
+      }
+    }
     const vehiculoData = {
       vehiculo: form.vehiculo ? form.vehiculo.toUpperCase() : "",
       placa: form.placa ? form.placa.toUpperCase() : "",
@@ -432,7 +458,7 @@ export default function Dashboard() {
         ? vehiculos.find((v) => v.id === editId)?.arrivalTime
         : Date.now(),
       customerName: form.customerName ? form.customerName.toUpperCase() : "",
-      customerPhone: form.customerPhone,
+      customerPhone: telefono || "",
       observaciones: form.observaciones ? form.observaciones.toUpperCase() : "",
       status: editId
         ? vehiculos.find((v) => v.id === editId)?.status || getDefaultStatus()
@@ -1272,6 +1298,7 @@ export default function Dashboard() {
           const { addDoc, collection } = await import('firebase/firestore');
           const nuevaCuenta = {
             modalidad: 'servicio',
+            vehiculoId: editId || null,
             vehiculo: form.vehiculo || '',
             servicio: form.servicio || '',
             precio: parseFloat(form.precio) || 0,
@@ -1364,6 +1391,8 @@ export default function Dashboard() {
             factura: facturaData.numeroFactura,
             fecha: new Date().toLocaleDateString("es-VE"),
             vehiculoId: editId || null,
+            customerName: form.customerName ? String(form.customerName).toUpperCase() : undefined,
+            customerPhone: form.customerPhone || undefined,
             montoBs:
               form.precioBs !== undefined &&
                 form.precioBs !== "" &&

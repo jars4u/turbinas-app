@@ -409,10 +409,34 @@ export default function HistorialVehiculos() {
           }
           if (ing.montoUSD !== undefined) montosUSD.push(`$${ing.montoUSD}`);
         }
+        // Derivar arrivalTime desde la fecha (dd/mm/yyyy) para permitir filtros por "registro"
+        let arrivalTime = undefined;
+        if (ing.fecha && typeof ing.fecha === 'string') {
+          const parts = ing.fecha.split(/[/-]/);
+          if (parts.length === 3) {
+            const y = Number(parts[2]);
+            const m = Number(parts[1]) - 1;
+            const d = Number(parts[0]);
+            const ts = new Date(y, m, d).getTime(); // Local fecha sin sesgo UTC
+            if (!isNaN(ts)) arrivalTime = ts;
+          }
+        }
+        // Derivar descripción si falta, usando vehiculo y servicio
+        let descripcion = ing.descripcion || '-';
+        if ((!descripcion || descripcion === '-') && (ing.vehiculo || ing.servicio)) {
+          const veh = (ing.vehiculo || '').toString().trim();
+          const serv = (ing.servicio || '').toString().trim();
+          if (veh || serv) descripcion = `${veh}${veh && serv ? ' - ' : ''}${serv}`;
+        }
         return {
           id: ing.id,
           factura: ing.factura || "-",
-          descripcion: ing.descripcion || "-",
+          descripcion,
+          // Mapeos para columnas específicas
+          customerName: ing.customerName || "-",
+          customerPhone: ing.customerPhone || "-",
+          vehiculo: (ing.vehiculo || '').toString().trim() || "-",
+          servicio: (ing.observaciones || '').toString().trim() || "-",
           formaPago: formasPago.length ? formasPago.join(", ") : "-",
           referencia: referencias.length ? referencias.join(", ") : "-",
           
@@ -421,6 +445,8 @@ export default function HistorialVehiculos() {
           montoBs: montosBs.length ? montosBs.join(", ") : "-",
           factor: factores.length ? factores.join(", ") : "-",
           fecha: ing.fecha || "-",
+          arrivalTime,
+          fechaEntrega: arrivalTime,
         };
       });
 

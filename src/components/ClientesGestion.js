@@ -26,7 +26,7 @@ export default function ClientesGestion() {
   const [addError, setAddError] = useState("");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [clienteWhatsapp, setClienteWhatsapp] = useState(null);
+  const [clienteWhatsapp] = useState(null);
   const [mensajeWhatsapp, setMensajeWhatsapp] = useState("");
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
 

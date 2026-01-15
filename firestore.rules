@@ -46,6 +46,30 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Egresos (facturas y legacy)
+    match /egresos/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Proveedores (catálogo autogenerado desde egresos)
+    match /proveedores/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Cuentas por pagar
+    match /cuentasPorPagar/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Ingresos (movimientos manuales)
+    match /ingresosMovimientos/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // Por defecto, denegar todo
     match /{document=**} {
       allow read, write: if false;

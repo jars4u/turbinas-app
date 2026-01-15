@@ -35,6 +35,10 @@ import CuentasPorPagar from "../components/CuentasPorPagar";
 import CuentasPorCobrar from "../components/CuentasPorCobrar";
 
 import ResumenContable from "../components/ResumenContable";
+import ServicioEditorDialog from "../components/dashboard/ServicioEditorDialog";
+import { obtenerClientes } from "../lib/clientesFirebase";
+import { guardarIngreso } from "../lib/ingresosFirebase";
+import { useMediaQuery } from "@mui/material";
 import { guardarCierreDiario } from "../lib/cierresDiariosFirebase";
 
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
@@ -54,11 +58,29 @@ export default function CierreDia() {
   const [loadingTasa, setLoadingTasa] = useState(false);
   const [mostrarInputTasa, setMostrarInputTasa] = useState(false);
   const [tasaManual, setTasaManual] = useState("");
+  // Estado para ingresos manuales vía ServicioEditorDialog
+  const isXs = useMediaQuery('(max-width:600px)');
+  const [ingresoDialogOpen, setIngresoDialogOpen] = useState(false);
+  const [clientes, setClientes] = useState([]);
+  const INGRESO_FORM_DEFAULT = {
+    vehiculo: "",
+    servicio: "",
+    observaciones: "Ingreso manual",
+    precio: "",
+    precioBs: "",
+    customerName: "",
+    customerPhone: "+580000000000",
+    factura: "",
+    paymentUSDMethod: "efectivo",
+  };
+  const [ingresoForm, setIngresoForm] = useState(INGRESO_FORM_DEFAULT);
+  const [ingresosKey, setIngresosKey] = useState(0);
 
   useEffect(() => {
     obtenerVehiculos().then(setVehiculos);
     obtenerEstadosServicio().then(setEstadosServicio);
     fetchTasaBCV();
+    obtenerClientes().then(setClientes).catch(() => setClientes([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -190,6 +212,7 @@ export default function CierreDia() {
     return <AccesoDenegado />;
   }
   return (
+  <>
   <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
       <Button
         variant="text"
@@ -552,7 +575,14 @@ export default function CierreDia() {
                     <CircularProgress color="primary" size={40} />
                   </Box>
                 ) : (
-                  <Ingresos tasaBCV={tasaBCV} />
+                  <Ingresos
+                    key={ingresosKey}
+                    tasaBCV={tasaBCV}
+                    onOpenRegistrarIngreso={() => {
+                      setIngresoForm(INGRESO_FORM_DEFAULT);
+                      setIngresoDialogOpen(true);
+                    }}
+                  />
                 )}
               </Box>
             )}
@@ -602,5 +632,119 @@ export default function CierreDia() {
         </Box>
       </Box>
     </Container>
+    <IngresoDialogHost
+      open={ingresoDialogOpen}
+      isXs={isXs}
+      loading={false}
+      form={ingresoForm}
+      setForm={setIngresoForm}
+      clientes={clientes}
+      onClose={() => { setIngresoDialogOpen(false); setIngresoForm(INGRESO_FORM_DEFAULT); }}
+      onSaved={() => { setIngresoDialogOpen(false); setIngresoForm(INGRESO_FORM_DEFAULT); setIngresosKey((prev) => prev + 1); }}
+      paymentUSDEnabled={true}
+      paymentUSDMethod={ingresoForm.paymentUSDMethod}
+      onPaymentUSDMethodChange={(val) => setIngresoForm((prev) => ({ ...prev, paymentUSDMethod: val }))}
+    />
+  </>
   );
 }
+
+// Handlers del diálogo de ingreso manual
+function mapIngresoFromForm(form) {
+  const formasPago = [];
+  const metodo = (form.paymentUSDMethod || 'efectivo').toString().trim().toLowerCase();
+  const montoUSD = form.precio !== undefined && form.precio !== null && form.precio !== "" ? Number(form.precio) : undefined;
+  const montoBs = form.precioBs !== undefined && form.precioBs !== null && form.precioBs !== "" ? Number(form.precioBs) : undefined;
+  if (metodo === 'pago movil') {
+    const montoParaBs = (montoBs && !isNaN(montoBs) && montoBs > 0) ? montoBs : (montoUSD && !isNaN(montoUSD) && montoUSD > 0 ? montoUSD : undefined);
+    if (montoParaBs !== undefined) {
+      formasPago.push({ formaPago: 'pago movil', montoBs: Number(montoParaBs) });
+    }
+  } else {
+    if (montoUSD && !isNaN(montoUSD) && montoUSD > 0) {
+      formasPago.push({ formaPago: metodo, monto: Number(montoUSD) });
+    }
+  }
+  const hoy = new Date();
+  const fechaStr = `${String(hoy.getDate()).padStart(2, "0")}/${String(hoy.getMonth() + 1).padStart(2, "0")}/${hoy.getFullYear()}`;
+  // Construir payload con los campos del ServicioEditorDialog
+  const payloadRaw = {
+    fecha: fechaStr,
+    vehiculo: form.vehiculo || undefined,
+    servicio: form.servicio || undefined,
+    observaciones: form.observaciones || undefined,
+    factura: form.factura || undefined,
+    customerName: form.customerName || undefined,
+    customerPhone: form.customerPhone || undefined,
+    formasPago: formasPago.length > 0 ? formasPago : undefined,
+  };
+  return Object.fromEntries(Object.entries(payloadRaw).filter(([_, v]) => v !== undefined && v !== null));
+}
+
+// Render del diálogo dentro del componente (usar estado de CierreDia)
+// Nota: Colocamos el diálogo tras el componente principal para mantener estructura
+export function IngresoDialogHost({
+  open,
+  isXs,
+  loading,
+  form,
+  setForm,
+  clientes,
+  onClose,
+  onSaved,
+  paymentUSDEnabled,
+  paymentUSDMethod,
+  onPaymentUSDMethodChange,
+}) {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+  const handleClienteInput = (_e, value) => {
+    setForm((prev) => ({ ...prev, customerName: value }));
+  };
+  const handleClienteChange = (_e, opt) => {
+    if (!opt) return;
+    setForm((prev) => ({ ...prev, customerName: opt.nombre || prev.customerName, customerPhone: opt.telefono ? (opt.telefono.startsWith('+58') ? opt.telefono : '+58' + opt.telefono.replace(/^0+/, '')) : prev.customerPhone }));
+  };
+  const handlePhoneChange = (e) => {
+    const val = e.target.value || '';
+    setForm((prev) => ({ ...prev, customerPhone: val }));
+  };
+  const handleRegisterSave = async () => {
+    try {
+      // Validación de número de teléfono como en el diálogo original
+      const phoneRaw = (form.customerPhone || '').replace(/[-\s]/g, "");
+      if (!/^\+58\d{10}$/.test(phoneRaw)) {
+        return; // No guardar si el teléfono no cumple el formato
+      }
+      const payload = mapIngresoFromForm(form);
+      await guardarIngreso(payload);
+      onSaved?.();
+    } catch (e) {
+      // Silenciar o notificar según necesidad
+    }
+  };
+  return (
+    <ServicioEditorDialog
+      open={open}
+      isXs={isXs}
+      onDialogClose={onClose}
+      actionLoading={loading}
+      onClose={onClose}
+      form={form}
+      onChange={handleChange}
+      isRegistering={true}
+      clientes={clientes}
+      onClienteInputChange={handleClienteInput}
+      onClienteChange={handleClienteChange}
+      onCustomerPhoneChange={handlePhoneChange}
+      onRegisterSave={handleRegisterSave}
+      paymentUSDEnabled={paymentUSDEnabled}
+      paymentUSDMethod={paymentUSDMethod}
+      onPaymentUSDMethodChange={onPaymentUSDMethodChange}
+      isManualIngreso={true}
+    />
+  );
+}
+

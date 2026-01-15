@@ -62,6 +62,10 @@ export default function ServicioEditorDialog({
   onOpenFactura,
   facturarDisabled,
   facturarTitle,
+  paymentUSDEnabled,
+  paymentUSDMethod,
+  onPaymentUSDMethodChange,
+  isManualIngreso,
 }) {
   return (
     <Dialog
@@ -219,16 +223,31 @@ export default function ServicioEditorDialog({
                 </Box>
               </Box>
               <Stack spacing={1.25}>
-                <TextField
-                  margin="none"
-                  label="Servicio"
-                  name="servicio"
-                  fullWidth
-                  size="small"
-                  value={form.servicio}
-                  onChange={onChange}
-                  InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
-                />
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }}>
+                  <TextField
+                    margin="none"
+                    label="Servicio"
+                    name="servicio"
+                    fullWidth
+                    size="small"
+                    value={form.servicio}
+                    onChange={onChange}
+                    InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                    sx={{ flex: 1 }}
+                  />
+                  {isManualIngreso && (
+                    <TextField
+                      margin="none"
+                      label="N° Factura"
+                      name="factura"
+                      size="small"
+                      value={form.factura || ''}
+                      onChange={onChange}
+                      InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                      sx={{ flex: 1, minWidth: 160 }}
+                    />
+                  )}
+                </Stack>
                 <TextField
                   margin="none"
                   label="Observaciones"
@@ -240,6 +259,29 @@ export default function ServicioEditorDialog({
                   InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }}>
+                  {paymentUSDEnabled && (
+                    <TextField
+                      margin="none"
+                      label="Forma de pago"
+                      name="paymentUSDMethod"
+                      select
+                      size="small"
+                      value={paymentUSDMethod || ''}
+                      onChange={(e) => onPaymentUSDMethodChange && onPaymentUSDMethodChange(e.target.value)}
+                      SelectProps={{ native: true, displayEmpty: true }}
+                      InputLabelProps={{ shrink: true }}
+                      InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
+                      sx={{ flex: 1, minWidth: 120, '& .MuiInputBase-input': { fontSize: '1rem', py: 0.5 } }}
+                    >
+                      <option value="" disabled hidden>Selecciona una forma</option>
+                      <option value="efectivo">Efectivo</option>
+                      <option value="pago movil">Pago móvil</option>
+                      <option value="zelle">Zelle</option>
+                      {/* <option value="transferencia">Transferencia</option>
+                      <option value="divisas">Divisas</option>
+                      <option value="otro">Otro</option> */}
+                    </TextField>
+                  )}
                   <TextField
                     margin="none"
                     label="Precio"
@@ -284,12 +326,12 @@ export default function ServicioEditorDialog({
               </Box>
               <>
                 <Autocomplete
-                  options={clientes}
-                  getOptionLabel={(opt) => opt.nombre + (opt.telefono ? ` (${opt.telefono})` : "")}
-                  value={null}
-                  inputValue={form.customerName}
-                  onInputChange={onClienteInputChange}
-                  onChange={onClienteChange}
+                  options={clientes || []}
+                  getOptionLabel={(opt) => opt?.nombre ? (opt.nombre + (opt.telefono ? ` (${opt.telefono})` : "")) : ""}
+                  inputValue={form.customerName || ""}
+                  onInputChange={(event, value) => onClienteInputChange && onClienteInputChange(event, value)}
+                  onChange={(event, value) => onClienteChange && onClienteChange(event, value)}
+                  freeSolo
                   sx={{ width: "100%" }}
                   renderInput={(params) => (
                     <TextField
@@ -314,20 +356,28 @@ export default function ServicioEditorDialog({
                   fullWidth
                   size="small"
                   value={
-                    form.customerPhone.startsWith("+58")
-                      ? form.customerPhone
-                      : "+58" + form.customerPhone.replace(/^0+/, "")
+                    form.customerPhone
+                      ? (form.customerPhone.startsWith("+58")
+                          ? form.customerPhone
+                          : "+58" + form.customerPhone.replace(/^0+/, ""))
+                      : ""
                   }
                   onChange={onCustomerPhoneChange}
                   InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                   sx={{ mt: 1.25 }}
                   placeholder= "+58-424-xxxxxxx"
                   helperText={
-                    /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
-                      ? "Formato: +58-424-xxxxxxx"
-                      : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)"
+                    form.customerPhone
+                      ? ( /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
+                          ? "Formato: +58-424-xxxxxxx"
+                          : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)" )
+                      : ""
                   }
-                  error={!/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))}
+                  error={
+                    form.customerPhone
+                      ? !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
+                      : false
+                  }
                 />
               </>
             </CardContent>
@@ -379,7 +429,10 @@ export default function ServicioEditorDialog({
                   variant="contained"
                   size="small"
                   color="primary"
-                  disabled={actionLoading}
+                  disabled={
+                    actionLoading ||
+                    !(form.customerPhone && /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, "")))
+                  }
                   sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}
                   startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
                 >
@@ -407,7 +460,10 @@ export default function ServicioEditorDialog({
                     variant="contained"
                     size="small"
                     color="primary"
-                    disabled={actionLoading}
+                    disabled={
+                      actionLoading ||
+                      !(form.customerPhone && /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, "")))
+                    }
                     sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
                     startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
                   >

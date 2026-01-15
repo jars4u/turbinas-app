@@ -1,5 +1,5 @@
 import React from "react";
-import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton, TextField, InputAdornment, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
+import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton, TextField, InputAdornment, Menu, MenuItem, ListItemIcon, ListItemText, Badge } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HistoryIcon from "@mui/icons-material/History";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
@@ -10,6 +10,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 
 export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserver = false, searchValue = "", onSearchChange, searchPlaceholder = "Buscar cliente, modelo, servicio..." }) {
   const [actionsAnchor, setActionsAnchor] = React.useState(null);
@@ -21,6 +23,79 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
   const userMenuOpen = Boolean(userAnchor);
   const handleOpenUserMenu = (e) => setUserAnchor(e.currentTarget);
   const handleCloseUserMenu = () => setUserAnchor(null);
+  // Notificaciones de vencimiento (campana)
+  const [notiAnchor, setNotiAnchor] = React.useState(null);
+  const notiMenuOpen = Boolean(notiAnchor);
+  const handleOpenNoti = (e) => {
+    setNotiAnchor(e.currentTarget);
+    // Marcar como leídas para el día actual
+    const hoy = new Date();
+    const todayStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    try {
+      localStorage.setItem('notiSeenDate', todayStr);
+      localStorage.setItem('notiSeenCount', String(pendingItems.length || 0));
+    } catch (_) {}
+    setHasUnread(false);
+  };
+  const handleCloseNoti = () => setNotiAnchor(null);
+  // Pendientes: vencidas y ≤2 días. Todas: ≤7 días.
+  const [pendingItems, setPendingItems] = React.useState([]);
+  const [hasUnread, setHasUnread] = React.useState(false);
+
+  React.useEffect(() => {
+    let unsubscribe;
+    // Suscribir a cuentasPorPagar y calcular vencimientos cercanos (<=2 días)
+    import('../firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ collection, onSnapshot }) => {
+        unsubscribe = onSnapshot(collection(db, 'cuentasPorPagar'), (snapshot) => {
+          const hoy = new Date();
+          const hoyMid = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+          const msDay = 24 * 60 * 60 * 1000;
+          const base = snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .map(c => {
+              const vStr = c?.vencimiento || '';
+              const parts = vStr.split('/');
+              let daysLeft = null;
+              if (parts.length === 3) {
+                const dd = Number(parts[0]);
+                const mm = Number(parts[1]);
+                const yyyy = Number(parts[2]);
+                const due = new Date(yyyy, mm - 1, dd);
+                const dueMid = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+                daysLeft = Math.floor((dueMid - hoyMid) / msDay);
+              }
+              return {
+                id: c.id,
+                proveedor: c.proveedor || '-',
+                documento: c.documento || '-',
+                vencimiento: vStr || '-',
+                daysLeft,
+              };
+            });
+          const pend = base.filter(x => x.daysLeft !== null && x.daysLeft <= 2);
+          setPendingItems(pend);
+          // Determinar si hay "no leídas" según el día
+          const hoy2 = new Date();
+          const todayStr = `${hoy2.getFullYear()}-${String(hoy2.getMonth() + 1).padStart(2, '0')}-${String(hoy2.getDate()).padStart(2, '0')}`;
+          let seenDate = null;
+          let seenCount = null;
+          try {
+            seenDate = localStorage.getItem('notiSeenDate');
+            seenCount = localStorage.getItem('notiSeenCount');
+          } catch (_) { seenDate = null; }
+          const pendCount = pend.length;
+          const seenCountNum = seenCount !== null ? Number(seenCount) : 0;
+          if (pendCount > 0 && (seenDate !== todayStr || pendCount > seenCountNum)) {
+            setHasUnread(true);
+          } else {
+            setHasUnread(false);
+          }
+        });
+      });
+    });
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, []);
 
   return (
     <AppBar
@@ -50,7 +125,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             style={{ height: 40, marginRight: 8 }}
             aria-label="Logo"
           />
-          <Chip label="v.4.5" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
+          <Chip label="v.5.0" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
         </Box>
         <Box
           sx={{
@@ -100,9 +175,8 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             sx={{
               display: { xs: 'flex', sm: 'none' },
               alignItems: 'center',
-              // justifyContent: 'space-between',
               width: '100%',
-              gap: 10
+              justifyContent: 'space-between'
             }}
           >
             <IconButton
@@ -114,7 +188,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             >
               <MenuIcon />
             </IconButton>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, maxWidth: '60%', justifyContent: 'flex-end' }}>
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
               <Avatar sx={{ bgcolor: '#e0e0e0', width: 22, height: 22, cursor: 'pointer' }} aria-label="Usuario" onClick={handleOpenUserMenu}>
                 <PersonIcon fontSize="small" style={{ color: '#757575' }} />
               </Avatar>
@@ -135,6 +209,22 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                 {usuarioActivo ? usuarioActivo.split("@")[0] : ""}
               </Typography>
             </Box>
+              <IconButton
+                aria-label="Notificaciones"
+                title="Notificaciones"
+              size="small"
+              onClick={handleOpenNoti}
+              sx={{ color: '#616161' }}
+            >
+                  <Badge
+                    badgeContent={pendingItems.length}
+                    color={hasUnread ? 'error' : 'default'}
+                    overlap="circular"
+                    slotProps={!hasUnread ? { badge: { sx: { bgcolor: 'grey.400', color: '#fff' } } } : undefined}
+                  >
+                    {pendingItems.length > 0 ? <NotificationsActiveOutlinedIcon /> : <NotificationsNoneOutlinedIcon />}
+              </Badge>
+            </IconButton>
           </Box>
           {/* Menú de usuario en móviles */}
           <Menu
@@ -185,6 +275,26 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             </Box>
             {/* Grupo de accesos rápidos: visible solo en desktop/tablet */}
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1 }}>
+              <Tooltip title="Notificaciones" arrow>
+                <span>
+                  <IconButton
+                    color="default"
+                    size="small"
+                    sx={{ color: "#757575" }}
+                    onClick={handleOpenNoti}
+                    aria-label="Ver notificaciones"
+                  >
+                    <Badge
+                      badgeContent={pendingItems.length}
+                      color={hasUnread ? 'error' : 'default'}
+                      overlap="circular"
+                      slotProps={!hasUnread ? { badge: { sx: { bgcolor: 'grey.400', color: '#fff' } } } : undefined}
+                    >
+                      {pendingItems.length > 0 ? <NotificationsActiveOutlinedIcon /> : <NotificationsNoneOutlinedIcon />}
+                    </Badge>
+                  </IconButton>
+                </span>
+              </Tooltip>
               <Tooltip title="Nómina" arrow>
                 <span>
                   <IconButton
@@ -294,6 +404,43 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                 <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Cerrar sesión" />
               </MenuItem>
+            </Menu>
+            <Menu
+              anchorEl={notiAnchor}
+              open={notiMenuOpen}
+              onClose={handleCloseNoti}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              {pendingItems.length === 0 ? (
+                <MenuItem disabled>
+                  <ListItemText primary="Sin vencimientos cercanos" />
+                </MenuItem>
+              ) : (
+                <Box sx={{ p: 1, minWidth: 260 }}>
+                  <Typography variant="subtitle2" sx={{ px: 1, pb: 0.5 }}>Vencen en ≤2 días</Typography>
+                  {pendingItems.slice(0, 6).map(item => {
+                    const label = (() => {
+                      if (item.daysLeft === 0) return 'Hoy';
+                      if (item.daysLeft === 1) return 'Mañana';
+                      if (item.daysLeft === 2) return 'En 2 días';
+                      if (item.daysLeft < 0) return `Vencida ${Math.abs(item.daysLeft)} días`;
+                      return `En ${item.daysLeft} días`;
+                    })();
+                    const color = item.daysLeft < 0 ? 'error.main' : (item.daysLeft <= 1 ? 'warning.main' : 'text.secondary');
+                    return (
+                      <Box key={item.id} sx={{ px: 1, py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.25 }}>
+                          {item.proveedor.toUpperCase()} {item.documento !== '-' ? `• ${item.documento.toUpperCase()}` : ''}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color }}>
+                          Venc.: {item.vencimiento} — {label}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
             </Menu>
           </Box>
           <Divider orientation="horizontal" flexItem sx={{ display: { xs: 'none', sm: 'block' }, my: { xs: 0, sm: 0 }, mx: { xs: 0, sm: 2 }, width: { xs: 0, sm: 0 }, height: { xs: 0, sm: 28 } }} />

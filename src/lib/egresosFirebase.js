@@ -1,30 +1,62 @@
-import { getFirestore, collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  Timestamp,
+  doc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
 
-export async function guardarEgreso(egreso) {
-  const db = getFirestore();
+function normalizarFechaEgreso(fecha) {
   // Ajustar la fecha a la zona horaria de Venezuela (GMT-4)
+  // - Si viene string dd/mm/yyyy: 4am UTC = 00:00 GMT-4
+  // - Si viene Date: se usa tal cual
+  // - Si viene Timestamp-like: se convierte
+  if (!fecha) return Timestamp.fromDate(new Date());
+
   let fechaLocal;
-  if (egreso.fecha) {
-    // Si ya viene como string (dd/mm/yyyy), convertir a Date local
-    if (typeof egreso.fecha === 'string' && egreso.fecha.includes('/')) {
-      const [d, m, y] = egreso.fecha.split('/');
-      fechaLocal = new Date(Date.UTC(y, m - 1, d, 4, 0, 0)); // 4am UTC = 00:00 GMT-4
-    } else if (egreso.fecha instanceof Date) {
-      fechaLocal = egreso.fecha;
-    } else if (egreso.fecha.seconds) {
-      // Si viene como Timestamp de Firestore
-      fechaLocal = new Date(egreso.fecha.seconds * 1000);
-    } else {
-      fechaLocal = new Date();
-    }
+
+  if (typeof fecha === "string" && fecha.includes("/")) {
+    const [d, m, y] = fecha.split("/");
+    fechaLocal = new Date(Date.UTC(y, m - 1, d, 4, 0, 0));
+  } else if (fecha instanceof Date) {
+    fechaLocal = fecha;
+  } else if (fecha?.seconds) {
+    fechaLocal = new Date(fecha.seconds * 1000);
+  } else if (typeof fecha?.toDate === "function") {
+    fechaLocal = fecha.toDate();
   } else {
     fechaLocal = new Date();
   }
-  // Guardar como Timestamp de Firestore
+
+  return Timestamp.fromDate(fechaLocal);
+}
+
+export async function guardarEgreso(egreso) {
+  const db = getFirestore();
+
   await addDoc(collection(db, "egresos"), {
     ...egreso,
-    fecha: Timestamp.fromDate(fechaLocal)
+    fecha: normalizarFechaEgreso(egreso?.fecha),
   });
+}
+
+export async function actualizarEgreso(id, egreso) {
+  const db = getFirestore();
+  if (!id) throw new Error("actualizarEgreso: id requerido");
+
+  await updateDoc(doc(db, "egresos", id), {
+    ...egreso,
+    ...(egreso && "fecha" in egreso ? { fecha: normalizarFechaEgreso(egreso.fecha) } : {}),
+  });
+}
+
+export async function eliminarEgreso(id) {
+  const db = getFirestore();
+  if (!id) return;
+  await deleteDoc(doc(db, "egresos", id));
 }
 
 export async function obtenerEgresos() {
