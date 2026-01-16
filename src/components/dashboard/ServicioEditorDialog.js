@@ -18,6 +18,7 @@ import {
   Tooltip,
   InputAdornment,
 } from "@mui/material";
+import { createFilterOptions } from "@mui/material/Autocomplete";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
@@ -67,6 +68,60 @@ export default function ServicioEditorDialog({
   onPaymentUSDMethodChange,
   isManualIngreso,
 }) {
+  // Fallback para permitir escritura en el campo Cliente cuando el padre no provee onClienteInputChange
+  const handleClienteInputChange = React.useCallback((event, value, reason) => {
+    if (typeof onClienteInputChange === 'function') {
+      // Propagar el tercer argumento `reason` requerido por los consumidores
+      onClienteInputChange(event, value, reason);
+      return;
+    }
+    // Actualiza el form.customerName via onChange si no se proporciona handler específico
+    if (typeof onChange === 'function') {
+      onChange({ target: { name: 'customerName', value } });
+    }
+  }, [onClienteInputChange, onChange]);
+
+  // Fallback al seleccionar una opción: si no hay handler, actualizar nombre y teléfono básicos
+  const handleClienteChange = React.useCallback((event, value) => {
+    const nombre = value && typeof value === 'object' ? (value.nombre || '') : (value || '');
+    const telefonoRaw = value && typeof value === 'object' ? (value.telefono || '') : '';
+    const telefono = telefonoRaw
+      ? (String(telefonoRaw).startsWith('+58') ? telefonoRaw : ('+58' + String(telefonoRaw).replace(/^0+/, '')))
+      : '';
+    // Notificar al padre si provee handler
+    if (typeof onClienteChange === 'function') {
+      onClienteChange(event, value);
+    }
+    // En todos los casos, garantizar que el campo se llene solo con el nombre
+    if (typeof onChange === 'function') {
+      onChange({ target: { name: 'customerName', value: nombre } });
+      if (telefono) {
+        onChange({ target: { name: 'customerPhone', value: telefono } });
+      }
+    }
+  }, [onClienteChange, onChange]);
+
+  // Mejorar filtrado (por nombre y teléfono, búsqueda en cualquier posición)
+  // Filtrado por prefijo: solo por nombre (acento-insensible)
+  const filterOptions = (options, { inputValue }) => {
+    const q = normalizeText(inputValue);
+    return (options || []).filter((opt) => normalizeText(opt?.nombre).startsWith(q));
+  };
+
+  const normalizeText = (s) =>
+    String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  // Mantener el valor seleccionado y el texto al re-editar (hidratar desde form.customerName)
+  const selectedCliente = React.useMemo(() => {
+    if (!form?.customerName) return null;
+    const target = normalizeText(form.customerName);
+    const found = (clientes || []).find((c) => normalizeText(c.nombre) === target);
+    return found || null;
+  }, [form?.customerName, clientes]);
   return (
     <Dialog
       open={open}
@@ -75,7 +130,11 @@ export default function ServicioEditorDialog({
       maxWidth="sm"
       scroll="paper"
       disableScrollLock={false}
-      onClose={onDialogClose}
+      disableEscapeKeyDown={!!actionLoading}
+      onClose={(event, reason) => {
+        if (actionLoading) return;
+        onDialogClose && onDialogClose(event, reason);
+      }}
       PaperProps={{
         sx: {
           borderRadius: { xs: 0, sm: 1 },
@@ -83,9 +142,30 @@ export default function ServicioEditorDialog({
           bgcolor: "grey.50",
           height: { xs: 'auto', sm: 'auto' },
           display: 'block',
+          position: 'relative',
         },
       }}
     >
+      {actionLoading && (
+        <Box
+          aria-busy="true"
+          aria-live="polite"
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            bgcolor: 'rgba(255,255,255,0.7)',
+            zIndex: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <CircularProgress color="primary" size={40} />
+        </Box>
+      )}
       <DialogTitle
         sx={(theme) => ({
           px: { xs: 2, sm: 3 },
@@ -105,7 +185,7 @@ export default function ServicioEditorDialog({
             <>
               <Tooltip title="Eliminar servicio">
                 <span>
-                  <IconButton onClick={onDeleteClick} color="inherit" size="small">
+                  <IconButton onClick={onDeleteClick} color="inherit" size="small" disabled={actionLoading}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </span>
@@ -113,7 +193,7 @@ export default function ServicioEditorDialog({
             </>
           )}
           <Tooltip title="Cerrar">
-            <IconButton aria-label="Cerrar" onClick={onClose} color="inherit" size="small">
+            <IconButton aria-label="Cerrar" onClick={onClose} color="inherit" size="small" disabled={actionLoading}>
               <CloseIcon />
             </IconButton>
           </Tooltip>
@@ -131,24 +211,7 @@ export default function ServicioEditorDialog({
           px: { xs: 1, sm: 3 },
         }}
       >
-        {actionLoading && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              bgcolor: "rgba(255,255,255,0.7)",
-              zIndex: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CircularProgress color="primary" size={40} />
-          </Box>
-        )}
+        {/* Overlay global gestionado arriba para bloquear toda la interfaz durante guardado */}
 
         {editId && (
           <Box sx={{ width: "100%", display: "flex", alignItems: 'center', gap: 1, my: 1 }}>
@@ -327,11 +390,20 @@ export default function ServicioEditorDialog({
               <>
                 <Autocomplete
                   options={clientes || []}
-                  getOptionLabel={(opt) => opt?.nombre ? (opt.nombre + (opt.telefono ? ` (${opt.telefono})` : "")) : ""}
+                  getOptionLabel={(opt) => opt?.nombre ? opt.nombre : ""}
                   inputValue={form.customerName || ""}
-                  onInputChange={(event, value) => onClienteInputChange && onClienteInputChange(event, value)}
-                  onChange={(event, value) => onClienteChange && onClienteChange(event, value)}
+                  onInputChange={handleClienteInputChange}
+                  onChange={handleClienteChange}
+                  filterOptions={filterOptions}
                   freeSolo
+                  selectOnFocus
+                  handleHomeEndKeys
+                  isOptionEqualToValue={(option, value) => {
+                    // Comparar solo por nombre (acento-insensible)
+                    if (!option || !value) return false;
+                    if (typeof value === 'string') return normalizeText(option.nombre) === normalizeText(value);
+                    return normalizeText(option.nombre) === normalizeText(value.nombre);
+                  }}
                   sx={{ width: "100%" }}
                   renderInput={(params) => (
                     <TextField
@@ -348,6 +420,18 @@ export default function ServicioEditorDialog({
                       }}
                     />
                   )}
+                  renderOption={(props, option) => (
+                    <li {...props}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="body2" sx={{ lineHeight: 1.2 }}>{option?.nombre || ''}</Typography>
+                        {option?.telefono && (
+                          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.1 }}>
+                            {option.telefono}
+                          </Typography>
+                        )}
+                      </Box>
+                    </li>
+                  )}
                 />
                 <TextField
                   margin="none"
@@ -358,19 +442,19 @@ export default function ServicioEditorDialog({
                   value={
                     form.customerPhone
                       ? (form.customerPhone.startsWith("+58")
-                          ? form.customerPhone
-                          : "+58" + form.customerPhone.replace(/^0+/, ""))
+                        ? form.customerPhone
+                        : "+58" + form.customerPhone.replace(/^0+/, ""))
                       : ""
                   }
                   onChange={onCustomerPhoneChange}
                   InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                   sx={{ mt: 1.25 }}
-                  placeholder= "+58-424-xxxxxxx"
+                  placeholder="+58-424-xxxxxxx"
                   helperText={
                     form.customerPhone
-                      ? ( /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
-                          ? "Formato: +58-424-xxxxxxx"
-                          : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)" )
+                      ? (/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
+                        ? "Formato: +58-424-xxxxxxx"
+                        : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)")
                       : ""
                   }
                   error={
@@ -403,7 +487,7 @@ export default function ServicioEditorDialog({
       >
         {isRegistering ? (
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: '100%' }}>
-            <Button onClick={onClose} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}>
+            <Button onClick={onClose} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }} disabled={actionLoading}>
               Cancelar
             </Button>
             <Button
@@ -412,7 +496,7 @@ export default function ServicioEditorDialog({
               size="small"
               color="primary"
               sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}
-              disabled={!form.vehiculo || !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))}
+              disabled={actionLoading || !form.vehiculo || !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))}
             >
               Guardar
             </Button>
@@ -420,7 +504,7 @@ export default function ServicioEditorDialog({
         ) : (
           editSection ? (
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: '100%' }}>
-              <Button onClick={onCancelEditSection} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}>
+              <Button onClick={onCancelEditSection} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }} disabled={actionLoading}>
                 Cancelar
               </Button>
               {isEditing && (
@@ -451,7 +535,7 @@ export default function ServicioEditorDialog({
                   width: '100%'
                 }}
               >
-                <Button onClick={onClose} variant="outlined" size="small" color="primary" sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}>
+                <Button onClick={onClose} variant="outlined" size="small" color="primary" sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }} disabled={actionLoading}>
                   Cancelar
                 </Button>
                 {isEditing && (
@@ -476,7 +560,7 @@ export default function ServicioEditorDialog({
                   color="success"
                   endIcon={<WhatsAppIcon />}
                   onClick={onWhatsAppSend}
-                  disabled={!form.customerPhone}
+                  disabled={actionLoading || !form.customerPhone}
                   sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
                 >
                   Enviar
@@ -487,7 +571,7 @@ export default function ServicioEditorDialog({
                   size="small"
                   sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
                   onClick={onPorCobrar}
-                  disabled={porCobrarDisabled}
+                  disabled={actionLoading || porCobrarDisabled}
                   title={porCobrarTitle}
                 >
                   Por Cobrar
@@ -499,7 +583,7 @@ export default function ServicioEditorDialog({
                   startIcon={<PointOfSaleIcon />}
                   sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
                   onClick={onOpenFactura}
-                  disabled={facturarDisabled}
+                  disabled={actionLoading || facturarDisabled}
                   title={facturarTitle}
                 >
                   Facturar

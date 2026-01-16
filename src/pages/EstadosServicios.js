@@ -18,6 +18,7 @@ import {
   TextField,
   IconButton,
   CircularProgress,
+  Skeleton,
   Tooltip,
   Chip,
   Checkbox
@@ -171,7 +172,17 @@ export default function EstadosServicios() {
       {/* Vista móvil en tarjetas */}
       <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 1 }}>
         <Typography variant="subtitle2" sx={{ mb: 1 }}>Estados de servicio</Typography>
-        {estados.map((estado) => (
+        {loading ? (
+          <>
+            {[1, 2, 3].map((i) => (
+              <Box key={i} sx={{ border: '1px solid #eee', borderRadius: 2, p: 1.5, mb: 1, bgcolor: 'grey.50' }}>
+                <Skeleton variant="text" width="60%" height={18} sx={{ mb: 1 }} />
+                <Skeleton variant="text" width="40%" height={14} sx={{ mb: 1 }} />
+                <Skeleton variant="rectangular" width="100%" height={56} />
+              </Box>
+            ))}
+          </>
+        ) : estados.map((estado) => (
           <Box
             key={estado.id}
             sx={{
@@ -286,8 +297,47 @@ export default function EstadosServicios() {
 
       {/* Mostrar tabla de estados directamente (desktop) */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
-          <CircularProgress color="primary" size={40} />
+        <Box sx={{ width: '100%', overflowX: 'hidden', maxWidth: '100vw', mt: 1, display: { xs: 'none', md: 'block' } }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>Estados de servicio</Typography>
+          <Table
+            size="small"
+            sx={{
+              border: 'none',
+              minWidth: { xs: 640, md: 700 },
+              '& .MuiTableCell-root': {
+                fontSize: { xs: '0.80rem', md: 12 },
+                py: { xs: 0.5, md: 0.5 },
+                px: { xs: 0.75, md: 1 },
+              },
+            }}
+          >
+            <TableHead>
+              <TableRow sx={{ height: 28 }}>
+                <TableCell><Skeleton variant="text" width={120} /></TableCell>
+                <TableCell><Skeleton variant="text" width={80} /></TableCell>
+                <TableCell><Skeleton variant="text" width={120} /></TableCell>
+                <TableCell><Skeleton variant="text" width={140} /></TableCell>
+                <TableCell><Skeleton variant="text" width={140} /></TableCell>
+                <TableCell><Skeleton variant="text" width={60} /></TableCell>
+                <TableCell><Skeleton variant="text" width={100} /></TableCell>
+                <TableCell align="right"><Skeleton variant="text" width={80} sx={{ ml: 'auto' }} /></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {[1, 2, 3, 4].map((i) => (
+                <TableRow key={i} sx={{ border: 'none', background: 'transparent', height: 28 }}>
+                  <TableCell><Skeleton variant="text" width="60%" /></TableCell>
+                  <TableCell><Skeleton variant="text" width="40%" /></TableCell>
+                  <TableCell align="center"><Skeleton variant="rectangular" width={24} height={24} sx={{ mx: 'auto' }} /></TableCell>
+                  <TableCell align="center"><Skeleton variant="rectangular" width={24} height={24} sx={{ mx: 'auto' }} /></TableCell>
+                  <TableCell align="center"><Skeleton variant="rectangular" width={24} height={24} sx={{ mx: 'auto' }} /></TableCell>
+                  <TableCell><Skeleton variant="rectangular" width={24} height={16} /></TableCell>
+                  <TableCell><Skeleton variant="text" width="50%" /></TableCell>
+                  <TableCell align="right"><Skeleton variant="text" width={60} sx={{ ml: 'auto' }} /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Box>
       ) : (
         <Box sx={{ width: '100%', overflowX: 'auto', maxWidth: '100vw', mt: 1, display: { xs: 'none', md: 'block' } }}>

@@ -90,8 +90,15 @@ export async function obtenerIngresos() {
         const parts = data.fecha.split(/[/-]/);
         if (parts.length === 3) {
           fechaStr = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
-          // Para ordenar, crear un objeto Date
-          fechaRaw = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+          // Para ordenar/filtrar, crear Date en horario local.
+          // IMPORTANTE: evitar `new Date('YYYY-MM-DD')` porque se interpreta como UTC
+          // y en GMT-4 se corre al día anterior.
+          const y = Number(parts[2]);
+          const m = Number(parts[1]);
+          const d = Number(parts[0]);
+          fechaRaw = Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)
+            ? new Date(y, m - 1, d, 12, 0, 0)
+            : null;
         } else {
           fechaStr = data.fecha;
           fechaRaw = Date.parse(data.fecha) ? new Date(data.fecha) : null;

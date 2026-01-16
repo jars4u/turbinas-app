@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Box, Table, TableBody, TableCell, TableHead, TableRow, Divider, CircularProgress, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, List, ListItem, ListItemText } from "@mui/material";
+import { Typography, Box, Table, TableBody, TableCell, TableHead, TableRow, Divider, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, List, ListItem, ListItemText, Skeleton } from "@mui/material";
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -95,8 +95,18 @@ export default function ClientesGestion() {
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, flexDirection: 'column', width: '100%' }}>
         {/* Vista móvil en tarjetas */}
         {loading ? (
-          <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mt: 2 }}>
-            <CircularProgress size={28} />
+          <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 1 }}>
+            <Skeleton variant="text" width={120} height={20} sx={{ mb: 1 }} />
+            {[1, 2, 3].map((i) => (
+              <Box
+                key={i}
+                sx={{ border: '1px solid #eee', borderRadius: 2, p: 1, mb: 0.5, bgcolor: 'grey.50' }}
+              >
+                <Skeleton variant="text" width="60%" height={18} sx={{ mb: 0.5 }} />
+                <Skeleton variant="text" width="40%" height={14} />
+                <Skeleton variant="text" width="30%" height={14} />
+              </Box>
+            ))}
           </Box>
         ) : (
           <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 1 }}>
@@ -248,8 +258,39 @@ export default function ClientesGestion() {
           </DialogActions>
         </Dialog>
         {loading ? (
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'center', mt: 4 }}>
-            <CircularProgress size={32} />
+          <Box sx={{ display: { xs: 'none', md: 'block' }, width: '100%' }}>
+            <Table
+              size="small"
+              sx={{
+                minWidth: { xs: 360, md: 400 },
+                '& .MuiTableCell-root': {
+                  fontSize: { xs: '0.80rem', md: 14 },
+                  py: { xs: 0.5, md: 1 },
+                  px: { xs: 0.75, md: 1 },
+                },
+              }}
+            >
+              <TableHead>
+                <TableRow>
+                  <TableCell><Skeleton variant="text" width={120} /></TableCell>
+                  <TableCell><Skeleton variant="text" width={100} /></TableCell>
+                  <TableCell><Skeleton variant="text" width={80} /></TableCell>
+                  <TableCell><Skeleton variant="text" width={80} /></TableCell>
+                  <TableCell align="right"><Skeleton variant="text" width={80} sx={{ ml: 'auto' }} /></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton variant="text" width="60%" /></TableCell>
+                    <TableCell><Skeleton variant="text" width="50%" /></TableCell>
+                    <TableCell><Skeleton variant="text" width="40%" /></TableCell>
+                    <TableCell align="center"><Skeleton variant="rectangular" width={24} height={24} sx={{ mx: 'auto' }} /></TableCell>
+                    <TableCell align="right"><Skeleton variant="text" width={60} sx={{ ml: 'auto' }} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </Box>
         ) : (
           <Box sx={{ display: { xs: 'none', md: 'block' }, width: '100%' }}>
@@ -391,8 +432,12 @@ export default function ClientesGestion() {
           <DialogTitle>Modelos y servicios de {(clienteSeleccionado?.nombre || "").toUpperCase()}</DialogTitle>
           <DialogContent>
             {modelosLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                <CircularProgress size={28} />
+              <Box sx={{ py: 1 }}>
+                {[1, 2, 3].map((i) => (
+                  <Box key={i} sx={{ display: 'flex', alignItems: 'center', py: 1 }}>
+                    <Skeleton variant="text" width="75%" height={18} />
+                  </Box>
+                ))}
               </Box>
             ) : modelosCliente.length === 0 ? (
               <Typography variant="body2" color="text.secondary">No hay servicios registrados para este cliente.</Typography>

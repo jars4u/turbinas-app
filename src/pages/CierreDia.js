@@ -8,23 +8,12 @@ import {
   Typography,
   Box,
   Divider,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Paper,
   Button,
-  CircularProgress,
+  Skeleton,
   TextField,
-  Chip,
   Tabs,
   Tab,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from "@mui/material";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { guardarTasaBCV, obtenerTasaBCV } from "../lib/tasaBCVFirebase";
 
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
@@ -33,6 +22,7 @@ import Ingresos from "../components/Ingresos";
 import Egresos from "../components/Egresos";
 import CuentasPorPagar from "../components/CuentasPorPagar";
 import CuentasPorCobrar from "../components/CuentasPorCobrar";
+import CierreDiaMonthlyCharts from "../components/CierreDiaMonthlyCharts";
 
 import ResumenContable from "../components/ResumenContable";
 import ServicioEditorDialog from "../components/dashboard/ServicioEditorDialog";
@@ -198,16 +188,6 @@ export default function CierreDia() {
     setLoadingTasa(false);
   }, [isAdmin, isOwner]);
 
-  // Calcular totales por estado sincronizado
-  const totalesPorEstado = estadosServicio
-    .map((estado) => {
-      const total = vehiculos
-        .filter((v) => v.status === estado.nombre)
-        .reduce((acc, v) => acc + (v.precio || 0), 0);
-      return { ...estado, total };
-    })
-    .filter((estado) => estado.nombre !== "entregado");
-
   if (!isAdmin && !isOwner) {
     return <AccesoDenegado />;
   }
@@ -263,7 +243,10 @@ export default function CierreDia() {
               Tasa de Cambio BCV
             </Typography>
             {loadingTasa ? (
-              <CircularProgress size={24} />
+              <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                <Skeleton variant="text" width={200} height={28} />
+                <Skeleton variant="text" width={260} height={14} />
+              </Box>
             ) : mostrarInputTasa ? (
               <Box>
                 <Typography variant="body2" color="error" sx={{ mb: 1 }}>
@@ -334,180 +317,7 @@ export default function CierreDia() {
               Fuente: Banco Central de Venezuela (BCV)
             </Typography>
           </Box>
-          {/* Responsive: Accordion en móviles, tabla normal en desktop */}
-          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-            <Accordion sx={{ mb: 2 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1" fontWeight={600}>Totales por estado</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Table
-                  size="small"
-                  sx={{
-                    mb: 2,
-                    minWidth: 360,
-                    width: '100%',
-                    overflowX: 'auto',
-                    '& .MuiTableCell-root': { fontSize: { xs: '0.80rem' } },
-                    '& .MuiChip-label': { fontSize: { xs: '0.75rem' } },
-                  }}
-                >
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Estado</TableCell>
-                      <TableCell align="right">Total $</TableCell>
-                      <TableCell align="right">Total Bs</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {totalesPorEstado.map((estado) => (
-                      <TableRow key={estado.nombre}>
-                        <TableCell>
-                          <Chip
-                            label={estado.label}
-                            size="small"
-                            sx={{
-                              fontWeight: 500,
-                              fontSize: { xs: '0.75rem', md: '0.95rem' },
-                              height: { xs: 22, md: 24 },
-                              bgcolor: estado.color === "gris" ? "grey.500" : undefined,
-                              color: estado.color === "gris" ? "#fff" : undefined,
-                            }}
-                            {...(['default','primary','secondary','error','info','success','warning'].includes(estado.color)
-                              ? { color: estado.color }
-                              : {})}
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {typeof estado.total === 'number' && !isNaN(estado.total)
-                            ? estado.total.toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                            : "-"}
-                        </TableCell>
-                        <TableCell align="right">
-                          {tasaBCV && typeof estado.total === 'number' && !isNaN(estado.total)
-                            ? (estado.total * tasaBCV).toLocaleString("de-DE", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                            : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {/* Fila de total */}
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>
-                        {(() => {
-                          const total = totalesPorEstado.reduce((acc, estado) => acc + (typeof estado.total === 'number' && !isNaN(estado.total) ? estado.total : 0), 0);
-                          return typeof total === 'number' && !isNaN(total)
-                            ? total.toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                            : "-";
-                        })()}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>
-                        {(() => {
-                          if (!tasaBCV) return "-";
-                          const totalBs = totalesPorEstado.reduce((acc, estado) => acc + (typeof estado.total === 'number' && !isNaN(estado.total) ? estado.total * tasaBCV : 0), 0);
-                          return typeof totalBs === 'number' && !isNaN(totalBs)
-                            ? totalBs.toLocaleString("de-DE", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                            : "-";
-                        })()}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  El total de entregados corresponde al monto cobrado hoy y se reflejará en los egresos. El total
-                  en proceso y notificado muestra los montos aún no cobrados.
-                </Typography>
-              </AccordionDetails>
-            </Accordion>
-          </Box>
-          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-            <Table component={Paper} size="small" sx={{ mb: 2 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Total $</TableCell>
-                  <TableCell align="right">Total Bs</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {totalesPorEstado.map((estado) => (
-                  <TableRow key={estado.nombre}>
-                    <TableCell>
-                      <Chip
-                        label={estado.label}
-                        size="small"
-                        sx={{
-                          fontWeight: 500,
-                          fontSize: "0.95rem",
-                          height: 24,
-                          bgcolor: estado.color === "gris" ? "grey.500" : undefined,
-                          color: estado.color === "gris" ? "#fff" : undefined,
-                        }}
-                        {...(['default','primary','secondary','error','info','success','warning'].includes(estado.color)
-                          ? { color: estado.color }
-                          : {})}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      {estado.total.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell align="right">
-                      {tasaBCV
-                        ? (estado.total * tasaBCV).toLocaleString("de-DE", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })
-                        : "-"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {/* Fila de total */}
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {totalesPorEstado
-                      .reduce((acc, estado) => acc + estado.total, 0)
-                      .toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {tasaBCV
-                      ? totalesPorEstado
-                          .reduce(
-                            (acc, estado) => acc + estado.total * tasaBCV,
-                            0
-                          )
-                          .toLocaleString("de-DE", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })
-                      : "-"}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              El total de entregados corresponde al monto cobrado hoy y se reflejará en los egresos. El total
-              en proceso y notificado muestra los montos aún no cobrados.
-            </Typography>
-          </Box>
+          <CierreDiaMonthlyCharts tasaBCV={tasaBCV} />
         </Box>
 
         {/* 2/3: Tabla y resumen */}
@@ -541,15 +351,9 @@ export default function CierreDia() {
             {tabIndex === 0 && (
               <Box sx={{ p: 2 }}>
                 {loadingTasa ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      minHeight: 120,
-                    }}
-                  >
-                    <CircularProgress color="primary" size={40} />
+                  <Box>
+                    <Skeleton variant="text" width={200} height={20} sx={{ mb: 1 }} />
+                    <Skeleton variant="rounded" width="100%" height={160} />
                   </Box>
                 ) : (
                   <ResumenContable tasaBCV={tasaBCV} />
@@ -564,15 +368,9 @@ export default function CierreDia() {
             {tabIndex === 1 && (
               <Box sx={{ p: 2 }}>
                 {loadingTasa || !vehiculos.length ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      minHeight: 120,
-                    }}
-                  >
-                    <CircularProgress color="primary" size={40} />
+                  <Box>
+                    <Skeleton variant="text" width={220} height={20} sx={{ mb: 1 }} />
+                    <Skeleton variant="rounded" width="100%" height={180} />
                   </Box>
                 ) : (
                   <Ingresos
@@ -589,15 +387,9 @@ export default function CierreDia() {
             {tabIndex === 2 && (
               <Box sx={{ p: 2 }}>
                 {loadingTasa || !vehiculos.length ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      minHeight: 120,
-                    }}
-                  >
-                    <CircularProgress color="primary" size={40} />
+                  <Box>
+                    <Skeleton variant="text" width={200} height={20} sx={{ mb: 1 }} />
+                    <Skeleton variant="rounded" width="100%" height={180} />
                   </Box>
                 ) : (
                   <Egresos tasaBCV={tasaBCV} isOwner={isOwner} />
@@ -607,15 +399,9 @@ export default function CierreDia() {
             {tabIndex === 3 && (
               <Box sx={{ p: 2 }}>
                 {loadingTasa || !vehiculos.length ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      minHeight: 120,
-                    }}
-                  >
-                    <CircularProgress color="primary" size={40} />
+                  <Box>
+                    <Skeleton variant="text" width={200} height={20} sx={{ mb: 1 }} />
+                    <Skeleton variant="rounded" width="100%" height={180} />
                   </Box>
                 ) : (
                   <CajaChica tasaBCV={tasaBCV} isOwner={isOwner} />

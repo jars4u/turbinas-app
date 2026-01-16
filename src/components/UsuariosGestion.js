@@ -19,6 +19,7 @@ import {
   Checkbox,
   Tooltip,
   CircularProgress,
+  Skeleton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAuth } from "../context/AuthContext";
@@ -33,13 +34,26 @@ import {
 export default function UsuariosGestion() {
   const { isOwner } = useAuth();
   const [usuarios, setUsuarios] = useState([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(true);
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Cargar usuarios al montar
   useEffect(() => {
-    obtenerUsuarios().then(setUsuarios);
+    let mounted = true;
+    (async () => {
+      setLoadingUsuarios(true);
+      try {
+        const lista = await obtenerUsuarios();
+        if (mounted) setUsuarios(lista);
+      } catch (_) {
+        if (mounted) setUsuarios([]);
+      } finally {
+        if (mounted) setLoadingUsuarios(false);
+      }
+    })();
+    return () => { mounted = false; };
   }, []);
 
   // Abrir modal para crear usuario
@@ -188,7 +202,17 @@ export default function UsuariosGestion() {
       </Box>
       {/* Vista móvil en tarjetas */}
       <Box sx={{ display: { xs: 'block', md: 'none' }, mt: 1 }}>
-        {usuarios.map((u) => (
+        {loadingUsuarios ? (
+          <>
+            {[1, 2, 3].map((i) => (
+              <Box key={i} sx={{ border: '1px solid #eee', borderRadius: 2, p: 1.5, mb: 1, bgcolor: 'grey.50' }}>
+                <Skeleton variant="text" width="60%" height={18} sx={{ mb: 1 }} />
+                <Skeleton variant="text" width="40%" height={14} sx={{ mb: 0.5 }} />
+                <Skeleton variant="text" width="30%" height={14} />
+              </Box>
+            ))}
+          </>
+        ) : usuarios.map((u) => (
           <Box
             key={u.id}
             sx={{
@@ -286,6 +310,41 @@ export default function UsuariosGestion() {
 
       {/* Mostrar usuarios registrados (desktop) */}
           <Box sx={{ width: '100%', overflowX: { xs: 'auto', sm: 'visible' }, display: { xs: 'none', md: 'block' } }}>
+            {loadingUsuarios ? (
+              <Table
+                size="small"
+                sx={{
+                  border: 'none',
+                  minWidth: { xs: 560, md: 600 },
+                  '& .MuiTableCell-root': {
+                    fontSize: { xs: '0.80rem', md: 12 },
+                    py: { xs: 0.25, md: 0.5 },
+                    px: { xs: 0.75, md: 1 },
+                  },
+                }}
+              >
+                <TableHead>
+                  <TableRow sx={{ height: 28, display: 'flex', justifyContent: 'space-between' }}>
+                    <TableCell sx={{ flex: 1 }}><Skeleton variant="text" width={120} /></TableCell>
+                    <TableCell sx={{ flex: 1 }}><Skeleton variant="text" width={60} /></TableCell>
+                    <TableCell sx={{ flex: 1 }}><Skeleton variant="text" width={60} /></TableCell>
+                    <TableCell sx={{ flex: 1 }}><Skeleton variant="text" width={80} /></TableCell>
+                    <TableCell sx={{ flex: 1 }} align="right"><Skeleton variant="text" width={80} sx={{ ml: 'auto' }} /></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {[1,2,3,4].map((i) => (
+                    <TableRow key={i} sx={{ border: 'none', background: 'transparent', height: 28, display: 'flex', justifyContent: 'space-between' }}>
+                      <TableCell sx={{ flex: 1 }}><Skeleton variant="text" width="60%" /></TableCell>
+                      <TableCell sx={{ flex: 1 }} align="center"><Skeleton variant="rectangular" width={24} height={24} sx={{ mx: 'auto' }} /></TableCell>
+                      <TableCell sx={{ flex: 1 }} align="center"><Skeleton variant="rectangular" width={24} height={24} sx={{ mx: 'auto' }} /></TableCell>
+                      <TableCell sx={{ flex: 1 }} align="center"><Skeleton variant="rectangular" width={24} height={24} sx={{ mx: 'auto' }} /></TableCell>
+                      <TableCell sx={{ flex: 1 }} align="right"><Skeleton variant="text" width={60} sx={{ ml: 'auto' }} /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
             <Table
               size="small"
               sx={{
@@ -508,6 +567,7 @@ export default function UsuariosGestion() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </Box>
           {!isOwner && (
             <Box sx={{ mt: 2 }}>

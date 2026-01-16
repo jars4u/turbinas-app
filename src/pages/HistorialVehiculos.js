@@ -259,8 +259,29 @@ export default function HistorialVehiculos() {
   const inDateRange = React.useCallback((v) => {
     const hasRange = Boolean(fechaInicio || fechaFin);
     if (!hasRange) return true;
-    const start = fechaInicio ? new Date(fechaInicio) : null;
-    const end = fechaFin ? new Date(fechaFin + 'T23:59:59') : null;
+
+    const parseLocalYMDNoon = (ymd) => {
+      if (!ymd || typeof ymd !== 'string') return null;
+      const [y, m, d] = ymd.split('-');
+      const yy = Number(y);
+      const mm = Number(m);
+      const dd = Number(d);
+      if (!Number.isFinite(yy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return null;
+      return new Date(yy, mm - 1, dd, 12, 0, 0);
+    };
+
+    const parseLocalYMDEnd = (ymd) => {
+      if (!ymd || typeof ymd !== 'string') return null;
+      const [y, m, d] = ymd.split('-');
+      const yy = Number(y);
+      const mm = Number(m);
+      const dd = Number(d);
+      if (!Number.isFinite(yy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return null;
+      return new Date(yy, mm - 1, dd, 23, 59, 59, 999);
+    };
+
+    const start = fechaInicio ? parseLocalYMDNoon(fechaInicio) : null;
+    const end = fechaFin ? parseLocalYMDEnd(fechaFin) : null;
     const checkDate = (val) => {
       if (!val) return false;
       const d = new Date(val);

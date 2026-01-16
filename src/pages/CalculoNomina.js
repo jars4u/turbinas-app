@@ -102,9 +102,28 @@ export default function CalculoNomina() {
   monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
   const friday = new Date(monday);
   friday.setDate(monday.getDate() + 4);
-  const formatDate = (date) => date.toISOString().slice(0, 10);
-  const [fechaInicio, setFechaInicio] = useState(formatDate(monday));
-  const [fechaFin, setFechaFin] = useState(formatDate(friday));
+
+  // Formato/parsing de fechas tipo YYYY-MM-DD en hora local para evitar desfases por UTC.
+  const formatLocalYMD = (date) => {
+    if (!(date instanceof Date) || isNaN(date.getTime())) return "";
+    const y = String(date.getFullYear()).padStart(4, "0");
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const parseLocalYMDNoon = (ymd) => {
+    if (!ymd || typeof ymd !== "string") return new Date();
+    const [y, m, d] = ymd.split("-");
+    const yy = Number(y);
+    const mm = Number(m);
+    const dd = Number(d);
+    if (!Number.isFinite(yy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return new Date();
+    return new Date(yy, mm - 1, dd, 12, 0, 0);
+  };
+
+  const [fechaInicio, setFechaInicio] = useState(formatLocalYMD(monday));
+  const [fechaFin, setFechaFin] = useState(formatLocalYMD(friday));
 
   useEffect(() => {
     // Obtener cargos y empleados desde Firestore
@@ -134,8 +153,8 @@ export default function CalculoNomina() {
   useEffect(() => {
     // Consultar Firestore para obtener el total de servicios facturados en el rango y con los estados seleccionados
     const cargarServicios = async () => {
-      const d1 = new Date(fechaInicio);
-      const d2 = new Date(fechaFin);
+      const d1 = parseLocalYMDNoon(fechaInicio);
+      const d2 = parseLocalYMDNoon(fechaFin);
       // Filtrar por rango de fechas y estados seleccionados
       const vehiculos = await import("../lib/vehiculosFirebase").then((mod) =>
         mod.obtenerVehiculos()
@@ -170,8 +189,8 @@ export default function CalculoNomina() {
     // Calcular días del rango
     let diasRango = 1;
     if (fechaInicio && fechaFin) {
-      const d1 = new Date(fechaInicio);
-      const d2 = new Date(fechaFin);
+      const d1 = parseLocalYMDNoon(fechaInicio);
+      const d2 = parseLocalYMDNoon(fechaFin);
       diasRango = Math.max(
         1,
         Math.floor((d2 - d1) / (1000 * 60 * 60 * 24)) + 1

@@ -160,6 +160,53 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
     };
     const ingresoEditado = Object.fromEntries(Object.entries(ingresoEditadoRaw).filter(([_, v]) => v !== undefined && v !== null));
     await updateDoc(doc(db, "ingresosMovimientos", editId), ingresoEditado);
+
+    // Guardar/actualizar cliente en la colección 'clientes'
+    try {
+      const nombreRaw = (editForm.customerName || '').trim();
+      let telefono = (editForm.customerPhone || '').trim();
+      telefono = telefono.replace(/[-\s]/g, "");
+      if (telefono) {
+        if (!telefono.startsWith("+58")) {
+          if (telefono.startsWith("58")) {
+            telefono = "+" + telefono;
+          } else if (telefono.startsWith("0") && telefono.length >= 11) {
+            telefono = "+58" + telefono.slice(1);
+          } else if (/^\d{10}$/.test(telefono)) {
+            telefono = "+58" + telefono;
+          }
+        }
+        if (telefono.startsWith("+58")) {
+          const local = telefono.slice(3).replace(/[^\d]/g, "");
+          telefono = "+58" + local.replace(/^0+/, "");
+        }
+      }
+      if (nombreRaw && /^\+58\d{10}$/.test(telefono)) {
+        const nombre = nombreRaw.toUpperCase();
+        const { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, doc } = await import("firebase/firestore");
+        const fdb = getFirestore();
+        const clientesRef = collection(fdb, "clientes");
+        const q = query(clientesRef, where("nombre", "==", nombre), where("telefono", "==", telefono));
+        const snap = await getDocs(q);
+        const modeloServicio = {
+          fecha: Date.now(),
+          modelo: ingresoEditado.vehiculo || "",
+          servicio: ingresoEditado.servicio || "",
+          nombre,
+          telefono,
+        };
+        if (snap.empty) {
+          await addDoc(clientesRef, { nombre, telefono, modelosServicios: [modeloServicio] });
+        } else {
+          const clienteDoc = snap.docs[0];
+          const prev = clienteDoc.data().modelosServicios || [];
+          await updateDoc(doc(fdb, "clientes", clienteDoc.id), { modelosServicios: [...prev, modeloServicio] });
+        }
+      }
+    } catch (_) {
+      // No bloquear edición si falla el guardado del cliente
+    }
+
     setEditDialogOpen(false);
     setEditId(null);
     setLoading(true);
@@ -187,7 +234,7 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
 
   return (
   <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 0, sm: 2 } }}>
-    {isOwner && (
+    {/* {isOwner && (
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
         <Button
           variant="outlined"
@@ -210,7 +257,7 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
           Migrar numeroFactura → factura
         </Button>
       </Box>
-    )}
+    )} */}
     {/* Dialogo de edición con ServicioEditorDialog */}
     {isOwner && editDialogOpen && (
       <ServicioEditorDialog

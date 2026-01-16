@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, CircularProgress, TextField, Button } from "@mui/material";
+import { Box, Typography, TextField, Button, Skeleton } from "@mui/material";
 
 export default function TasaBCV({
   tasaBCV,
@@ -26,7 +26,10 @@ export default function TasaBCV({
         Tasa de Cambio BCV
       </Typography>
       {loadingTasa ? (
-        <CircularProgress size={24} />
+        <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+          <Skeleton variant="text" width={200} height={28} />
+          <Skeleton variant="text" width={260} height={14} />
+        </Box>
       ) : mostrarInputTasa ? (
         <Box>
           <Typography variant="body2" color="error" sx={{ mb: 1 }}>

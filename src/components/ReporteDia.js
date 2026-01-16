@@ -21,6 +21,14 @@ import { obtenerInicioSnapshot } from "../lib/reporteDiaSnapshotFirebase";
 
 // props: servicios (array de servicios), fecha (string 'YYYY-MM-DD' o Date)
 export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
+  const formatLocalYMD = React.useCallback((d) => {
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+    const y = String(d.getFullYear()).padStart(4, "0");
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }, []);
+
   // Log condicional opcional controlado con localStorage.debugReporteDia === '1'
   const debugReporte = React.useCallback((...args) => {
     try {
@@ -71,10 +79,11 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
       return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
     }
     if (fecha instanceof Date) {
-      return fecha.toISOString().slice(0, 10);
+      // Evitar desfase por UTC (toISOString usa UTC). Queremos el día local.
+      return formatLocalYMD(fecha);
     }
     return fecha;
-  }, [fecha]);
+  }, [fecha, formatLocalYMD]);
 
   // Calcular resumen del día
   const resumen = useMemo(() => {

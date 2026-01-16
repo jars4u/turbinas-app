@@ -64,7 +64,8 @@ function normalizarEgresoConFecha(e) {
       const m = String(parts[1]).padStart(2, "0");
       const y = String(parts[2]);
       fechaStr = `${d}/${m}/${y}`;
-      fechaDate = new Date(`${y}-${m}-${d}`);
+      // Evitar parseo ISO (UTC) que puede desplazar al día anterior en GMT-4
+      fechaDate = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
     } else {
       fechaStr = e.fecha;
       fechaDate = Date.parse(e.fecha) ? new Date(e.fecha) : null;
