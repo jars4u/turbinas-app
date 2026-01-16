@@ -18,7 +18,6 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { obtenerIngresos, eliminarIngreso } from "../lib/ingresosFirebase";
-import { migrarNumeroFacturaAFactura } from "../lib/migrarNumeroFactura";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import ServicioEditorDialog from "./dashboard/ServicioEditorDialog";
 import { obtenerClientes } from "../lib/clientesFirebase";

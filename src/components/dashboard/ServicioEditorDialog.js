@@ -18,7 +18,6 @@ import {
   Tooltip,
   InputAdornment,
 } from "@mui/material";
-import { createFilterOptions } from "@mui/material/Autocomplete";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
@@ -115,13 +114,7 @@ export default function ServicioEditorDialog({
       .toLowerCase()
       .trim();
 
-  // Mantener el valor seleccionado y el texto al re-editar (hidratar desde form.customerName)
-  const selectedCliente = React.useMemo(() => {
-    if (!form?.customerName) return null;
-    const target = normalizeText(form.customerName);
-    const found = (clientes || []).find((c) => normalizeText(c.nombre) === target);
-    return found || null;
-  }, [form?.customerName, clientes]);
+  // Hidratación del texto al re-editar: se controla por inputValue (customerName)
   return (
     <Dialog
       open={open}

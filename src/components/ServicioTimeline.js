@@ -1,10 +1,5 @@
 import * as React from 'react';
-import { Typography } from '@mui/material';
-import {
-  VerticalTimeline,
-  VerticalTimelineElement,
-} from 'react-vertical-timeline-component';
-import 'react-vertical-timeline-component/style.min.css';
+import { Box, Paper, Typography } from '@mui/material';
 
 // Función para normalizar el estado (minúsculas, sin acentos, sin espacios extra)
 function normalizarEstado(str) {
@@ -44,30 +39,44 @@ export default function ServicioTimeline({ eventos = [] }) {
       <Typography color="text.secondary">No hay historial de cambios.</Typography>
     );
   return (
-    <VerticalTimeline lineColor="#b0b3b8">
+    <Box>
       {eventos.map((evento, idx) => {
-        // Determinar color según estado normalizado
         const estado = normalizarEstado(evento.estado);
-        // Si el estado no está en el mapeo, asignar un color único por índice
         const colorPunto = estadoColor[estado] || `hsl(${(idx * 60) % 360}, 70%, 60%)`;
+        const esUltimo = idx === eventos.length - 1;
         return (
-          <VerticalTimelineElement
-            key={idx}
-            date={evento.fecha ? formatFecha(evento.fecha) : ''}
-            contentStyle={{ background: '#e0e3ea', color: '#333', borderRadius: 12, boxShadow: 'none' }}
-            icon={<span style={{ display: 'block', width: 16, height: 16, borderRadius: '50%', background: colorPunto, margin: 'auto', border: '2px solid #b0b3b8' }} />}
-            iconStyle={{ background: 'transparent', boxShadow: 'none' }}
-          >
-            <h3 className="vertical-timeline-element-title">{evento.titulo}</h3>
-            <p>{evento.descripcion}</p>
-            {evento.usuario && (
-              <span style={{ fontSize: 12, color: '#888' }}>
-                Usuario: {evento.usuario.split('@')[0]}
-              </span>
-            )}
-          </VerticalTimelineElement>
+          <Box key={idx} sx={{ display: 'flex', alignItems: 'stretch', mb: 2 }}>
+            <Box sx={{ mr: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Box sx={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: colorPunto, border: '2px solid #b0b3b8' }} />
+              {!esUltimo && (
+                <Box sx={{ width: 2, flex: 1, backgroundColor: '#b0b3b8', mt: 1 }} />
+              )}
+            </Box>
+            <Paper elevation={0} sx={{ background: '#e0e3ea', color: '#333', borderRadius: 2, p: 2, flex: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                {evento.titulo}
+              </Typography>
+              {evento.descripcion && (
+                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                  {evento.descripcion}
+                </Typography>
+              )}
+              <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                {evento.fecha && (
+                  <Typography variant="caption" color="text.secondary">
+                    {formatFecha(evento.fecha)}
+                  </Typography>
+                )}
+                {evento.usuario && (
+                  <Typography variant="caption" color="text.secondary">
+                    Usuario: {evento.usuario.split('@')[0]}
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+          </Box>
         );
       })}
-    </VerticalTimeline>
+    </Box>
   );
 }
