@@ -67,29 +67,44 @@ export default function ServicioEditorDialog({
   onPaymentUSDMethodChange,
   isManualIngreso,
 }) {
-  // Fallback para permitir escritura en el campo Cliente cuando el padre no provee onClienteInputChange
-  const handleClienteInputChange = React.useCallback((event, value, reason) => {
-    if (typeof onClienteInputChange === 'function') {
-      // Propagar el tercer argumento `reason` requerido por los consumidores
-      onClienteInputChange(event, value, reason);
+  const [selectedCliente, setSelectedCliente] = React.useState(null);
+
+  // Mantener seleccionado si coincide el nombre del formulario con alguna opción
+  React.useEffect(() => {
+    const nombreForm = (form?.customerName || '').trim();
+    if (!nombreForm || !Array.isArray(clientes)) {
+      setSelectedCliente(null);
       return;
     }
-    // Actualiza el form.customerName via onChange si no se proporciona handler específico
+    const match = clientes.find((c) => normalizeText(c?.nombre) === normalizeText(nombreForm));
+    setSelectedCliente(match || null);
+  }, [form?.customerName, clientes]);
+  // Fallback para permitir escritura en el campo Cliente cuando el padre no provee onClienteInputChange
+  const handleClienteInputChange = React.useCallback((event, value, reason) => {
+    // Propagar al padre si existe
+    if (typeof onClienteInputChange === 'function') {
+      onClienteInputChange(event, value, reason);
+    }
+    // Asegurar que el nombre del formulario se actualice también en selecciones ('reset') o limpieza ('clear')
     if (typeof onChange === 'function') {
-      onChange({ target: { name: 'customerName', value } });
+      if (reason === 'input' || reason === 'reset' || reason === 'clear') {
+        onChange({ target: { name: 'customerName', value: value || '' } });
+      }
     }
   }, [onClienteInputChange, onChange]);
 
   // Fallback al seleccionar una opción: si no hay handler, actualizar nombre y teléfono básicos
   const handleClienteChange = React.useCallback((event, value) => {
-    const nombre = value && typeof value === 'object' ? (value.nombre || '') : (value || '');
-    const telefonoRaw = value && typeof value === 'object' ? (value.telefono || '') : '';
+    const valueObj = typeof value === 'string' ? { nombre: value, telefono: '' } : (value || null);
+    const nombre = valueObj ? (valueObj.nombre || '') : '';
+    const telefonoRaw = valueObj ? (valueObj.telefono || '') : '';
     const telefono = telefonoRaw
       ? (String(telefonoRaw).startsWith('+58') ? telefonoRaw : ('+58' + String(telefonoRaw).replace(/^0+/, '')))
       : '';
+    setSelectedCliente(valueObj || null);
     // Notificar al padre si provee handler
     if (typeof onClienteChange === 'function') {
-      onClienteChange(event, value);
+      onClienteChange(event, valueObj);
     }
     // En todos los casos, garantizar que el campo se llene solo con el nombre
     if (typeof onChange === 'function') {
@@ -383,13 +398,16 @@ export default function ServicioEditorDialog({
               <>
                 <Autocomplete
                   options={clientes || []}
-                  getOptionLabel={(opt) => opt?.nombre ? opt.nombre : ""}
+                  getOptionLabel={(opt) => typeof opt === 'string' ? opt : (opt?.nombre ? opt.nombre : "")}
                   inputValue={form.customerName || ""}
                   onInputChange={handleClienteInputChange}
                   onChange={handleClienteChange}
+                  value={selectedCliente || (form.customerName || '')}
                   filterOptions={filterOptions}
                   freeSolo
                   selectOnFocus
+                  blurOnSelect
+                  clearOnBlur={false}
                   handleHomeEndKeys
                   isOptionEqualToValue={(option, value) => {
                     // Comparar solo por nombre (acento-insensible)
@@ -411,6 +429,7 @@ export default function ServicioEditorDialog({
                         ...params.InputProps,
                         sx: { fontSize: "1rem", py: 0.5 },
                       }}
+                      helperText="Escribe o selecciona el cliente. Para uno nuevo, escribe el nombre y completa el teléfono."
                     />
                   )}
                   renderOption={(props, option) => (
