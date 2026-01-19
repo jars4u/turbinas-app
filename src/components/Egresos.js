@@ -283,13 +283,39 @@ export default function Egresos({ tasaBCV, isOwner }) {
         </DialogActions>
       </Dialog>
 
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, gap: 2 }}>
-        <Typography variant="h6" sx={{ mb: 0 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+        <Typography variant="h6" sx={{ mb: 0, alignSelf: 'flex-start', width: '100%' }}>
           Egresos
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog} disabled={loading || saving}>
-          Agregar egreso
-        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label="Día"
+              views={["year", "month", "day"]}
+              value={
+                fechaSeleccionada && typeof fechaSeleccionada === "string"
+                  ? dayjs(fechaSeleccionada.split("/").reverse().join("-"))
+                  : null
+              }
+              onChange={(date) => {
+                if (date && dayjs(date).isValid()) {
+                  const d = String(dayjs(date).date()).padStart(2, "0");
+                  const m = String(dayjs(date).month() + 1).padStart(2, "0");
+                  const y = dayjs(date).year();
+                  setFechaSeleccionada(`${d}/${m}/${y}`);
+                }
+              }}
+              renderInput={(params) => (
+                <TextField {...params} size="small" sx={{ minWidth: 120 }} />
+              )}
+              disableFuture
+              maxDate={dayjs().startOf("day")}
+            />
+          </LocalizationProvider>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog} disabled={loading || saving}>
+            egreso
+          </Button>
+        </Box>
       </Box>
 
       <Divider sx={{ mb: 2 }} />
@@ -301,33 +327,6 @@ export default function Egresos({ tasaBCV, isOwner }) {
           mb: 1,
         }}
       >
-        <Typography variant="subtitle1" fontWeight={600}>
-          Resumen del día
-        </Typography>
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker
-            label="Día"
-            views={["year", "month", "day"]}
-            value={
-              fechaSeleccionada && typeof fechaSeleccionada === "string"
-                ? dayjs(fechaSeleccionada.split("/").reverse().join("-"))
-                : null
-            }
-            onChange={(date) => {
-              if (date && dayjs(date).isValid()) {
-                const d = String(dayjs(date).date()).padStart(2, "0");
-                const m = String(dayjs(date).month() + 1).padStart(2, "0");
-                const y = dayjs(date).year();
-                setFechaSeleccionada(`${d}/${m}/${y}`);
-              }
-            }}
-            renderInput={(params) => (
-              <TextField {...params} size="small" sx={{ minWidth: 120 }} />
-            )}
-            disableFuture
-            maxDate={dayjs().startOf("day")}
-          />
-        </LocalizationProvider>
       </Box>
 
       <Box sx={{ width: "100%", overflowX: { xs: "auto", sm: "visible" } }}>

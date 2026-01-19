@@ -429,7 +429,6 @@ export default function ServicioEditorDialog({
                         ...params.InputProps,
                         sx: { fontSize: "1rem", py: 0.5 },
                       }}
-                      helperText="Escribe o selecciona el cliente. Para uno nuevo, escribe el nombre y completa el teléfono."
                     />
                   )}
                   renderOption={(props, option) => (

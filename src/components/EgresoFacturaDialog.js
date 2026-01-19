@@ -22,6 +22,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Autocomplete,
+  useMediaQuery,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -76,6 +77,7 @@ export default function EgresoFacturaDialog({
   saving,
   includeVencimiento,
 }) {
+  const isMobile = useMediaQuery('(max-width:600px)');
   const [fechaDj, setFechaDj] = useState(dayjs());
   const [proveedor, setProveedor] = useState("");
   const [rifCi, setRifCi] = useState("");
@@ -249,7 +251,7 @@ export default function EgresoFacturaDialog({
   };
 
   return (
-    <Dialog open={open} onClose={handleDialogClose} fullWidth maxWidth="md">
+    <Dialog open={open} onClose={handleDialogClose} fullWidth maxWidth="md" fullScreen={isMobile}>
       <DialogTitle sx={{ pb: 0 }}>
         <Stack direction="row" alignItems="center" spacing={1}>
           <ReceiptLongIcon fontSize="small" />
@@ -423,91 +425,164 @@ export default function EgresoFacturaDialog({
             <Button size="small" startIcon={<AddIcon />} onClick={handleAddItem}>Agregar ítem</Button>
           </Box>
 
-          <Box sx={{ width: "100%", overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 720 }}>
-              <TableHead>
-                <TableRow sx={{ bgcolor: "#f5f5f5" }}>
-                  <TableCell>#</TableCell>
-                  <TableCell sx={{ width: { sm: 360 } }}>Descripción</TableCell>
-                  <TableCell align="right" sx={{ width: 88 }}>Cant.</TableCell>
-                  <TableCell align="right" sx={{ width: 180 }}>Precio</TableCell>
-                  <TableCell align="right" sx={{ width: 180 }}>Total</TableCell>
-                  <TableCell align="center" sx={{ width: 60 }}></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
+          <Box sx={{ width: "100%", overflowX: { xs: "visible", sm: "auto" } }}>
+            {isMobile ? (
+              <Box>
                 {items.map((it, idx) => {
                   const totalItem = calcItemTotal(it);
                   return (
-                    <TableRow key={idx} hover>
-                      <TableCell>{idx + 1}</TableCell>
-                      <TableCell sx={{ width: { sm: 360 } }}>
-                        <TextField
-                          value={it.descripcion}
-                          onChange={(e) => handleChangeItem(idx, { descripcion: e.target.value })}
-                          size="small"
-                          fullWidth
-                          placeholder="Descripción del ítem"
-                          sx={{ minWidth: 280 }}
-                        />
-                      </TableCell>
-                      <TableCell align="right" sx={{ width: 88 }}>
+                    <Paper key={idx} sx={{ p: 1.5, mb: 1, borderRadius: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle2" fontWeight={700}>Ítem #{idx + 1}</Typography>
+                        <IconButton size="small" color="error" onClick={() => handleRemoveItem(idx)} aria-label={`Eliminar ítem ${idx + 1}`}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      <TextField
+                        value={it.descripcion}
+                        onChange={(e) => handleChangeItem(idx, { descripcion: e.target.value })}
+                        size="small"
+                        fullWidth
+                        placeholder="Descripción del ítem"
+                        sx={{ mb: 1 }}
+                      />
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <TextField
                           type="number"
+                          label="Cant."
                           value={it.cantidad}
                           onChange={(e) => handleChangeItem(idx, { cantidad: e.target.value.replace(/[^0-9.]/g, "") })}
                           size="small"
-                          inputProps={{ step: "0.01", min: 0 }}
-                          sx={{ maxWidth: 88 }}
+                          inputProps={{ step: "0.01", min: 0, inputMode: 'decimal' }}
+                          sx={{ flex: 1 }}
                         />
-                      </TableCell>
-                      <TableCell align="right">
                         <TextField
                           type="number"
+                          label="Precio"
                           value={it.precioUnitario}
                           onChange={(e) => handleChangeItem(idx, { precioUnitario: e.target.value.replace(/[^0-9.]/g, "") })}
                           size="small"
-                          inputProps={{ step: "0.01", min: 0 }}
-                          sx={{ maxWidth: 180 }}
+                          inputProps={{ step: "0.01", min: 0, inputMode: 'decimal' }}
+                          sx={{ flex: 2 }}
                           InputProps={{
                             startAdornment: (
                               <InputAdornment position="start">{currencySym}</InputAdornment>
                             ),
                           }}
                         />
-                      </TableCell>
-                      <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
-                        {currencySym} {totalItem.toLocaleString(monedaFactura === "USD" ? "en-US" : "de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton size="small" color="error" onClick={() => handleRemoveItem(idx)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                        <Typography variant="body2" fontWeight={700}>
+                          Total: {currencySym} {totalItem.toLocaleString(monedaFactura === "USD" ? "en-US" : "de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+                    </Paper>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </Box>
+            ) : (
+              <Table size="small" sx={{ minWidth: 720 }}>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: "#f5f5f5" }}>
+                    <TableCell>#</TableCell>
+                    <TableCell sx={{ width: { sm: 360 } }}>Descripción</TableCell>
+                    <TableCell align="right" sx={{ width: 88 }}>Cant.</TableCell>
+                    <TableCell align="right" sx={{ width: 180 }}>Precio</TableCell>
+                    <TableCell align="right" sx={{ width: 180 }}>Total</TableCell>
+                    <TableCell align="center" sx={{ width: 60 }}></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {items.map((it, idx) => {
+                    const totalItem = calcItemTotal(it);
+                    return (
+                      <TableRow key={idx} hover>
+                        <TableCell>{idx + 1}</TableCell>
+                        <TableCell sx={{ width: { sm: 360 } }}>
+                          <TextField
+                            value={it.descripcion}
+                            onChange={(e) => handleChangeItem(idx, { descripcion: e.target.value })}
+                            size="small"
+                            fullWidth
+                            placeholder="Descripción del ítem"
+                            sx={{ minWidth: 280 }}
+                          />
+                        </TableCell>
+                        <TableCell align="right" sx={{ width: 88 }}>
+                          <TextField
+                            type="number"
+                            value={it.cantidad}
+                            onChange={(e) => handleChangeItem(idx, { cantidad: e.target.value.replace(/[^0-9.]/g, "") })}
+                            size="small"
+                            inputProps={{ step: "0.01", min: 0 }}
+                            sx={{ maxWidth: 88 }}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <TextField
+                            type="number"
+                            value={it.precioUnitario}
+                            onChange={(e) => handleChangeItem(idx, { precioUnitario: e.target.value.replace(/[^0-9.]/g, "") })}
+                            size="small"
+                            inputProps={{ step: "0.01", min: 0 }}
+                            sx={{ maxWidth: 180 }}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">{currencySym}</InputAdornment>
+                              ),
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                          {currencySym} {totalItem.toLocaleString(monedaFactura === "USD" ? "en-US" : "de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton size="small" color="error" onClick={() => handleRemoveItem(idx)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </Box>
 
           <Divider sx={{ my: 2 }} />
 
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Stack direction="row" spacing={1} alignItems="center">
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" } }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                width: { xs: '100%', sm: 'auto' },
+                justifyContent: { xs: 'space-between', sm: 'flex-start' },
+                flexWrap: 'wrap',
+                rowGap: 1,
+                mb: { xs: 1, sm: 0 },
+              }}
+            >
               <Chip label={`Ítems: ${items.length}`} variant="outlined" />
               <Chip label={`Moneda: ${monedaFactura}`} variant="outlined" />
               <Chip label={`Tasa: ${tasaFactura || (tasaBCV ? Number(tasaBCV).toLocaleString("de-DE", { minimumFractionDigits: 2 }) : "-")}`} variant="outlined" />
             </Stack>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography variant="h6" fontWeight={700} sx={{ alignSelf: { xs: 'flex-end', sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, textAlign: { xs: 'right', sm: 'inherit' }, mt: { xs: 1, sm: 0 } }}>
               Total: {currencySym} {totalFactura.toLocaleString(monedaFactura === "USD" ? "en-US" : "de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Typography>
           </Box>
         </Paper>
       </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose} disabled={!!saving}>Cancelar</Button>
-        <Button variant="contained" startIcon={<MonetizationOnIcon />} onClick={handleSubmit} disabled={!canSave || !!saving}>
+      <DialogActions sx={{ p: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
+        <Button onClick={onClose} disabled={!!saving} sx={{ alignSelf: { xs: 'stretch', sm: 'auto' } }}>Cancelar</Button>
+        <Button
+          variant="contained"
+          startIcon={<MonetizationOnIcon />}
+          onClick={handleSubmit}
+          disabled={!canSave || !!saving}
+          sx={{ alignSelf: { xs: 'stretch', sm: 'auto' } }}
+        >
           {mode === "edit" ? "Guardar cambios" : "Agregar"}
         </Button>
       </DialogActions>

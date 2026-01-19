@@ -25,6 +25,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import AddIcon from "@mui/icons-material/Add";
+
 
 export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
   const isMobile = useMediaQuery('(max-width:600px)');
@@ -296,11 +298,11 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
         isManualIngreso={true}
       />
     )}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6" sx={{ mb: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
+        <Typography variant="h6" sx={{ mb: 0, alignSelf: 'flex-start', width: '100%' }}>
           Registro de Ingresos
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
               label="Día"
@@ -362,7 +364,7 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
             />
           </LocalizationProvider>
           {onOpenRegistrarIngreso && (
-            <Button variant="contained" size="small" onClick={onOpenRegistrarIngreso}>Registrar ingreso</Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={onOpenRegistrarIngreso}>ingreso</Button>
           )}
         </Box>
       </Box>
