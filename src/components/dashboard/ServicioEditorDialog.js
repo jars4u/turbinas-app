@@ -402,7 +402,7 @@ export default function ServicioEditorDialog({
                   inputValue={form.customerName || ""}
                   onInputChange={handleClienteInputChange}
                   onChange={handleClienteChange}
-                  value={selectedCliente || (form.customerName || '')}
+                  value={selectedCliente}
                   filterOptions={filterOptions}
                   freeSolo
                   selectOnFocus
