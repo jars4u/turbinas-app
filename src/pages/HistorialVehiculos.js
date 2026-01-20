@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import Layout from "../components/Layout";
 import { useCuentasPorCobrarServicios } from "../lib/useCuentasPorCobrarServicios";
 import { auth } from "../firebase";
 import { guardarColumnasUsuario, obtenerColumnasUsuario } from "../lib/columnasUsuario";
@@ -498,7 +499,7 @@ export default function HistorialVehiculos() {
   }, [cuentasPorCobrarServicios]);
 
   return (
-    <>
+    <Layout headerMaxWidth="xl">
       <Box sx={{ maxWidth: "100vw", mx: "auto", mt: 4, px: { xs: 1, md: 6 } }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
           <Button
@@ -1730,6 +1731,6 @@ export default function HistorialVehiculos() {
         onClose={() => setOpenHistorial(false)}
         servicio={servicioSeleccionado}
       />
-    </>
+    </Layout>
   );
 }

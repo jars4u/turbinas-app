@@ -67,27 +67,14 @@ export default function ServicioEditorDialog({
   onPaymentUSDMethodChange,
   isManualIngreso,
 }) {
-  const [selectedCliente, setSelectedCliente] = React.useState(null);
-
-  // Mantener seleccionado si coincide el nombre del formulario con alguna opción
-  React.useEffect(() => {
-    const nombreForm = (form?.customerName || '').trim();
-    if (!nombreForm || !Array.isArray(clientes)) {
-      setSelectedCliente(null);
-      return;
-    }
-    const match = clientes.find((c) => normalizeText(c?.nombre) === normalizeText(nombreForm));
-    setSelectedCliente(match || null);
-  }, [form?.customerName, clientes]);
-  // Fallback para permitir escritura en el campo Cliente cuando el padre no provee onClienteInputChange
+  // Manejar solo el texto de entrada del Autocomplete para evitar reseteos al actualizar la lista
   const handleClienteInputChange = React.useCallback((event, value, reason) => {
-    // Propagar al padre si existe
     if (typeof onClienteInputChange === 'function') {
       onClienteInputChange(event, value, reason);
     }
-    // Asegurar que el nombre del formulario se actualice también en selecciones ('reset') o limpieza ('clear')
+    // Actualizar el nombre solo cuando el usuario escribe o limpia manualmente
     if (typeof onChange === 'function') {
-      if (reason === 'input' || reason === 'reset' || reason === 'clear') {
+      if (reason === 'input' || reason === 'clear') {
         onChange({ target: { name: 'customerName', value: value || '' } });
       }
     }
@@ -101,7 +88,6 @@ export default function ServicioEditorDialog({
     const telefono = telefonoRaw
       ? (String(telefonoRaw).startsWith('+58') ? telefonoRaw : ('+58' + String(telefonoRaw).replace(/^0+/, '')))
       : '';
-    setSelectedCliente(valueObj || null);
     // Notificar al padre si provee handler
     if (typeof onClienteChange === 'function') {
       onClienteChange(event, valueObj);
@@ -402,19 +388,12 @@ export default function ServicioEditorDialog({
                   inputValue={form.customerName || ""}
                   onInputChange={handleClienteInputChange}
                   onChange={handleClienteChange}
-                  value={selectedCliente}
                   filterOptions={filterOptions}
                   freeSolo
                   selectOnFocus
                   blurOnSelect
                   clearOnBlur={false}
                   handleHomeEndKeys
-                  isOptionEqualToValue={(option, value) => {
-                    // Comparar solo por nombre (acento-insensible)
-                    if (!option || !value) return false;
-                    if (typeof value === 'string') return normalizeText(option.nombre) === normalizeText(value);
-                    return normalizeText(option.nombre) === normalizeText(value.nombre);
-                  }}
                   sx={{ width: "100%" }}
                   renderInput={(params) => (
                     <TextField

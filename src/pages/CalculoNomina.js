@@ -1,4 +1,5 @@
 import React from "react";
+import Layout from "../components/Layout";
 import { eliminarNomina } from "../lib/eliminarNominaFirebase";
 import Popover from "@mui/material/Popover";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -213,7 +214,8 @@ export default function CalculoNomina() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Layout headerMaxWidth="lg">
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Button
         variant="text"
         startIcon={<ArrowBackIcon />}
@@ -1086,6 +1088,7 @@ export default function CalculoNomina() {
           </Typography>
         )}
       </Box>
-    </Container>
+      </Container>
+    </Layout>
   );
 }

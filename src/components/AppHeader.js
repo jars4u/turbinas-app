@@ -1,5 +1,6 @@
 import React from "react";
-import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton, TextField, InputAdornment, Menu, MenuItem, ListItemIcon, ListItemText, Badge } from "@mui/material";
+import { useLocation } from "react-router-dom";
+import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton, TextField, InputAdornment, Menu, MenuItem, ListItemIcon, ListItemText, Badge, Container } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HistoryIcon from "@mui/icons-material/History";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
@@ -13,7 +14,10 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 
-export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserver = false, searchValue = "", onSearchChange, searchPlaceholder = "Buscar cliente, modelo, servicio..." }) {
+export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserver = false, searchValue = "", onSearchChange, searchPlaceholder = "Buscar cliente, modelo, servicio...", maxWidth = "xl" }) {
+  const location = useLocation();
+  const pathname = location?.pathname || "";
+  const isActive = (path) => pathname.startsWith(path);
   const [actionsAnchor, setActionsAnchor] = React.useState(null);
   const actionsOpen = Boolean(actionsAnchor);
   const handleOpenActions = (e) => setActionsAnchor(e.currentTarget);
@@ -99,11 +103,12 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
 
   return (
     <AppBar
-      position="static"
-      color="transparent"
+      position={typeof window !== 'undefined' && window.matchMedia('(min-width:600px)').matches ? 'sticky' : 'static'}
+      color="default"
       elevation={0}
-      sx={{ background: "none", boxShadow: "none", m: 0, p: 0 }}
+      sx={{ background: "#fff", boxShadow: "none", m: 0, p: 0, top: 0, zIndex: (theme) => theme.zIndex.appBar }}
     >
+      <Container maxWidth={maxWidth} sx={{ px: { xs: 2, sm: 4 } }}>
       <Toolbar
         sx={{
           display: "flex",
@@ -111,7 +116,8 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
           alignItems: { xs: "center", sm: "center" },
           justifyContent: { xs: "center", sm: "space-between" },
           minHeight: 48,
-          p: { xs: 1, sm: 0 },
+          pt: 1,
+          px: { xs: 1, sm: 0 },
           m: 0,
           width: "100%",
           background: "none",
@@ -122,7 +128,9 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
           <img
             src="/logo.png"
             alt="Logo"
-            style={{ height: 40, marginRight: 8 }}
+            style={{ height: 40, marginRight: 8, cursor: 'pointer' }}
+            onClick={() => navigate && navigate('/dashboard')}
+            title="Ir al dashboard"
             aria-label="Logo"
           />
           <Chip label="v.5.1" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
@@ -300,7 +308,11 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                   <IconButton
                     color="default"
                     size="small"
-                    sx={{ color: "#757575" }}
+                    sx={(theme) => ({
+                      color: isActive('/nomina') ? theme.palette.primary.main : "#757575",
+                      borderBottom: isActive('/nomina') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+                      borderRadius: 0
+                    })}
                     onClick={() => navigate("/nomina")}
                     aria-label="Ir a cálculo de nómina"
                   >
@@ -313,7 +325,11 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                   <IconButton
                     color="default"
                     size="small"
-                    sx={{ color: "#757575" }}
+                    sx={(theme) => ({
+                      color: isActive('/inventario') ? theme.palette.primary.main : "#757575",
+                      borderBottom: isActive('/inventario') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+                      borderRadius: 0
+                    })}
                     onClick={() => navigate("/inventario")}
                     aria-label="Ir a inventario"
                   >
@@ -326,7 +342,11 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                   <IconButton
                     color="default"
                     size="small"
-                    sx={{ color: "#757575" }}
+                    sx={(theme) => ({
+                      color: isActive('/historial') ? theme.palette.primary.main : "#757575",
+                      borderBottom: isActive('/historial') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+                      borderRadius: 0
+                    })}
                     onClick={() => navigate("/historial")}
                     aria-label="Ir a historial"
                   >
@@ -339,7 +359,11 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                   <IconButton
                     color="default"
                     size="small"
-                    sx={{ color: "#757575" }}
+                    sx={(theme) => ({
+                      color: isActive('/cierredia') ? theme.palette.primary.main : "#757575",
+                      borderBottom: isActive('/cierredia') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+                      borderRadius: 0
+                    })}
                     onClick={() => navigate("/cierredia")}
                     aria-label="Ir a cierre del día"
                   >
@@ -352,7 +376,11 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                   <IconButton
                     color="default"
                     size="small"
-                    sx={{ color: "#757575" }}
+                    sx={(theme) => ({
+                      color: isActive('/configuracion') ? theme.palette.primary.main : "#757575",
+                      borderBottom: isActive('/configuracion') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+                      borderRadius: 0
+                    })}
                     onClick={() => !isObserver && navigate("/configuracion")}
                     disabled={isObserver}
                     aria-label="Ir a configuración"
@@ -464,6 +492,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
           </Box>
         </Box>
       </Toolbar>
+      </Container>
     </AppBar>
   );
 }

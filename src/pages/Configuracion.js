@@ -5,6 +5,7 @@ import ClientesGestion from "../components/ClientesGestion";
 import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import React, { useState } from "react";
+import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import {
   Container,
@@ -80,7 +81,8 @@ export default function Configuracion() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 6 }}>
+    <Layout headerMaxWidth="lg">
+      <Container maxWidth="lg" sx={{ mt: 6 }}>
       <Button
         variant="text"
         startIcon={<ArrowBackIcon />}
@@ -177,6 +179,7 @@ export default function Configuracion() {
           </Typography>
         </Box>
       )}
-    </Container>
+      </Container>
+    </Layout>
   );
 }

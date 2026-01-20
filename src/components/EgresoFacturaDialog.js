@@ -223,7 +223,6 @@ export default function EgresoFacturaDialog({
       tipo: "factura",
       fecha: fechaStr,
       fechaStr,
-      vencimiento: includeVencimiento ? fechaVencStr : undefined,
       proveedor: proveedor.trim().toUpperCase(),
       rifCi: rifCi.trim().toUpperCase(),
       numeroDocumento: numeroDocumento.trim().toUpperCase(),
@@ -235,6 +234,10 @@ export default function EgresoFacturaDialog({
       observaciones: observaciones.trim(),
       descripcion: `COMPRA ${proveedor.trim().toUpperCase()} ${numeroDocumento.trim().toUpperCase()}`.trim(),
     };
+
+    if (includeVencimiento) {
+      payload.vencimiento = fechaVencStr;
+    }
 
     try {
       await onSave(payload);

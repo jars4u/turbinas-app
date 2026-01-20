@@ -1,6 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState, useCallback } from "react";
+import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 
 import {
@@ -291,8 +292,8 @@ export default function CierreDia() {
     return <AccesoDenegado />;
   }
   return (
-  <>
-  <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
+    <Layout>
+      <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
       <Button
         variant="text"
         startIcon={<ArrowBackIcon />}
@@ -439,8 +440,8 @@ export default function CierreDia() {
           </Box>
         </Box>
       </Box>
-    </Container>
-    <IngresoDialogHost
+      </Container>
+      <IngresoDialogHost
       open={ingresoDialogOpen}
       isXs={isXs}
       loading={false}
@@ -452,8 +453,8 @@ export default function CierreDia() {
       paymentUSDEnabled={true}
       paymentUSDMethod={ingresoForm.paymentUSDMethod}
       onPaymentUSDMethodChange={(val) => setIngresoForm((prev) => ({ ...prev, paymentUSDMethod: val }))}
-    />
-  </>
+      />
+    </Layout>
   );
 }
 

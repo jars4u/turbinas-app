@@ -1,4 +1,5 @@
 import React from "react";
+import Layout from "../components/Layout";
 import { db } from "../firebase";
 import {
   collection,
@@ -142,7 +143,8 @@ export default function Inventario({ usuarioActivo }) {
     return <AccesoDenegado />;
   }
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
+    <Layout>
+      <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, md: 6 } }}>
       <Button
         variant="text"
         startIcon={<ArrowBackIcon />}
@@ -186,6 +188,7 @@ export default function Inventario({ usuarioActivo }) {
       {tab === 1 && (
         <MovimientosInventario movimientos={movimientos} inventario={inventario} usuarioActivo={usuarioActivo} />
       )}
-    </Container>
+      </Container>
+    </Layout>
   );
 }

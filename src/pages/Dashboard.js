@@ -21,9 +21,8 @@ import {
   Skeleton,
   Fade,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 import VehicleCard from "../components/VehicleCard";
-import AppHeader from "../components/AppHeader";
+import Layout from "../components/Layout";
 import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
 import {
   obtenerVehiculos,
@@ -91,7 +90,7 @@ export default function Dashboard() {
     };
   }, []);
   // Estado para el modal de confirmación de ocultar servicio (migrado al componente EstadoChangeDialog)
-  const { usuario, handleLogout, isObserver } = useAuth();
+  const { usuario, isObserver } = useAuth();
   // Estado para modal de cambio de estado
   const [openEstadoModal, setOpenEstadoModal] = useState(false);
   const [vehiculoEstadoModal, setVehiculoEstadoModal] = useState(null);
@@ -152,7 +151,7 @@ export default function Dashboard() {
   const [ordenAsc, setOrdenAsc] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   // Cambiar status y guardar en la base de datos
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // no usado directamente tras Layout
   // usuario.email está disponible desde el contexto
   const usuarioActivo = usuario?.email || "";
   const handleStatusChange = async (id, newStatus) => {
@@ -580,26 +579,16 @@ export default function Dashboard() {
   const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
 
   return (
-    <Container
-      maxWidth="xl"
-      sx={{
-        py: 4,
-        maxWidth: "100%",
-        width: "100%",
-        px: { xs: 2, sm: 4 },
-      }}
-    >
-      <AppHeader
-        usuarioActivo={usuarioActivo}
-        onLogout={() => {
-          handleLogout();
-          navigate("/");
+    <Layout searchValue={busqueda} onSearchChange={setBusqueda}>
+      <Container
+        maxWidth="xl"
+        sx={{
+          py: 4,
+          maxWidth: "100%",
+          width: "100%",
+          px: { xs: 2, sm: 4 },
         }}
-        navigate={navigate}
-        isObserver={isObserver}
-        searchValue={busqueda}
-        onSearchChange={setBusqueda}
-      />
+      >
       <Divider sx={{ mb: 2 }} />
       <Box
         sx={{
@@ -1516,6 +1505,7 @@ export default function Dashboard() {
           {snackbarMsg}
         </Alert>
       </Snackbar>
-    </Container>
+      </Container>
+    </Layout>
   );
 }
