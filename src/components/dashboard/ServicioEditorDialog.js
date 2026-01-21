@@ -74,7 +74,7 @@ export default function ServicioEditorDialog({
     }
     // Actualizar el nombre solo cuando el usuario escribe o limpia manualmente
     if (typeof onChange === 'function') {
-      if (reason === 'input' || reason === 'clear') {
+      if (reason === 'input' || reason === 'clear' || reason === 'reset') {
         onChange({ target: { name: 'customerName', value: value || '' } });
       }
     }
