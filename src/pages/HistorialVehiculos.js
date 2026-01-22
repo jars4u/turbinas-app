@@ -936,33 +936,68 @@ export default function HistorialVehiculos() {
                         <Box
                           key={v.id || start + idx}
                           onClick={() => { setServicioSeleccionado(v); setOpenHistorial(true); }}
-                          sx={{ p: 1, mb: 0.75, border: '1px solid', borderColor: 'grey.200', borderRadius: 2, backgroundColor: '#fff', cursor: 'pointer' }}
+                          sx={{ p: 0.75, mb: 0.5, border: '1px solid', borderColor: 'grey.200', borderRadius: 1.5, backgroundColor: '#fff', cursor: 'pointer' }}
                         >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
-                            <Typography variant="caption" color="text.secondary">{formatFecha(v.arrivalTime)}</Typography>
-                            <Box sx={{ px: 0.5, py: 0.2, borderRadius: 1, bgcolor: 'grey.100', color: 'text.secondary', fontSize: 11, fontWeight: 500 }}>{estadoLabel}</Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box
+                              sx={{
+                                width: 22,
+                                height: 22,
+                                minWidth: 22,
+                                borderRadius: '50%',
+                                bgcolor: 'grey.200',
+                                color: 'grey.800',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 11,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {start + idx + 1}
+                            </Box>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                                <Typography
+                                  variant="subtitle2"
+                                  color="text.secondary"
+                                  sx={{ lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 11.5 }}
+                                >
+                                  {formatFecha(v.arrivalTime)}
+                                </Typography>
+                                <Box sx={{ px: 0.5, py: 0.1, borderRadius: 1, bgcolor: 'grey.100', color: 'text.secondary', fontSize: 10.5, fontWeight: 600, flexShrink: 0 }}>
+                                  {estadoLabel}
+                                </Box>
+                              </Box>
+                              <Typography
+                                sx={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2, fontSize: 13.5 }}
+                                variant="caption"
+                              >
+                                <span style={{ fontWeight: 700 }}>{v.vehiculo || '-'}</span>
+                                <span style={{ color: '#757575', fontSize: 11.5 }}>{` · ${v.servicio || '-'}`}</span>
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'text.secondary', lineHeight: 1.2 }}
+                              >
+                                <span style={{ fontWeight: 600 }}>{v.customerName || '-'}</span>
+                                {v.customerPhone ? <span style={{ color: '#757575' }}>{` · ${v.customerPhone}`}</span> : null}
+                              </Typography>
+                              {(v.factura && v.factura !== '-') || v.montoEfectivoUSD || v.montoZelleUSD || v.montoBs ? (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', mt: 0.25, lineHeight: 1.2 }}
+                                >
+                                  {v.factura && v.factura !== '-' ? `Fact: ${v.factura}` : ''}
+                                  {(v.factura && v.factura !== '-') && (v.montoEfectivoUSD || v.montoZelleUSD || v.montoBs) ? ' · ' : ''}
+                                  {(v.montoEfectivoUSD || v.montoZelleUSD || v.montoBs)
+                                    ? `${v.montoEfectivoUSD ? `Ef ${String(v.montoEfectivoUSD)}` : ''}${v.montoZelleUSD ? `${v.montoEfectivoUSD ? ' · ' : ''}Ze ${v.montoZelleUSD}` : ''}${v.montoBs ? `${(v.montoEfectivoUSD || v.montoZelleUSD) ? ' · ' : ''}${v.montoBs}` : ''}`
+                                    : ''}
+                                </Typography>
+                              ) : null}
+                            </Box>
                           </Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {v.vehiculo || '-'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.25, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {v.servicio || '-'}
-                          </Typography>
-                          <Typography variant="caption" sx={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            <span style={{ fontWeight: 600 }}>{v.customerName || '-'}</span>
-                            {v.customerPhone ? <span style={{ color: '#757575' }}>{` · ${v.customerPhone}`}</span> : null}
-                          </Typography>
-                          {(v.factura && v.factura !== '-') || v.montoEfectivoUSD || v.montoZelleUSD || v.montoBs ? (
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {v.factura && v.factura !== '-' ? `Fact: ${v.factura}` : ''}
-                              {(v.factura && v.factura !== '-') && (v.montoEfectivoUSD || v.montoZelleUSD || v.montoBs) ? ' · ' : ''}
-                              {(v.montoEfectivoUSD || v.montoZelleUSD || v.montoBs) ? `Monto: ${
-                                (v.montoEfectivoUSD ? `Ef: ${String(v.montoEfectivoUSD)}` : '-') +
-                                (v.montoZelleUSD ? ` | Ze: ${v.montoZelleUSD}` : '') +
-                                (v.montoBs ? ` | ${v.montoBs}` : '')
-                              }` : ''}
-                            </Typography>
-                          ) : null}
                         </Box>
                       );
                     })}
@@ -1286,7 +1321,7 @@ export default function HistorialVehiculos() {
                           setOpenHistorial(true);
                         }}
                       >
-                        <TableCell>{idx + 1}</TableCell>
+                        <TableCell>{start + idx + 1}</TableCell>
                         {columnasVisibles.arrivalTime && (
                           <TableCell
                             sx={{

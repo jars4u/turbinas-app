@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Button } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Button, CircularProgress } from "@mui/material";
 import ConfirmDialog from "../common/ConfirmDialog";
 
 export default function EstadoChangeDialog({
@@ -10,6 +10,8 @@ export default function EstadoChangeDialog({
   onApplyEstado,
 }) {
   const [confirmOcultar, setConfirmOcultar] = useState({ open: false, estado: null });
+  const [loading, setLoading] = useState(false);
+  const [applyingEstado, setApplyingEstado] = useState(null);
 
   const handleSelect = async (estado) => {
     if (!vehiculo) return;
@@ -18,15 +20,29 @@ export default function EstadoChangeDialog({
       setConfirmOcultar({ open: true, estado });
       return;
     }
-    await onApplyEstado?.(estado, { ocultar: false });
-    onClose?.();
+    try {
+      setLoading(true);
+      setApplyingEstado(estado.nombre);
+      await onApplyEstado?.(estado, { ocultar: false });
+      onClose?.();
+    } finally {
+      setLoading(false);
+      setApplyingEstado(null);
+    }
   };
 
   const handleConfirmOcultar = async () => {
     if (!vehiculo || !confirmOcultar.estado) return;
-    await onApplyEstado?.(confirmOcultar.estado, { ocultar: true });
-    setConfirmOcultar({ open: false, estado: null });
-    onClose?.();
+    try {
+      setLoading(true);
+      setApplyingEstado(confirmOcultar.estado.nombre);
+      await onApplyEstado?.(confirmOcultar.estado, { ocultar: true });
+      setConfirmOcultar({ open: false, estado: null });
+      onClose?.();
+    } finally {
+      setLoading(false);
+      setApplyingEstado(null);
+    }
   };
 
   const validColors = [
@@ -66,6 +82,8 @@ export default function EstadoChangeDialog({
                   color={buttonColor}
                   onClick={() => handleSelect(estado)}
                   sx={sxButton}
+                  disabled={loading}
+                  startIcon={applyingEstado === estado.nombre && loading ? <CircularProgress color="inherit" size={16} /> : null}
                 >
                   {estado.label}
                 </Button>
@@ -74,7 +92,8 @@ export default function EstadoChangeDialog({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose} color="primary">Cancelar</Button>
+            <Button onClick={onClose} color="primary" disabled={loading}>Cancelar</Button>
+            {loading ? <Box sx={{ display: 'flex', alignItems: 'center', pr: 1 }}><CircularProgress size={20} /></Box> : null}
         </DialogActions>
       </Dialog>
 

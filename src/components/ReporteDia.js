@@ -6,21 +6,34 @@ import {
   IconButton,
   Box,
   Typography,
-  Grid,
   Paper,
   Divider,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
+  Tooltip,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from '@mui/material/styles';
 import CloseIcon from "@mui/icons-material/Close";
-import AssignmentIcon from "@mui/icons-material/Assignment";
 import AddTaskIcon from "@mui/icons-material/AddTask";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
-// PendingActionsIcon eliminado: no se usa actualmente
-import { obtenerConfiguracionReporte } from "../lib/configuracionReporteFirebase";
-import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
-import { obtenerInicioSnapshot } from "../lib/reporteDiaSnapshotFirebase";
+import TodayIcon from "@mui/icons-material/Today";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import { getWeekRangeLocal } from "../lib/dateUtils";
 
-// props: servicios (array de servicios), fecha (string 'YYYY-MM-DD' o Date)
+// Reporte semanal/día: muestra L–V y totales. Autónomo y sin dependencias externas.
 export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
+  
+
   const formatLocalYMD = React.useCallback((d) => {
     if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
     const y = String(d.getFullYear()).padStart(4, "0");
@@ -29,355 +42,359 @@ export default function ReporteDia({ open, onClose, servicios = [], fecha }) {
     return `${y}-${m}-${day}`;
   }, []);
 
-  // Log condicional opcional controlado con localStorage.debugReporteDia === '1'
-  const debugReporte = React.useCallback((...args) => {
-    try {
-      if (typeof window !== 'undefined' && localStorage.getItem('debugReporteDia') === '1') {
-        console.debug('[ReporteDia][DBG]', ...args);
-      }
-    } catch (_) { /* noop */ }
-  }, []);
-  // Configuración del reporte en state (se cargará desde Firestore)
-  const [configReporte, setConfigReporte] = React.useState(null);
-  React.useEffect(() => {
-    let mounted = true;
-    obtenerConfiguracionReporte()
-      .then(cfg => {
-        if (!mounted) return;
-        setConfigReporte(cfg || {});
-      })
-      .catch(e => console.warn('No se pudo cargar configReporte desde Firestore', e));
-    return () => { mounted = false; };
-  }, []);
-  // Lista de estados cargada desde Firestore para resolver labels
-  const [estadosServicio, setEstadosServicio] = React.useState([]);
-  React.useEffect(() => {
-    let mounted = true;
-    obtenerEstadosServicio()
-      .then(list => {
-        if (!mounted) return;
-        if (Array.isArray(list)) setEstadosServicio(list);
-      })
-      .catch(e => console.warn('No se pudieron cargar estados de servicio:', e));
-    return () => { mounted = false; };
+  const formatYMDToDMY = React.useCallback((v) => {
+    if (!v) return "";
+    if (v instanceof Date) {
+      const d = v;
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = String(d.getFullYear()).padStart(4, '0');
+      return `${dd}/${mm}/${yyyy}`;
+    }
+    if (typeof v === 'string') {
+      const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+      return v;
+    }
+    return String(v);
   }, []);
 
-  // Función para resolver un código/nombre de estado a su label (si existe)
-  const resolveStateLabel = React.useCallback((codeOrName) => {
-    if (!codeOrName) return null;
-    const found = estadosServicio.find(e => e.nombre === codeOrName || e.id === codeOrName || e.value === codeOrName || e.label === codeOrName);
-    if (found) return found.label || found.nombre || codeOrName;
-    return codeOrName;
-  }, [estadosServicio]);
-  // Normalizar fecha a string 'YYYY-MM-DD'
-  const fechaStr = useMemo(() => {
-    if (!fecha) return "";
-    if (typeof fecha === "string" && fecha.includes("-")) return fecha;
-    if (typeof fecha === "string" && fecha.includes("/")) {
-      // dd/mm/yyyy
-      const [d, m, y] = fecha.split("/");
-      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-    }
-    if (fecha instanceof Date) {
-      // Evitar desfase por UTC (toISOString usa UTC). Queremos el día local.
-      return formatLocalYMD(fecha);
-    }
-    return fecha;
-  }, [fecha, formatLocalYMD]);
+  const todayStr = formatLocalYMD(new Date());
 
-  // Calcular resumen del día
-  const resumen = useMemo(() => {
-    if (!Array.isArray(servicios) || !fechaStr) return { inicio: 0, registrados: 0, entregados: 0, pendientes: 0 };
-    // Cargar configuración de estados: prioridad a configReporte (Firestore), luego localStorage como fallback
-    let config = {};
-    if (configReporte && Object.keys(configReporte).length > 0) {
-      config = configReporte;
-    } else {
-      try {
-        const raw = localStorage.getItem("configReporteStates");
-        if (raw) config = JSON.parse(raw);
-      } catch (e) {
-        console.warn("No se pudo leer configReporteStates:", e);
+  const [semanaBase, setSemanaBase] = React.useState(() => {
+    if (fecha instanceof Date) return formatLocalYMD(fecha);
+    if (typeof fecha === 'string' && fecha.length >= 10) return fecha.slice(0, 10);
+    return todayStr;
+  });
+
+  const semana = useMemo(() => getWeekRangeLocal(semanaBase), [semanaBase]);
+  const diasES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+  const regSetsRef = React.useRef({});
+  const entSetsRef = React.useRef({});
+  const [detalleDia, setDetalleDia] = React.useState({ open: false, dia: null });
+  const theme = useTheme();
+  const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const { registradosPorDia, entregadosPorDia, totalRegistrados, totalEntregados } = useMemo(() => {
+    const rpd = {};
+    const epd = {};
+    let totalR = 0;
+    let totalE = 0;
+    let registradosHoyCount = 0;
+    let inicio = 0;
+
+    const monday = semana?.mondayStr;
+
+    // Crear sets por día para deduplicar
+    const regSets = {};
+    const entSets = {};
+    (semana?.days || []).forEach(d => { regSets[d] = new Set(); entSets[d] = new Set(); });
+
+    // Set para inicio de semana (deduplicado)
+    const inicioSet = new Set();
+
+    servicios.forEach(s => {
+      const key = s.id || s._id || s.vehiculo || JSON.stringify(s);
+      const regDate = s.arrivalTime ? formatLocalYMD(new Date(s.arrivalTime)) : (s.fechaRegistro ? String(s.fechaRegistro).slice(0, 10) : null);
+      const entDate = s.fechaEntrega ? formatLocalYMD(new Date(s.fechaEntrega)) : null;
+
+      if (monday) {
+        if (regDate && regDate < monday && (!entDate || entDate >= monday)) inicioSet.add(key);
       }
-    }
 
-    const estadosRegistrados = Array.isArray(config.registrados) ? config.registrados : [];
-    const estadosEntregados = Array.isArray(config.entregados) ? config.entregados : [];
-    const estadosPendientes = Array.isArray(config.pendientes) ? config.pendientes : [];
+      (semana?.days || []).forEach(dia => {
+        let countedReg = false;
+        let countedEnt = false;
 
-    // Helpers
-  // Convierte distintos formatos a milisegundos epoch (Number) o null
-    const toMillis = (v) => {
-      if (!v) return null;
-      // Firestore timestamp
-      if (v && typeof v === 'object' && typeof v.seconds === 'number') return v.seconds * 1000;
-      if (v instanceof Date) return v.getTime();
-      if (typeof v === 'number') return v;
-      if (typeof v === 'string') {
-        // ISO
-        if (v.includes('T')) {
-          const t = Date.parse(v);
-          return Number.isNaN(t) ? null : t;
+        if (regDate === dia) countedReg = true;
+        if (!countedReg && Array.isArray(s.historial)) {
+          countedReg = s.historial.some(h => {
+            const hDate = h.fecha ? formatLocalYMD(new Date(h.fecha)) : null;
+            return hDate === dia && (h.nuevoEstado === 'registrado' || h.estado === 'registrado');
+          });
         }
-        // dd/mm/yyyy or dd/mm/yyyy hh:mm
-        if (v.includes('/')) {
-          const [datePart, timePart] = v.split(' ');
-          const [d, m, y] = datePart.split('/');
-          const iso = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}${timePart ? 'T' + timePart : 'T00:00:00'}`;
-          const t = Date.parse(iso);
-          return Number.isNaN(t) ? null : t;
-        }
-        // plain date 'YYYY-MM-DD' or datetime without T
-        if (v.length >= 10) {
-          const iso = v.includes('-') ? (v.includes(' ') ? v.replace(' ', 'T') : (v.length === 10 ? v + 'T00:00:00' : v)) : v;
-          const t = Date.parse(iso);
-          return Number.isNaN(t) ? null : t;
-        }
-      }
-      return null;
-    };
 
-    const millisToDateOnly = (ms) => {
-      if (!ms && ms !== 0) return null;
-      const d = new Date(ms);
-      return `${String(d.getFullYear()).padStart(4,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    };
-
-    const extractHistorialTransitions = (s) => {
-      const arr = [];
-      // arrivalTime as initial presence marker (useful if no historial)
-      const regMillis = toMillis(s.arrivalTime);
-      const currentState = s.status || s.estado || null;
-      if (regMillis && currentState) arr.push({ ts: regMillis, state: currentState, type: 'registro' });
-      // historial entries: try to support common shapes
-      if (Array.isArray(s.historial)) {
-        s.historial.forEach(h => {
-          let hMillis = null;
-          if (h.fecha) hMillis = toMillis(h.fecha);
-          if (!hMillis && h._fechaDate) hMillis = toMillis(h._fechaDate);
-          if (!hMillis && h.createdAt) hMillis = toMillis(h.createdAt);
-          const state = h.nuevoEstado || h.estado || h.to || h.newState || h.estadoNuevo || null;
-          if (hMillis && state) arr.push({ ts: hMillis, state, type: 'historial' });
-        });
-      }
-      // fechaEntrega as 'entregado' marker
-      if (s.fechaEntrega) {
-        const fEnt = toMillis(s.fechaEntrega);
-        if (fEnt) arr.push({ ts: fEnt, state: 'entregado', type: 'entrega' });
-      }
-      // If no transitions but we have currentState and arrival, infer
-      if (!arr.length && currentState && regMillis) arr.push({ ts: regMillis, state: currentState, type: 'inferred' });
-      // sort by timestamp asc
-      return arr.sort((a,b) => (a.ts || 0) - (b.ts || 0));
-    };
-
-    const stateAt = (s, target, preferTransitions = true) => {
-      // target can be Date or string 'YYYY-MM-DD' or ISO
-      let targetMillis = null;
-      if (target instanceof Date) targetMillis = target.getTime();
-      else if (typeof target === 'string') {
-        // If only date 'YYYY-MM-DD', interpret as end of that day
-        if (/^\d{4}-\d{2}-\d{2}$/.test(target)) {
-          targetMillis = Date.parse(target + 'T23:59:59');
-        } else {
-          targetMillis = toMillis(target);
+        if (entDate === dia) countedEnt = true;
+        if (!countedEnt && Array.isArray(s.historial)) {
+          countedEnt = s.historial.some(h => {
+            const hDate = h.fecha ? formatLocalYMD(new Date(h.fecha)) : null;
+            return hDate === dia && (h.nuevoEstado === 'entregado' || h.estado === 'entregado');
+          });
         }
-      }
-      const transitions = extractHistorialTransitions(s);
-      let last = null;
-      transitions.forEach(t => {
-        if (!t.ts) return;
-        if (targetMillis === null || t.ts <= targetMillis) last = t.state;
+
+        if (countedReg) regSets[dia].add(key);
+        if (countedEnt) entSets[dia].add(key);
       });
-      // If no transition before targetMillis, consider fechaEntrega or fallback to status
-      if (!last) {
-        // if delivered before target, it was 'entregado'
-        if (s.fechaEntrega) {
-          const entMillis = toMillis(s.fechaEntrega);
-          if (entMillis && targetMillis !== null && entMillis <= targetMillis) return 'entregado';
-        }
-        return s.status || s.estado || null;
-      }
-      return last;
-    };
-
-    // registrados: arrivalTime == fechaStr OR state transition into any estadosRegistrados on fechaStr
-  let registradosCount = 0;
-  let entregadosCount = 0;
-  let inicioCount = 0;
-  let pendientesCount = 0;
-
-  const inicioServices = [];
-  servicios.forEach(s => {
-      const regDate = millisToDateOnly(toMillis(s.arrivalTime));
-      let countedAsRegistrado = false;
-      if (regDate === fechaStr) {
-        registradosCount++;
-        countedAsRegistrado = true;
-      }
-
-      // Si la configuración define estadosRegistrados, considera transiciones en historial
-      if (!countedAsRegistrado && estadosRegistrados.length > 0 && Array.isArray(s.historial)) {
-        const becameRegistered = s.historial.some(h => {
-          const hDate = millisToDateOnly(toMillis(h.fecha || h._fechaDate || h.createdAt));
-          const newState = h.nuevoEstado || h.estado || h.to || h.newState || h.estadoNuevo || null;
-          const newStateLabel = resolveStateLabel(newState);
-          return hDate === fechaStr && estadosRegistrados.includes(newStateLabel);
-        });
-        if (becameRegistered) {
-          registradosCount++;
-          countedAsRegistrado = true;
-        }
-      }
-
-      // entregados: if fechaEntrega == fechaStr OR historial transition to entregado or any configured entregado state on fechaStr
-      const entDate = millisToDateOnly(toMillis(s.fechaEntrega));
-      if (entDate === fechaStr) {
-        entregadosCount++;
-      } else if (Array.isArray(s.historial) && s.historial.some(h => {
-        const hDate = millisToDateOnly(toMillis(h.fecha || h._fechaDate || h.createdAt));
-        const newState = h.nuevoEstado || h.estado || h.to || h.newState || h.estadoNuevo || null;
-        const newStateLabel = resolveStateLabel(newState);
-        return hDate === fechaStr && (estadosEntregados.length === 0 ? (newStateLabel === 'entregado') : estadosEntregados.includes(newStateLabel));
-      })) {
-        entregadosCount++;
-      }
-
-      // inicio (criterio requerido): contar servicios cuyo status (código) NO sea 'entregado' NI 'por_cobrar'.
-      // Ignora timestamps; se basa únicamente en el atributo status/estado almacenado en el documento.
-      const normalize = (v) => (v == null ? '' : String(v)).trim().toLowerCase().replace(/\s+/g, '_');
-      const currentStatusCode = normalize(s.status || s.estado);
-      if (currentStatusCode !== 'entregado' && currentStatusCode !== 'por_cobrar') {
-        inicioCount++;
-        inicioServices.push({ id: s.id || s._id || s.vehiculo || '(no-id)', status: currentStatusCode, criterio: 'status!=entregado|por_cobrar' });
-      }
-
-
-    // Log opcional de depuración
-    try {
-      if (typeof window !== 'undefined' && localStorage.getItem('debugReporteDia') === '1') {
-        console.debug('[ReporteDia][DBG] fecha:', fechaStr, 'inicioServicesCount:', inicioServices.length);
-        if (console.table) console.table(inicioServices.slice(0, 200));
-      }
-    } catch (e) {
-      // silencio
-    }
-      // pendientes: state at end of fechaStr (i.e., stateAt with fechaStr) in estadosPendientes or no entrega yet
-      const stateEnd = stateAt(s, fechaStr);
-      if (estadosPendientes.length > 0) {
-        const stateEndLabel = resolveStateLabel(stateEnd);
-        if (stateEndLabel && estadosPendientes.includes(stateEndLabel)) pendientesCount++;
-      } else {
-        const ent = millisToDateOnly(toMillis(s.fechaEntrega));
-        if (regDate && regDate <= fechaStr && (!ent || ent > fechaStr)) pendientesCount++;
-      }
     });
 
-    return {
-      inicioCalculado: inicioCount,
-      registrados: registradosCount,
-      entregados: entregadosCount,
-      pendientes: pendientesCount,
-    };
-  }, [servicios, fechaStr, configReporte, resolveStateLabel]);
+    // Convertir sets en counts
+    (semana?.days || []).forEach(d => {
+      const rCount = regSets[d]?.size || 0;
+      const eCount = entSets[d]?.size || 0;
+      rpd[d] = rCount;
+      epd[d] = eCount;
+      totalR += rCount;
+      totalE += eCount;
+    });
 
-  // Estado para fijar el valor de "inicio" desde Firestore (snapshot diario)
-  const [inicioFijo, setInicioFijo] = React.useState(null);
+    registradosHoyCount = regSets[todayStr] ? regSets[todayStr].size : 0;
+    inicio = inicioSet.size;
 
-  // Cargar snapshot al cambiar la fecha
-  React.useEffect(() => {
-    let mounted = true;
-    async function cargarSnapshot() {
-      if (!fechaStr) return;
-      try {
-        const snap = await obtenerInicioSnapshot(fechaStr);
-        if (!mounted) return;
-        if (snap && typeof snap.inicio === 'number') {
-          setInicioFijo(snap.inicio);
-          debugReporte('snapshot cargado', { fecha: fechaStr, inicio: snap.inicio });
-        } else {
-          setInicioFijo(null);
-          debugReporte('snapshot no encontrado', { fecha: fechaStr });
-        }
-      } catch (e) {
-        console.warn('No se pudo cargar snapshot de inicio para', fechaStr, e);
-        setInicioFijo(null);
-        debugReporte('error al cargar snapshot', { fecha: fechaStr, error: e?.message || e });
+    // Exponer sets para uso fuera del memo (handler de detalle)
+    try { regSetsRef.current = regSets; entSetsRef.current = entSets; } catch (e) { }
+
+    // Logs para depuración: mostrar siempre qué servicios se cuentan el lunes
+    try {
+      if (typeof window !== 'undefined') {
+        const mondayKey = monday;
+        console.group('[ReporteDia] Detalle Lunes', { monday: mondayKey });
+        const mondayKeys = Array.from(regSets[mondayKey] || []);
+        console.log('Keys contadas para Lunes:', mondayKeys);
+        console.log('Conteo por día (muestras):', Object.fromEntries(Object.keys(regSets).map(k => [k, regSets[k].size])));
+
+        // Mostrar tabla con detalles por key: regDate, entDate, vehiculo y resumen de historial
+        const mondayDetails = mondayKeys.map(k => {
+          const s = servicios.find(x => (x.id || x._id || x.vehiculo || JSON.stringify(x)) === k) || {};
+          return {
+            key: k,
+            vehiculo: s.vehiculo ?? null,
+            regDate: s.arrivalTime ? formatLocalYMD(new Date(s.arrivalTime)) : (s.fechaRegistro ? String(s.fechaRegistro).slice(0, 10) : null),
+            entDate: s.fechaEntrega ? formatLocalYMD(new Date(s.fechaEntrega)) : null,
+            historial: Array.isArray(s.historial) ? s.historial.map(h => ({ fecha: h.fecha, estado: h.nuevoEstado || h.estado })) : undefined
+          };
+        });
+        if (mondayDetails.length) console.table(mondayDetails);
+        console.groupEnd();
       }
+    } catch (e) {
+      // no-op
     }
-    setInicioFijo(null);
-    cargarSnapshot();
-    return () => { mounted = false; };
-  }, [fechaStr, debugReporte, open]);
 
-  // Ya no se crea snapshot automáticamente desde el reporte; sólo se lee el valor fijado
+    return { registradosPorDia: rpd, entregadosPorDia: epd, totalRegistrados: totalR, totalEntregados: totalE, registradosHoy: registradosHoyCount, inicioSemana: inicio };
+  }, [servicios, semana, formatLocalYMD, todayStr]);
+
+  const cambiarSemana = (dir) => {
+    // parse semanaBase (YYYY-MM-DD) robustly to avoid timezone issues
+    const parseYMD = (s) => {
+      if (!s || typeof s !== 'string') return new Date();
+      const parts = s.split('-').map(n => parseInt(n, 10));
+      if (parts.length < 3 || parts.some(Number.isNaN)) return new Date(s);
+      return new Date(parts[0], parts[1] - 1, parts[2]);
+    };
+    const baseDate = parseYMD(semanaBase || semana?.mondayStr || todayStr);
+    baseDate.setDate(baseDate.getDate() + dir * 7);
+    setSemanaBase(formatLocalYMD(baseDate));
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 0 }}>
-        <Box>
-          <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: 0.2 }}>
-            Resumen de servicios
+      <DialogTitle sx={{ display: 'flex', flexDirection: 'column', gap: 1, pb: 0 }}>
+        <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: 0.2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AssignmentIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+            Reporte semanal
           </Typography>
-          <Box sx={{ my: 0.5 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {fechaStr || fecha}
-            </Typography>
-          </Box>
+          <IconButton onClick={onClose} size="small" aria-label="Cerrar"><CloseIcon /></IconButton>
         </Box>
-        <IconButton onClick={onClose} size="small" aria-label="Cerrar">
-          <CloseIcon />
-        </IconButton>
+        <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', gap: 1 }}>
+          <TodayIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+          <Tooltip title="Semana anterior"><IconButton onClick={() => cambiarSemana(-1)} size="small"><ArrowBackIosNewIcon fontSize="small" /></IconButton></Tooltip>
+          <Typography variant="body2" sx={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 0.6 }}>
+            {formatYMDToDMY(semana?.mondayStr) || ''} — {formatYMDToDMY(semana?.fridayStr) || ''}
+          </Typography>
+          <Tooltip title="Semana siguiente"><IconButton onClick={() => cambiarSemana(1)} size="small"><ArrowForwardIosIcon fontSize="small" /></IconButton></Tooltip>
+        </Box>
       </DialogTitle>
       <Divider />
-      <DialogContent sx={{ pt: 3, pb: 3 }}>
-        <Grid container spacing={2} alignItems="stretch">
-          <Grid item xs={12} sm={4}>
-            <Paper elevation={1} sx={{ p: 3, borderRadius: 1, display: "flex", flexDirection: 'column', alignItems: "center", gap: 1.5, minHeight: 140, justifyContent: 'center', bgcolor: 'background.paper' }}>
-              <Box sx={{ width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'primary.main', color: 'common.white', mb: 0.5 }}>
-                <AssignmentIcon sx={{ fontSize: 28 }} />
+      <DialogContent sx={{ pt: 2, pb: 3 }}>
+        {/* Estadísticas resumidas eliminadas: usar detalle por fila */}
+
+        {isSmall ? (
+          <Box sx={{ display: 'grid', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AddTaskIcon color="warning" />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{totalRegistrados}</Typography>
+                <Typography variant="caption" color="text.secondary">Registrados</Typography>
               </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" fontWeight={800} color="text.primary">
-                  {inicioFijo !== null ? inicioFijo : (resumen?.inicioCalculado ?? 0)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                  Al inicio del día
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <DoneAllIcon color="success" />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{totalEntregados}</Typography>
+                <Typography variant="caption" color="text.secondary">Entregados</Typography>
               </Box>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Paper elevation={1} sx={{ p: 3, borderRadius: 1, display: "flex", flexDirection: 'column', alignItems: "center", gap: 1.5, minHeight: 140, justifyContent: 'center', bgcolor: 'background.paper' }}>
-              <Box sx={{ width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'warning.main', color: 'common.white', mb: 0.5 }}>
-                <AddTaskIcon sx={{ fontSize: 28 }} />
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" fontWeight={800} color="text.primary">
-                  {resumen.registrados}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                  Registrados hoy
-                </Typography>
-              </Box>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Paper elevation={1} sx={{ p: 3, borderRadius: 1, display: "flex", flexDirection: 'column', alignItems: "center", gap: 1.5, minHeight: 140, justifyContent: 'center', bgcolor: 'background.paper' }}>
-              <Box sx={{ width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'success.main', color: 'common.white', mb: 0.5 }}>
-                <DoneAllIcon sx={{ fontSize: 28 }} />
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" fontWeight={800} color="text.primary">
-                  {resumen.entregados}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                  Entregados hoy
-                </Typography>
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
+            </Box>
+            {(semana?.days || []).map((dia, idx) => (
+              <Paper key={dia} elevation={0} sx={{ boxShadow: 'none', border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{diasES[idx]}</Typography>
+                  <Typography variant="caption" color="text.secondary">{formatYMDToDMY(dia)}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <AddTaskIcon color="warning" />
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{registradosPorDia[dia] ?? 0}</Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <DoneAllIcon color="success" />
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{entregadosPorDia[dia] ?? 0}</Typography>
+                  </Box>
+                </Box>
+                <IconButton size="small" onClick={() => setDetalleDia({ open: true, dia })} aria-label={`Detalle ${dia}`}>
+                  <TodayIcon />
+                </IconButton>
+              </Paper>
+            ))}
+          </Box>
+        ) : (
+          <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: 'background.default' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 800 }}>Día</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}><AddTaskIcon color="warning" sx={{ verticalAlign: 'middle', mr: 0.5 }} />Registrados</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}><DoneAllIcon color="success" sx={{ verticalAlign: 'middle', mr: 0.5 }} />Entregados</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>Detalle</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody sx={{ '& tr:nth-of-type(odd)': { bgcolor: 'action.hover' } }}>
+                {(semana?.days || []).map((dia, idx) => (
+                  <TableRow key={dia} hover>
+                    <TableCell sx={{ fontWeight: 700 }}>{diasES[idx] || dia}</TableCell>
+                    <TableCell align="center">{registradosPorDia[dia] ?? 0}</TableCell>
+                    <TableCell align="center">{entregadosPorDia[dia] ?? 0}</TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Ver detalles">
+                        <IconButton size="small" onClick={() => setDetalleDia({ open: true, dia })}>
+                          <TodayIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow sx={{ bgcolor: 'background.paper' }}>
+                  <TableCell sx={{ fontWeight: 800 }}>Total</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>{totalRegistrados}</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 800 }}>{totalEntregados}</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Paper>
+        )}
       </DialogContent>
+      {/* Dialog para mostrar detalle de servicios por día */}
+      <Dialog open={detalleDia.open} onClose={() => setDetalleDia({ open: false, dia: null })} maxWidth="xs" fullWidth>
+        {isSmall ? (
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <IconButton size="small" onClick={() => setDetalleDia({ open: false, dia: null })}><CloseIcon /></IconButton>
+            <Box sx={{ textAlign: 'center', flex: 1 }}>
+              <Typography variant="subtitle1" fontWeight={800}>Detalle</Typography>
+              <Typography variant="caption" color="text.secondary">{formatYMDToDMY(detalleDia.dia) || ''}</Typography>
+            </Box>
+            <Box sx={{ width: 36 }} />
+          </DialogTitle>
+        ) : (
+          <DialogTitle sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Box>
+              <Typography variant="h6" fontWeight={800}>Detalle — {formatYMDToDMY(detalleDia.dia) || ''}</Typography>
+              <Typography variant="caption" color="text.secondary">Servicios registrados / entregados</Typography>
+            </Box>
+            <IconButton size="small" onClick={() => setDetalleDia({ open: false, dia: null })} sx={{ alignSelf: 'flex-end' }}><CloseIcon /></IconButton>
+          </DialogTitle>
+        )}
+        <Divider />
+        <DialogContent sx={{ p: 2, maxHeight: isSmall ? '50vh' : '60vh', overflow: 'auto' }}>
+          {detalleDia.dia ? (() => {
+            const regKeys = Array.from((regSetsRef.current && regSetsRef.current[detalleDia.dia]) || []);
+            const entKeys = Array.from((entSetsRef.current && entSetsRef.current[detalleDia.dia]) || []);
+            const union = Array.from(new Set([...regKeys, ...entKeys]));
+            const items = union.map(k => {
+              const s = servicios.find(x => (x.id || x._id || x.vehiculo || JSON.stringify(x)) === k) || {};
+              return {
+                key: k,
+                vehiculo: s.vehiculo || s.placa || null,
+                regDate: s.arrivalTime ? formatLocalYMD(new Date(s.arrivalTime)) : (s.fechaRegistro ? String(s.fechaRegistro).slice(0, 10) : null),
+                entDate: s.fechaEntrega ? formatLocalYMD(new Date(s.fechaEntrega)) : null,
+                registrado: regKeys.includes(k),
+                entregado: entKeys.includes(k)
+              };
+            });
+
+            if (isSmall) {
+              return (
+                <Box>
+                  <Box sx={{ display: 'flex', gap: 2, mb: 0.5, justifyContent: 'center  ' }}>
+                    <Typography variant="body2">Registrados: <strong>{regKeys.length}</strong></Typography>
+                    <Typography variant="body2">Entregados: <strong>{entKeys.length}</strong></Typography>
+                  </Box>
+                  <List disablePadding sx={{ maxHeight: '40vh', overflow: 'auto' }}>
+                    {items.map(it => (
+                      <ListItem key={it.key} sx={{ py: 0.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                        <ListItemText
+                          primary={it.vehiculo || it.key}
+                          primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                          secondary={
+                            <span>
+                              <Typography component="span" variant="caption" color="text.secondary">Reg: {it.regDate ? formatYMDToDMY(it.regDate) : '-'} </Typography>
+                              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>Ent: {it.entDate ? formatYMDToDMY(it.entDate) : '-'}</Typography>
+                            </span>
+                          }
+                          secondaryTypographyProps={{ variant: 'caption' }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 1, ml: 1, alignItems: 'center' }}>
+                          {it.registrado ? (
+                            <Tooltip title="Registrado">
+                              <AddTaskIcon color="warning" fontSize="small" />
+                            </Tooltip>
+                          ) : null}
+                          {it.entregado ? (
+                            <Tooltip title="Entregado">
+                              <DoneAllIcon color="success" fontSize="small" />
+                            </Tooltip>
+                          ) : null}
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              );
+            }
+
+            return (
+              <Box>
+                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                  <Typography variant="subtitle1">Registrados: <strong>{regKeys.length}</strong></Typography>
+                  <Typography variant="subtitle1">Entregados: <strong>{entKeys.length}</strong></Typography>
+                </Box>
+                <Paper elevation={0} sx={{ maxHeight: 220, overflow: 'auto' }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Vehículo</TableCell>
+                        <TableCell>Registro</TableCell>
+                        <TableCell>Entrega</TableCell>
+                        <TableCell>Estado</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {items.map(it => (
+                        <TableRow key={it.key}>
+                          <TableCell>{it.vehiculo || it.key}</TableCell>
+                          <TableCell>{it.regDate ? formatYMDToDMY(it.regDate) : '-'}</TableCell>
+                          <TableCell>{it.entDate ? formatYMDToDMY(it.entDate) : '-'}</TableCell>
+                          <TableCell>
+                            {it.registrado && it.entregado ? <Chip label="Registrado / Entregado" size="small" color="primary" /> : (it.entregado ? <Chip label="Entregado" size="small" color="success" /> : <Chip label="Registrado" size="small" color="warning" />)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Paper>
+              </Box>
+            );
+          })() : null}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

@@ -12,7 +12,7 @@ export default function ServiciosToolbar({ onOpenReporteDia, onRegistrarServicio
         sx={{ borderColor: '#bdbdbd', color: '#616161', maxWidth: { xs: 320, sm: "none" } , width: { xs: '100%', sm: 'auto' } }}
         onClick={onOpenReporteDia}
       >
-        Reporte del día
+        Reporte semanal
       </Button>
       <Button
         variant="outlined"
