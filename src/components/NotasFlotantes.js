@@ -112,7 +112,7 @@ function NotasFlotantes() {
   return (
     <>
       {/* FAB flotante */}
-      <Box sx={{ position: "fixed", right: 16, bottom: 16, zIndex: 1300 }}>
+      <Box sx={{ position: "fixed", right: 16, bottom: 45, zIndex: 1300 }}>
         <Tooltip title={open ? "Cerrar notas" : "Notas"} placement="left">
           <Fab
             size="small"
@@ -142,25 +142,6 @@ function NotasFlotantes() {
             transform: "rotate(-0.3deg)",
           }}
         >
-          {/* Pin decorativo */}
-          <Box sx={{ position: "relative" }}>
-            <Box
-              sx={{
-                position: "absolute",
-                top: 6,
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 14,
-                height: 14,
-                borderRadius: "50%",
-                bgcolor: stickyColors.pin,
-                boxShadow: 3,
-                border: "2px solid rgba(0,0,0,0.12)",
-                zIndex: 2,
-              }}
-            />
-          </Box>
-
           {/* Header */}
           <Box
             sx={{
@@ -226,7 +207,12 @@ function NotasFlotantes() {
                 size="small"
                 onClick={() => setScratch("")}
               >
-                Limpiar
+                <Tooltip title="Limpiar">
+                  <IconButton aria-label="limpiar" size="small" color="inherit" onClick={() => setScratch("")}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Button>
             </Stack>
           </Box>
