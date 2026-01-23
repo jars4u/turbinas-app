@@ -218,15 +218,16 @@ export default function CierreDia() {
     setLoadingTasa(true);
     setMostrarInputTasa(false);
     try {
-      // Primer intento: pydolarve.org
+      // Primer intento: api.dolarvzla (usar atributo current.usd)
       const response = await fetch(
-        "https://pydolarve.org/api/v1/dollar?page=bcv&monitor=usd"
+        "https://api.dolarvzla.com/public/exchange-rate"
       );
       const data = await response.json();
-      if (data && data.price) {
-        setTasaBCV(data.price);
+      if (data && data.current && (typeof data.current.usd === "number" || !isNaN(Number(data.current.usd)))) {
+        const usdVal = Number(data.current.usd);
+        setTasaBCV(usdVal);
         if (isAdmin || isOwner) {
-          guardarTasaBCV(data.price); // Guardar en Firestore solo admin/owner
+          guardarTasaBCV(usdVal); // Guardar en Firestore solo admin/owner
         }
         if (!sessionStorage.getItem("tasaBCVManual")) {
           sessionStorage.removeItem("tasaBCVManual");

@@ -57,6 +57,24 @@ export default function ResumenContable({ tasaBCV }) {
   const [selectedEgresos, setSelectedEgresos] = useState(new Set());
   const getIngresoKey = (i, idx) => (i && i.id) || `${i?.descripcion || ''}-${i?.fecha || ''}-${idx}`;
   const getEgresoKey = (e, idx) => (e && e.id) || `${e?.descripcion || ''}-${e?._fechaDate || e?.fecha || ''}-${idx}`;
+  const formatFecha = (item) => {
+    if (!item) return "-";
+    if (item._fechaDate instanceof Date) {
+      const d = String(item._fechaDate.getDate()).padStart(2, "0");
+      const m = String(item._fechaDate.getMonth() + 1).padStart(2, "0");
+      const y = item._fechaDate.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
+    if (item.fecha && item.fecha.seconds) {
+      const dt = new Date(item.fecha.seconds * 1000);
+      const d = String(dt.getDate()).padStart(2, "0");
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const y = dt.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
+    if (typeof item.fecha === "string" && item.fecha.includes("/")) return item.fecha;
+    return "-";
+  };
   useEffect(() => {
     Promise.all([
       obtenerFondoCajaChica(),
@@ -603,7 +621,7 @@ export default function ResumenContable({ tasaBCV }) {
                 <Paper sx={{ p: 2, mb: 2, bgcolor: "#f5f5f5" }}>
                   {/* Tasa BCV en bloque al inicio para móviles */}
                   <Box sx={{ display: { xs: "block", sm: "none" }, mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 12, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" } }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 13, sm: 16 }, whiteSpace: { xs: "nowrap", sm: "normal" } }}>
                       Tasa BCV:{" "}
                       {cierre?.tasa
                         ? `${cierre.tasa.toLocaleString("de-DE", {
@@ -624,7 +642,7 @@ export default function ResumenContable({ tasaBCV }) {
                       alignItems: { xs: "flex-start", sm: "center" },
                     }}
                   >
-                    <Typography sx={{ fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                    <Typography sx={{ fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                       <b>• Ingresos totales:</b>
                       {(() => {
                         // Sumar solo los montos de pagos Zelle/Efectivo en USD y Pago Móvil en Bs
@@ -729,7 +747,7 @@ export default function ResumenContable({ tasaBCV }) {
                             <Typography
                               key={"total-" + nombreMostrar}
                               variant="body2"
-                              sx={{ mb: 0.5, pl: 2, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}
+                              sx={{ mb: 0.5, pl: 2, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}
                             >
                               <b>Total {nombreMostrar}:</b>
                               {formaNorm === "pago movil"
@@ -746,7 +764,7 @@ export default function ResumenContable({ tasaBCV }) {
                         });
                     })()}
                   </Box>
-                  <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                  <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Egresos totales:</b>
                     {(() => {
                       // Sumar solo los valores que se muestran en la tabla de egresos
@@ -767,7 +785,7 @@ export default function ResumenContable({ tasaBCV }) {
                       })}`;
                     })()}
                   </Typography>
-                  {/* <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                  {/* <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Utilidad:</b>
                     {(() => {
                       // Calcular utilidad por divisa: ingresos menos egresos en cada moneda
@@ -801,7 +819,7 @@ export default function ResumenContable({ tasaBCV }) {
                       return ` $ ${utilidadUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} | Bs. ${utilidadBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
                     })()}
                   </Typography> */}
-                  <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                  <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Caja chica:</b>
                     {(() => {
                       if (typeof fondoCajaChica === 'undefined' || typeof movimientosCajaChica === 'undefined') {
@@ -814,7 +832,7 @@ export default function ResumenContable({ tasaBCV }) {
                       return ` $ ${saldo.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
                     })()}
                   </Typography>
-                  <Typography sx={{ mb: 1, fontSize: { xs: 12, sm: "inherit" }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                  {/* <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Total $ en cierre:</b>
                     {(() => {
                       // Sumar ingresos en USD + el valor en USD de los pagos movil (Bs / factorConversion)
@@ -843,7 +861,7 @@ export default function ResumenContable({ tasaBCV }) {
                       const totalCierreUSD = (ingresosUSD + ingresosBs / factorConversion) - egresosUSD;
                       return ` $ ${totalCierreUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
                     })()}
-                  </Typography>
+                  </Typography> */}
                   {cierre?.observaciones && (
                     <Typography sx={{ mt: 1 }} color="text.secondary">
                       <b>Observaciones:</b> {cierre.observaciones}
@@ -871,9 +889,24 @@ export default function ResumenContable({ tasaBCV }) {
                       "& .MuiAccordionSummary-content": { my: 0.5 },
                     }}
                   >
-                    <Typography fontWeight={700} color="primary" fontSize={15}>
-                      Ingresos
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography fontWeight={700} color="primary" fontSize={15}>
+                        INGRESOS
+                      </Typography>
+                      {/* <Box sx={{
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText',
+                        px: 1,
+                        py: '2px',
+                        borderRadius: 3,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        minWidth: 28,
+                        textAlign: 'center'
+                      }}>
+                        {ingresos.length}
+                      </Box> */}
+                    </Box>
                   </AccordionSummary>
                   <AccordionDetails sx={{ py: 0.5 }}>
                     <Box
@@ -916,6 +949,9 @@ export default function ResumenContable({ tasaBCV }) {
                                   </Box>
                                   <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
                                     {`${i.vehiculo ? i.vehiculo + ' - ' : ''}${i.servicio || i.descripcion || i.observaciones || '-'}`}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                    Fecha: {formatFecha(i)}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
                                     {Array.isArray(i.formasPago) && i.formasPago.length > 0
@@ -969,6 +1005,7 @@ export default function ResumenContable({ tasaBCV }) {
                                   }}
                                 />
                               </TableCell>
+                                <TableCell sx={{ py: 0.5, fontSize: 13 }}>Fecha</TableCell>
                               <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                 Descripción
                               </TableCell>
@@ -1015,6 +1052,7 @@ export default function ResumenContable({ tasaBCV }) {
                                       inputProps={{ 'aria-label': 'Seleccionar ingreso' }}
                                     />
                                   </TableCell>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>{formatFecha(i)}</TableCell>
                                   <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                     {`${i.vehiculo ? i.vehiculo + ' - ' : ''}${i.servicio || i.descripcion || i.observaciones || '-'}`}
                                   </TableCell>
@@ -1119,9 +1157,24 @@ export default function ResumenContable({ tasaBCV }) {
                       "& .MuiAccordionSummary-content": { my: 0.5 },
                     }}
                   >
-                    <Typography fontWeight={700} color="error" fontSize={15}>
-                      Egresos
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography fontWeight={700} color="error" fontSize={15}>
+                        EGRESOS
+                      </Typography>
+                      {/* <Box sx={{
+                        bgcolor: 'error.main',
+                        color: 'error.contrastText',
+                        px: 1,
+                        py: '2px',
+                        borderRadius: 3,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        minWidth: 28,
+                        textAlign: 'center'
+                      }}>
+                        {egresos.length}
+                      </Box> */}
+                    </Box>
                   </AccordionSummary>
                   <AccordionDetails sx={{ py: 0.5 }}>
                     <Box
@@ -1149,6 +1202,9 @@ export default function ResumenContable({ tasaBCV }) {
                                 </Box>
                                 <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
                                   {e.proveedor || "-"}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                  Fecha: {formatFecha(e)}
                                 </Typography>
                                 {e.numeroDocumento && (
                                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
@@ -1197,6 +1253,7 @@ export default function ResumenContable({ tasaBCV }) {
                                   }}
                                 />
                               </TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>Fecha</TableCell>
                               <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                 Proveedor
                               </TableCell>
@@ -1249,6 +1306,7 @@ export default function ResumenContable({ tasaBCV }) {
                                       inputProps={{ 'aria-label': 'Seleccionar egreso' }}
                                     />
                                   </TableCell>
+                                    <TableCell sx={{ py: 0.5, fontSize: 13 }}>{formatFecha(e)}</TableCell>
                                   <TableCell sx={{ py: 0.5, fontSize: 13 }}>
                                     {e.proveedor || "-"}
                                   </TableCell>
