@@ -69,6 +69,7 @@ export default function ServicioEditorDialog({
 }) {
   const isServicioCerrado = !!editId && !!estadoActual?.defaultFacturar;
   const disableEdicion = !!actionLoading || isServicioCerrado;
+  const disableEstadoChange = !!actionLoading;
 
   // Manejar solo el texto de entrada del Autocomplete para evitar reseteos al actualizar la lista
   const handleClienteInputChange = React.useCallback((event, value, reason) => {
@@ -221,8 +222,8 @@ export default function ServicioEditorDialog({
               }
               color={chipColor}
               size="small"
-              sx={{ fontSize: "0.85rem", height: 26, cursor: disableEdicion ? "default" : "pointer" }}
-              onClick={disableEdicion ? undefined : onOpenEstadoModal}
+              sx={{ fontSize: "0.85rem", height: 26, cursor: disableEstadoChange ? "default" : "pointer" }}
+              onClick={disableEstadoChange ? undefined : onOpenEstadoModal}
             />
           </Box>
         )}

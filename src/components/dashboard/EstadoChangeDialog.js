@@ -13,17 +13,9 @@ export default function EstadoChangeDialog({
   const [loading, setLoading] = useState(false);
   const [applyingEstado, setApplyingEstado] = useState(null);
 
-  const nombreEstadoFacturar = Array.isArray(estados)
-    ? estados.find((e) => e?.defaultFacturar)?.nombre
-    : null;
-  const isVehiculoCerrado =
-    !!vehiculo &&
-    !!nombreEstadoFacturar &&
-    ((vehiculo.status || vehiculo.estado) === nombreEstadoFacturar);
-
   const handleSelect = async (estado) => {
     if (!vehiculo) return;
-    if (isVehiculoCerrado) return;
+    if (estado?.defaultFacturar) return;
     const esOcultar = !!estado.dejarDeMostrar;
     if (esOcultar) {
       setConfirmOcultar({ open: true, estado });
@@ -42,7 +34,6 @@ export default function EstadoChangeDialog({
 
   const handleConfirmOcultar = async () => {
     if (!vehiculo || !confirmOcultar.estado) return;
-    if (isVehiculoCerrado) return;
     try {
       setLoading(true);
       setApplyingEstado(confirmOcultar.estado.nombre);
@@ -65,9 +56,7 @@ export default function EstadoChangeDialog({
     "warning",
   ];
 
-  const estadosCambiables = Array.isArray(estados)
-    ? estados.filter((e) => !e?.defaultFacturar)
-    : [];
+  const estadosCambiables = Array.isArray(estados) ? estados : [];
 
   return (
     <>
@@ -96,7 +85,7 @@ export default function EstadoChangeDialog({
                   color={buttonColor}
                   onClick={() => handleSelect(estado)}
                   sx={sxButton}
-                  disabled={loading || isVehiculoCerrado}
+                  disabled={loading || !!estado?.defaultFacturar}
                   startIcon={applyingEstado === estado.nombre && loading ? <CircularProgress color="inherit" size={16} /> : null}
                 >
                   {estado.label}

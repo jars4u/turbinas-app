@@ -55,14 +55,9 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   const [estadosServicio, setEstadosServicio] = useState([]);
   const [popoverConfirm, setPopoverConfirm] = useState({ open: false, anchorEl: null, estado: null, newStatus: null });
 
-  const estadosCambiables = Array.isArray(estadosServicio)
-    ? estadosServicio.filter((e) => !e?.defaultFacturar)
-    : [];
-
-  const nombreEstadoFacturar = Array.isArray(estadosServicio)
-    ? estadosServicio.find((e) => e?.defaultFacturar)?.nombre
-    : null;
-  const isServicioCerrado = !!nombreEstadoFacturar && currentStatus === nombreEstadoFacturar;
+  // defaultFacturar es un estado normal (p.ej. facturado) y debe permitir abrir el menú
+  // para cambiar a otro estado si fuese necesario.
+  const estadosCambiables = Array.isArray(estadosServicio) ? estadosServicio : [];
 
   // Cargar estados dinámicos desde Firestore
   useEffect(() => {
@@ -90,7 +85,6 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   // };
 
   const handleChipClick = (event) => {
-    if (isServicioCerrado) return;
     setAnchorEl(event.currentTarget);
   };
   const handleClose = () => {
@@ -99,6 +93,11 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   const handleStatusChange = async (newStatus) => {
     // Buscar si el estado seleccionado es dejarDeMostrar
     const estadoObj = estadosServicio.find(e => e.nombre === newStatus);
+    // defaultFacturar se asigna por el flujo de facturación; no debe seleccionarse manualmente.
+    if (estadoObj?.defaultFacturar) {
+      setAnchorEl(null);
+      return;
+    }
     if (estadoObj && estadoObj.dejarDeMostrar) {
       setPopoverConfirm({ open: true, anchorEl, estado: estadoObj, newStatus });
       return;
@@ -249,7 +248,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
               e.stopPropagation();
               handleChipClick(e);
             }}
-            sx={{ cursor: isServicioCerrado ? "default" : "pointer", maxWidth: 90, fontSize: '0.70rem', height: 22 }}
+            sx={{ cursor: "pointer", maxWidth: 90, fontSize: '0.70rem', height: 22 }}
           />
           <Menu
             anchorEl={anchorEl}
@@ -260,10 +259,12 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
               <MenuItem
                 key={estado.nombre}
                 selected={estado.nombre === currentStatus}
+                disabled={!!estado?.defaultFacturar}
                 onClick={(event) => {
                   event.stopPropagation();
                   // Marcar el evento para evitar que el Card lo procese como edición
                   event.preventEdit = true;
+                  if (estado?.defaultFacturar) return;
                   const estadoObj = estadosServicio.find(e => e.nombre === estado.nombre);
                   if (estadoObj && estadoObj.dejarDeMostrar) {
                     setPopoverConfirm({ open: true, anchorEl: event.currentTarget, estado: estadoObj, newStatus: estado.nombre });
