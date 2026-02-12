@@ -55,6 +55,15 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   const [estadosServicio, setEstadosServicio] = useState([]);
   const [popoverConfirm, setPopoverConfirm] = useState({ open: false, anchorEl: null, estado: null, newStatus: null });
 
+  const estadosCambiables = Array.isArray(estadosServicio)
+    ? estadosServicio.filter((e) => !e?.defaultFacturar)
+    : [];
+
+  const nombreEstadoFacturar = Array.isArray(estadosServicio)
+    ? estadosServicio.find((e) => e?.defaultFacturar)?.nombre
+    : null;
+  const isServicioCerrado = !!nombreEstadoFacturar && currentStatus === nombreEstadoFacturar;
+
   // Cargar estados dinámicos desde Firestore
   useEffect(() => {
     async function cargarEstados() {
@@ -81,6 +90,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   // };
 
   const handleChipClick = (event) => {
+    if (isServicioCerrado) return;
     setAnchorEl(event.currentTarget);
   };
   const handleClose = () => {
@@ -239,14 +249,14 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
               e.stopPropagation();
               handleChipClick(e);
             }}
-            sx={{ cursor: "pointer", maxWidth: 90, fontSize: '0.70rem', height: 22 }}
+            sx={{ cursor: isServicioCerrado ? "default" : "pointer", maxWidth: 90, fontSize: '0.70rem', height: 22 }}
           />
           <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={handleClose}
           >
-            {estadosServicio.map((estado) => (
+            {estadosCambiables.map((estado) => (
               <MenuItem
                 key={estado.nombre}
                 selected={estado.nombre === currentStatus}

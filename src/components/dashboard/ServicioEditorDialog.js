@@ -67,6 +67,9 @@ export default function ServicioEditorDialog({
   onPaymentUSDMethodChange,
   isManualIngreso,
 }) {
+  const isServicioCerrado = !!editId && !!estadoActual?.defaultFacturar;
+  const disableEdicion = !!actionLoading || isServicioCerrado;
+
   // Manejar solo el texto de entrada del Autocomplete para evitar reseteos al actualizar la lista
   const handleClienteInputChange = React.useCallback((event, value, reason) => {
     if (typeof onClienteInputChange === 'function') {
@@ -179,7 +182,7 @@ export default function ServicioEditorDialog({
             <>
               <Tooltip title="Eliminar servicio">
                 <span>
-                  <IconButton onClick={onDeleteClick} color="inherit" size="small" disabled={actionLoading}>
+                  <IconButton onClick={onDeleteClick} color="inherit" size="small" disabled={disableEdicion}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </span>
@@ -218,8 +221,8 @@ export default function ServicioEditorDialog({
               }
               color={chipColor}
               size="small"
-              sx={{ fontSize: "0.85rem", height: 26, cursor: "pointer" }}
-              onClick={onOpenEstadoModal}
+              sx={{ fontSize: "0.85rem", height: 26, cursor: disableEdicion ? "default" : "pointer" }}
+              onClick={disableEdicion ? undefined : onOpenEstadoModal}
             />
           </Box>
         )}
@@ -264,6 +267,7 @@ export default function ServicioEditorDialog({
                 size="small"
                 value={form.vehiculo}
                 onChange={onChange}
+                disabled={disableEdicion}
                 sx={{ mb: 0.5 }}
                 InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
               />
@@ -289,6 +293,7 @@ export default function ServicioEditorDialog({
                     size="small"
                     value={form.servicio}
                     onChange={onChange}
+                    disabled={disableEdicion}
                     InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
                     sx={{ flex: 1 }}
                   />
@@ -300,6 +305,7 @@ export default function ServicioEditorDialog({
                       size="small"
                       value={form.factura || ''}
                       onChange={onChange}
+                      disabled={disableEdicion}
                       InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
                       sx={{ flex: 1, minWidth: 160 }}
                     />
@@ -313,6 +319,7 @@ export default function ServicioEditorDialog({
                   size="small"
                   value={form.observaciones}
                   onChange={onChange}
+                  disabled={disableEdicion}
                   InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }}>
@@ -325,6 +332,7 @@ export default function ServicioEditorDialog({
                       size="small"
                       value={paymentUSDMethod || ''}
                       onChange={(e) => onPaymentUSDMethodChange && onPaymentUSDMethodChange(e.target.value)}
+                      disabled={disableEdicion}
                       SelectProps={{ native: true, displayEmpty: true }}
                       InputLabelProps={{ shrink: true }}
                       InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
@@ -347,6 +355,7 @@ export default function ServicioEditorDialog({
                     size="small"
                     value={form.precio}
                     onChange={onChange}
+                    disabled={disableEdicion}
                     InputProps={{
                       startAdornment: <InputAdornment position="start">$</InputAdornment>,
                       sx: { fontSize: '1rem', py: 0.5 },
@@ -361,6 +370,7 @@ export default function ServicioEditorDialog({
                     size="small"
                     value={form.precioBs || ''}
                     onChange={onChange}
+                    disabled={disableEdicion}
                     InputProps={{
                       startAdornment: <InputAdornment position="start">Bs</InputAdornment>,
                       sx: { fontSize: '1rem', py: 0.5 },
@@ -389,6 +399,7 @@ export default function ServicioEditorDialog({
                   onInputChange={handleClienteInputChange}
                   onChange={handleClienteChange}
                   filterOptions={filterOptions}
+                  disabled={disableEdicion}
                   freeSolo
                   selectOnFocus
                   blurOnSelect
@@ -403,6 +414,7 @@ export default function ServicioEditorDialog({
                       name="customerName"
                       fullWidth
                       size="small"
+                      disabled={disableEdicion}
                       sx={{ width: "100%" }}
                       InputProps={{
                         ...params.InputProps,
@@ -437,6 +449,7 @@ export default function ServicioEditorDialog({
                       : ""
                   }
                   onChange={onCustomerPhoneChange}
+                  disabled={disableEdicion}
                   InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
                   sx={{ mt: 1.25 }}
                   placeholder="+58-424-xxxxxxx"
@@ -504,7 +517,7 @@ export default function ServicioEditorDialog({
                   size="small"
                   color="primary"
                   disabled={
-                    actionLoading ||
+                    disableEdicion ||
                     !(form.customerPhone && /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, "")))
                   }
                   sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}
@@ -535,7 +548,7 @@ export default function ServicioEditorDialog({
                     size="small"
                     color="primary"
                     disabled={
-                      actionLoading ||
+                      disableEdicion ||
                       !(form.customerPhone && /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, "")))
                     }
                     sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
@@ -561,7 +574,7 @@ export default function ServicioEditorDialog({
                   size="small"
                   sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
                   onClick={onPorCobrar}
-                  disabled={actionLoading || porCobrarDisabled}
+                  disabled={disableEdicion || porCobrarDisabled}
                   title={porCobrarTitle}
                 >
                   Por Cobrar
@@ -573,7 +586,7 @@ export default function ServicioEditorDialog({
                   startIcon={<PointOfSaleIcon />}
                   sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
                   onClick={onOpenFactura}
-                  disabled={actionLoading || facturarDisabled}
+                  disabled={disableEdicion || facturarDisabled}
                   title={facturarTitle}
                 >
                   Facturar

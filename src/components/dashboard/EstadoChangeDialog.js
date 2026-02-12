@@ -13,8 +13,17 @@ export default function EstadoChangeDialog({
   const [loading, setLoading] = useState(false);
   const [applyingEstado, setApplyingEstado] = useState(null);
 
+  const nombreEstadoFacturar = Array.isArray(estados)
+    ? estados.find((e) => e?.defaultFacturar)?.nombre
+    : null;
+  const isVehiculoCerrado =
+    !!vehiculo &&
+    !!nombreEstadoFacturar &&
+    ((vehiculo.status || vehiculo.estado) === nombreEstadoFacturar);
+
   const handleSelect = async (estado) => {
     if (!vehiculo) return;
+    if (isVehiculoCerrado) return;
     const esOcultar = !!estado.dejarDeMostrar;
     if (esOcultar) {
       setConfirmOcultar({ open: true, estado });
@@ -33,6 +42,7 @@ export default function EstadoChangeDialog({
 
   const handleConfirmOcultar = async () => {
     if (!vehiculo || !confirmOcultar.estado) return;
+    if (isVehiculoCerrado) return;
     try {
       setLoading(true);
       setApplyingEstado(confirmOcultar.estado.nombre);
@@ -55,13 +65,17 @@ export default function EstadoChangeDialog({
     "warning",
   ];
 
+  const estadosCambiables = Array.isArray(estados)
+    ? estados.filter((e) => !e?.defaultFacturar)
+    : [];
+
   return (
     <>
       <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
         <DialogTitle>Cambiar estado</DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 220 }}>
-            {estados.map((estado) => {
+            {estadosCambiables.map((estado) => {
               const isSelected =
                 vehiculo && ((vehiculo.status === estado.nombre) || (vehiculo.estado === estado.nombre));
               let buttonColor = validColors.includes(estado.color) ? estado.color : "primary";
@@ -82,7 +96,7 @@ export default function EstadoChangeDialog({
                   color={buttonColor}
                   onClick={() => handleSelect(estado)}
                   sx={sxButton}
-                  disabled={loading}
+                  disabled={loading || isVehiculoCerrado}
                   startIcon={applyingEstado === estado.nombre && loading ? <CircularProgress color="inherit" size={16} /> : null}
                 >
                   {estado.label}

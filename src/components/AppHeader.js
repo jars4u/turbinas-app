@@ -18,6 +18,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
   const location = useLocation();
   const pathname = location?.pathname || "";
   const isActive = (path) => pathname.startsWith(path);
+  const showSearch = pathname === "/dashboard";
   const [actionsAnchor, setActionsAnchor] = React.useState(null);
   const actionsOpen = Boolean(actionsAnchor);
   const handleOpenActions = (e) => setActionsAnchor(e.currentTarget);
@@ -133,7 +134,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             title="Ir al dashboard"
             aria-label="Logo"
           />
-          <Chip label="v.5.2" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
+          <Chip label="v.5.3" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
         </Box>
         <Box
           sx={{
@@ -145,39 +146,41 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             width: { xs: "100%", sm: "auto" },
           }}
         >
-          {/* Buscador en su propia fila para móviles */}
-          <Box sx={{ display: { xs: 'block', sm: 'none' }, width: '100%' }}>
-            <TextField
-              fullWidth
-              size="small"
-              value={searchValue}
-              onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-              placeholder={searchPlaceholder}
-              sx={{ mb: 1 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  searchValue ? (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        aria-label="Limpiar búsqueda"
-                        title="Borrar"
-                        edge="end"
-                        onClick={() => onSearchChange && onSearchChange("")}
-                      >
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
+          {/* Buscador en su propia fila para móviles (solo Dashboard) */}
+          {showSearch && (
+            <Box sx={{ display: { xs: 'block', sm: 'none' }, width: '100%' }}>
+              <TextField
+                fullWidth
+                size="small"
+                value={searchValue}
+                onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                placeholder={searchPlaceholder}
+                sx={{ mb: 1 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'text.secondary' }} />
                     </InputAdornment>
-                  ) : null
-                ),
-              }}
-            />
-          </Box>
+                  ),
+                  endAdornment: (
+                    searchValue ? (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          aria-label="Limpiar búsqueda"
+                          title="Borrar"
+                          edge="end"
+                          onClick={() => onSearchChange && onSearchChange("")}
+                        >
+                          <ClearIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ) : null
+                  ),
+                }}
+              />
+            </Box>
+          )}
           {/* Fila compacta en móviles: menú a la izquierda y avatar a la derecha */}
           <Box
             sx={{
@@ -249,38 +252,40 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             </MenuItem>
           </Menu>
           <Box sx={{ display: "flex", flexDirection: { xs: "row" }, alignItems: "center", justifyContent: { xs: "center", sm: "flex-end" }, gap: 1, width: { xs: "100%", sm: "auto" } }}>
-            {/* Buscador global (desktop/tablet) */}
-            <Box sx={{ display: { xs: 'none', sm: 'block' }, width: { sm: 320, md: 360 } }}>
-              <TextField
-                fullWidth
-                size="small"
-                value={searchValue}
-                onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-                placeholder={searchPlaceholder}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'text.secondary' }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    searchValue ? (
-                      <InputAdornment position="end">
-                        <IconButton
-                          size="small"
-                          aria-label="Limpiar búsqueda"
-                          title="Borrar"
-                          edge="end"
-                          onClick={() => onSearchChange && onSearchChange("")}
-                        >
-                          <ClearIcon fontSize="small" />
-                        </IconButton>
+            {/* Buscador global (desktop/tablet) (solo Dashboard) */}
+            {showSearch && (
+              <Box sx={{ display: { xs: 'none', sm: 'block' }, width: { sm: 320, md: 360 } }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={searchValue}
+                  onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ color: 'text.secondary' }} />
                       </InputAdornment>
-                    ) : null
-                  ),
-                }}
-              />
-            </Box>
+                    ),
+                    endAdornment: (
+                      searchValue ? (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            aria-label="Limpiar búsqueda"
+                            title="Borrar"
+                            edge="end"
+                            onClick={() => onSearchChange && onSearchChange("")}
+                          >
+                            <ClearIcon fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      ) : null
+                    ),
+                  }}
+                />
+              </Box>
+            )}
             {/* Grupo de accesos rápidos: visible solo en desktop/tablet */}
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1 }}>
               <Tooltip title="Notificaciones" arrow>

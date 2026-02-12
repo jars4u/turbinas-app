@@ -423,6 +423,20 @@ export default function Dashboard() {
       setSnackbarOpen(true);
       return;
     }
+
+    // Bloquear edición si el servicio está cerrado (estado defaultFacturar)
+    if (editId) {
+      const estadoFacturar = estadosServicio.find((e) => e.defaultFacturar)?.nombre;
+      const vehiculoActual = vehiculos.find((v) => v.id === editId);
+      const estadoActual = vehiculoActual?.status || vehiculoActual?.estado;
+      if (estadoFacturar && estadoActual === estadoFacturar) {
+        const labelFacturar = estadosServicio.find((e) => e.defaultFacturar)?.label || estadoFacturar;
+        setSnackbarMsg(`Este servicio está cerrado (${labelFacturar}) y no puede editarse.`);
+        setSnackbarOpen(true);
+        return;
+      }
+    }
+
     // Validación y normalización del teléfono: formato +58 seguido de 10 dígitos, sin ceros iniciales
     let telefono = (form.customerPhone || "").trim();
     telefono = telefono.replace(/[-\s]/g, "");
@@ -550,6 +564,20 @@ export default function Dashboard() {
       setSnackbarOpen(true);
       return;
     }
+
+    // Bloquear eliminación si el servicio está cerrado (estado defaultFacturar)
+    {
+      const estadoFacturar = estadosServicio.find((e) => e.defaultFacturar)?.nombre;
+      const vehiculoActual = vehiculos.find((v) => v.id === editId);
+      const estadoActual = vehiculoActual?.status || vehiculoActual?.estado;
+      if (estadoFacturar && estadoActual === estadoFacturar) {
+        const labelFacturar = estadosServicio.find((e) => e.defaultFacturar)?.label || estadoFacturar;
+        setSnackbarMsg(`Este servicio está cerrado (${labelFacturar}) y no puede eliminarse.`);
+        setSnackbarOpen(true);
+        return;
+      }
+    }
+
     setActionLoading(true);
     try {
       await eliminarVehiculo(editId);
@@ -1470,6 +1498,16 @@ export default function Dashboard() {
               return;
             }
             if (!vehiculoEstadoModal) return;
+
+            const estadoFacturar = estadosServicio.find((e) => e.defaultFacturar)?.nombre;
+            const actual = vehiculoEstadoModal.status || vehiculoEstadoModal.estado;
+            if (estadoFacturar && actual === estadoFacturar) {
+              const labelFacturar = estadosServicio.find((e) => e.defaultFacturar)?.label || estadoFacturar;
+              setSnackbarMsg(`Este servicio está cerrado (${labelFacturar}) y no puede cambiar de estado.`);
+              setSnackbarOpen(true);
+              return;
+            }
+
             const data = sanitizeDeep({
               ...vehiculoEstadoModal,
               status: estado.nombre,
