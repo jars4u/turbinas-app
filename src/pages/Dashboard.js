@@ -1499,15 +1499,6 @@ export default function Dashboard() {
             }
             if (!vehiculoEstadoModal) return;
 
-            const estadoFacturar = estadosServicio.find((e) => e.defaultFacturar)?.nombre;
-            const actual = vehiculoEstadoModal.status || vehiculoEstadoModal.estado;
-            if (estadoFacturar && actual === estadoFacturar) {
-              const labelFacturar = estadosServicio.find((e) => e.defaultFacturar)?.label || estadoFacturar;
-              setSnackbarMsg(`Este servicio está cerrado (${labelFacturar}) y no puede cambiar de estado.`);
-              setSnackbarOpen(true);
-              return;
-            }
-
             const data = sanitizeDeep({
               ...vehiculoEstadoModal,
               status: estado.nombre,
@@ -1527,6 +1518,13 @@ export default function Dashboard() {
                 (v) => (v.status || v.estado) !== "por_cobrar"
               )
             );
+
+            // Si se confirmó un estado que oculta el servicio, cerrar también el dialogo
+            // de información/edición del servicio (ya no tiene sentido mantenerlo abierto).
+            if (ocultar) {
+              setOpenEstadoModal(false);
+              handleClose();
+            }
           }}
         />
       <Snackbar
