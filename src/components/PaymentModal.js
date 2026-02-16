@@ -158,6 +158,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             >
               <MenuItem value="">Forma de pago...</MenuItem>
               <MenuItem value="efectivo">Efectivo ($)</MenuItem>
+              <MenuItem value="binance">Binance ($)</MenuItem>
               <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
               <MenuItem value="zelle">Zelle ($)</MenuItem>
               <MenuItem value="transferencia" disabled>Transferencia</MenuItem>
@@ -208,6 +209,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
                 >
                   <MenuItem value="">Forma de pago...</MenuItem>
                   <MenuItem value="efectivo">Efectivo ($)</MenuItem>
+                  <MenuItem value="binance">Binance ($)</MenuItem>
                   <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
                   <MenuItem value="zelle">Zelle ($)</MenuItem>
                   <MenuItem value="transferencia" disabled>Transferencia</MenuItem>

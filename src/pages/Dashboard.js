@@ -1444,7 +1444,7 @@ export default function Dashboard() {
                   /pago[ _-]?movil/i.test(facturaData.formaPago)
                   ? Number(form.precioBs) || 0
                   : facturaData.formaPago &&
-                    (/zelle/i.test(facturaData.formaPago) || /efectivo/i.test(facturaData.formaPago))
+                    (/zelle/i.test(facturaData.formaPago) || /efectivo/i.test(facturaData.formaPago) || /binance/i.test(facturaData.formaPago))
                     ? Number(form.precio) || 0
                     : Number(form.precio) || Number(form.precioBs) || 0;
             nuevoIngreso.monto = monto;

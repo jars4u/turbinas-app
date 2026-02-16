@@ -341,6 +341,7 @@ export default function ServicioEditorDialog({
                     >
                       <option value="" disabled hidden>Selecciona una forma</option>
                       <option value="efectivo">Efectivo</option>
+                      <option value="binance">Binance ($)</option>
                       <option value="pago movil">Pago móvil</option>
                       <option value="zelle">Zelle</option>
                       {/* <option value="transferencia">Transferencia</option>
