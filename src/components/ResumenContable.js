@@ -472,11 +472,9 @@ export default function ResumenContable({ tasaBCV }) {
                                     (fp.formaPago || "")
                                       .trim()
                                       .toLowerCase() === "pago movil" &&
-                                    fp.monto !== undefined &&
-                                    fp.monto !== null &&
-                                    !isNaN(Number(fp.monto))
+                                    ((fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) || (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))))
                                 )
-                                .reduce((sum, fp) => sum + Number(fp.monto), 0)
+                                .reduce((sum, fp) => sum + (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)) ? Number(fp.montoBs) : Number(fp.monto)), 0)
                             );
                           }
                           return acc;
@@ -658,8 +656,11 @@ export default function ResumenContable({ tasaBCV }) {
                               if (forma !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
                                 totalUSD += Number(fp.monto);
                               }
-                              if (forma === 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                                totalBs += Number(fp.monto);
+                              if (forma === 'pago movil') {
+                                const v = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                                  ? Number(fp.montoBs)
+                                  : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
+                                if (v > 0) totalBs += v;
                               }
                             });
                           }
@@ -932,8 +933,11 @@ export default function ResumenContable({ tasaBCV }) {
                                   if (forma !== 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
                                     totalUSD += Number(fp.monto);
                                   }
-                                  if (forma === "pago movil" && fp.monto != null && !isNaN(Number(fp.monto))) {
-                                    totalBs += Number(fp.monto);
+                                  if (forma === "pago movil") {
+                                    const v = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                                      ? Number(fp.montoBs)
+                                      : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
+                                    if (v > 0) totalBs += v;
                                   }
                                 });
                               }
@@ -1115,12 +1119,10 @@ export default function ResumenContable({ tasaBCV }) {
                                               fp.formaPago
                                                 .trim()
                                                 .toLowerCase() === "pago movil" &&
-                                              fp.monto !== undefined &&
-                                              fp.monto !== null &&
-                                              !isNaN(Number(fp.monto))
+                                              ((fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) || (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))))
                                           )
                                           .map((fp) =>
-                                            Number(fp.monto).toLocaleString(
+                                            Number(fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)) ? fp.montoBs : fp.monto).toLocaleString(
                                               "de-DE",
                                               { minimumFractionDigits: 2 }
                                             )

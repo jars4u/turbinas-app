@@ -364,7 +364,20 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
             />
           </LocalizationProvider>
           {onOpenRegistrarIngreso && (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={onOpenRegistrarIngreso}>ingreso</Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={onOpenRegistrarIngreso}
+              sx={{
+                px: { sm: 2 },
+                borderRadius: 1.5,
+                textTransform: 'capitalize',
+                minWidth: { sm: 110 },
+                boxShadow: { sm: 'none' },
+              }}
+            >
+              ingreso
+            </Button>
           )}
         </Box>
       </Box>
@@ -406,8 +419,11 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                           if (forma !== 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
                             totalUSD += Number(fp.monto);
                           }
-                          if (forma === 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
-                            totalBs += Number(fp.monto);
+                          if (forma === 'pago movil') {
+                            const v = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                              ? Number(fp.montoBs)
+                              : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
+                            if (v > 0) totalBs += v;
                           }
                         });
                       }
@@ -462,8 +478,11 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                         if (f !== 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
                           totalUSD += Number(fp.monto);
                         }
-                        if (f === 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
-                          totalBs += Number(fp.monto);
+                        if (f === 'pago movil') {
+                          const v = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                            ? Number(fp.montoBs)
+                            : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
+                          if (v > 0) totalBs += v;
                         }
                       });
                     } else {
@@ -559,8 +578,11 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                           if (forma !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
                             totalUSD += Number(fp.monto);
                           }
-                          if (forma === 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
-                            totalBs += Number(fp.monto);
+                          if (forma === 'pago movil') {
+                            const v = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
+                              ? Number(fp.montoBs)
+                              : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
+                            if (v > 0) totalBs += v;
                           }
                         });
                       }
@@ -678,8 +700,8 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                     // Mostrar monto en Bs solo si la forma de pago es 'pago movil', usando el atributo monto
                     if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
                       const montosBs = ing.formasPago
-                        .filter(fp => fp.formaPago && fp.formaPago.trim().toLowerCase() === 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))
-                        .map(fp => Number(fp.monto).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
+                        .filter(fp => fp.formaPago && fp.formaPago.trim().toLowerCase() === 'pago movil' && ((fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) || (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))))
+                        .map(fp => Number(fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)) ? fp.montoBs : fp.monto).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
                       return montosBs.length > 0 ? montosBs.join(' + ') : "-";
                     }
                     return "-";

@@ -312,7 +312,19 @@ export default function Egresos({ tasaBCV, isOwner }) {
               maxDate={dayjs().startOf("day")}
             />
           </LocalizationProvider>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog} disabled={loading || saving}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openCreateDialog}
+            disabled={loading || saving}
+            sx={{
+              px: { sm: 2 },
+              borderRadius: 1.5,
+              textTransform: 'capitalize',
+              minWidth: { sm: 110 },
+              boxShadow: { sm: 'none' },
+            }}
+          >
             egreso
           </Button>
         </Box>
