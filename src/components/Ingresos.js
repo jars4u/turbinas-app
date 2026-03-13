@@ -129,19 +129,20 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
   const handleGuardarEdicion = async () => {
     if (!editId) return;
     const db = getFirestore();
-    // Construir formasPago según método
+    // Construir formasPago a partir de ambos campos para respetar cambios de divisa
     const metodo = (editForm.paymentUSDMethod || 'efectivo').toString().trim().toLowerCase();
     const formasPago = [];
-    if (metodo === 'pago movil') {
-      const montoParaBs = editForm.precioBs !== undefined && editForm.precioBs !== null && editForm.precioBs !== '' ? Number(editForm.precioBs) : (editForm.precio !== undefined && editForm.precio !== null && editForm.precio !== '' ? Number(editForm.precio) : undefined);
-      if (montoParaBs !== undefined && !isNaN(montoParaBs) && montoParaBs > 0) {
-        formasPago.push({ formaPago: 'pago movil', montoBs: montoParaBs });
-      }
-    } else {
-      const montoUSD = editForm.precio !== undefined && editForm.precio !== null && editForm.precio !== '' ? Number(editForm.precio) : undefined;
-      if (montoUSD !== undefined && !isNaN(montoUSD) && montoUSD > 0) {
-        formasPago.push({ formaPago: metodo, monto: montoUSD });
-      }
+    const montoUSD = editForm.precio !== undefined && editForm.precio !== null && editForm.precio !== '' ? Number(editForm.precio) : undefined;
+    const montoBs = editForm.precioBs !== undefined && editForm.precioBs !== null && editForm.precioBs !== '' ? Number(editForm.precioBs) : undefined;
+
+    if (montoBs !== undefined && !isNaN(montoBs) && montoBs > 0) {
+      // Guardar montos en Bs como 'pago movil' (histórico del proyecto)
+      formasPago.push({ formaPago: 'pago movil', montoBs: montoBs });
+    }
+
+    if (montoUSD !== undefined && !isNaN(montoUSD) && montoUSD > 0) {
+      // Para montos en USD usar el método seleccionado (si es 'pago movil' es inusual, pero respetamos metodo)
+      formasPago.push({ formaPago: metodo || 'efectivo', monto: montoUSD });
     }
     const ingresoEditadoRaw = {
       vehiculo: editForm.vehiculo || undefined,

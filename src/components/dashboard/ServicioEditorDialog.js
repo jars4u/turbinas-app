@@ -512,22 +512,22 @@ export default function ServicioEditorDialog({
               <Button onClick={onCancelEditSection} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }} disabled={actionLoading}>
                 Cancelar
               </Button>
-              {isEditing && (
-                <Button
-                  onClick={onSave}
-                  variant="contained"
-                  size="small"
-                  color="primary"
-                  disabled={
-                    disableEdicion ||
-                    !(form.customerPhone && /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, "")))
-                  }
-                  sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}
-                  startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
-                >
-                  {actionLoading ? "Guardando..." : "Guardar"}
-                </Button>
-              )}
+              {isEditing && (() => {
+                const canSave = !disableEdicion;
+                return (
+                  <Button
+                    onClick={onSave}
+                    variant="contained"
+                    size="small"
+                    color="primary"
+                    disabled={!canSave}
+                    sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }}
+                    startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                  >
+                    {actionLoading ? "Guardando..." : "Guardar"}
+                  </Button>
+                );
+              })()}
             </Box>
           ) : (
             editId && (
@@ -543,22 +543,22 @@ export default function ServicioEditorDialog({
                 <Button onClick={onClose} variant="outlined" size="small" color="primary" sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }} disabled={actionLoading}>
                   Cancelar
                 </Button>
-                {isEditing && (
-                  <Button
-                    onClick={onSave}
-                    variant="contained"
-                    size="small"
-                    color="primary"
-                    disabled={
-                      disableEdicion ||
-                      !(form.customerPhone && /^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, "")))
-                    }
-                    sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
-                    startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
-                  >
-                    {actionLoading ? "Guardando..." : "Guardar"}
-                  </Button>
-                )}
+                {isEditing && (() => {
+                  const canSave = !disableEdicion;
+                  return (
+                    <Button
+                      onClick={onSave}
+                      variant="contained"
+                      size="small"
+                      color="primary"
+                      disabled={!canSave}
+                      sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
+                      startIcon={actionLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                    >
+                      {actionLoading ? "Guardando..." : "Guardar"}
+                    </Button>
+                  );
+                })()}
                 <Button
                   variant="outlined"
                   size="small"
