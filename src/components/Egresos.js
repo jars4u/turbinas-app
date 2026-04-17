@@ -122,6 +122,7 @@ export default function Egresos({ tasaBCV, isOwner }) {
     try {
       const data = await obtenerEgresos();
       const egresosConFecha = data
+        .filter((e) => (e.tipo || "") !== "gastoDia")
         .map(normalizarEgresoConFecha)
         .sort((a, b) => {
           const fechaA = a._fechaDate ? a._fechaDate.getTime() : 0;

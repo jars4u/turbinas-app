@@ -76,6 +76,8 @@ export default function EgresoFacturaDialog({
   onSave,
   saving,
   includeVencimiento,
+  tipoDocumento = "factura",
+  titulo = null,
 }) {
   const isMobile = useMediaQuery('(max-width:600px)');
   const [fechaDj, setFechaDj] = useState(dayjs());
@@ -219,8 +221,17 @@ export default function EgresoFacturaDialog({
     const montoUSD = monedaFactura === "USD" ? total : 0;
     const montoBs = monedaFactura === "Bs" ? total : 0;
 
+    const descripcionPayload = tipoDocumento === "gastoDia"
+      ? (
+          itemsNorm.map((item) => item.descripcion).filter(Boolean).join(" / ") ||
+          initialValue?.descripcion ||
+          observaciones.trim() ||
+          "GASTO DEL DIA"
+        )
+      : `COMPRA ${proveedor.trim().toUpperCase()} ${numeroDocumento.trim().toUpperCase()}`.trim();
+
     const payload = {
-      tipo: "factura",
+      tipo: tipoDocumento,
       fecha: fechaStr,
       fechaStr,
       proveedor: proveedor.trim().toUpperCase(),
@@ -232,7 +243,7 @@ export default function EgresoFacturaDialog({
       montoUSD,
       montoBs,
       observaciones: observaciones.trim(),
-      descripcion: `COMPRA ${proveedor.trim().toUpperCase()} ${numeroDocumento.trim().toUpperCase()}`.trim(),
+      descripcion: descripcionPayload,
     };
 
     if (includeVencimiento) {
@@ -259,7 +270,7 @@ export default function EgresoFacturaDialog({
         <Stack direction="row" alignItems="center" spacing={1}>
           <ReceiptLongIcon fontSize="small" />
           <Typography variant="h6" fontWeight={700}>
-            {mode === "edit" ? "Editar egreso" : "Agregar egreso"}
+            {titulo || (mode === "edit" ? "Editar egreso" : "Agregar egreso")}
           </Typography>
           {/* <Chip
             label={`${currencySym} ${totalFactura.toLocaleString(monedaFactura === "USD" ? "en-US" : "de-DE", { minimumFractionDigits: 2 })}`}

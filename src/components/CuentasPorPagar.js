@@ -87,6 +87,7 @@ export default function CuentasPorPagar() {
       proveedor,
       rifCi,
       concepto,
+      descripcion: payload?.descripcion || concepto,
       montoUSD,
       montoBs,
       vencimiento,
@@ -99,6 +100,7 @@ export default function CuentasPorPagar() {
     };
 
     if (dialogMode === "edit" && editId) {
+      delete data.fechaTimestamp;
       await updateDoc(doc(db, 'cuentasPorPagar', editId), data);
     } else {
       await addDoc(collection(db, 'cuentasPorPagar'), data);
@@ -124,7 +126,7 @@ export default function CuentasPorPagar() {
     const total = monedaFactura === 'Bs' ? totalBs : totalUSD;
     const items = Array.isArray(cuenta?.items) && cuenta.items.length > 0
       ? cuenta.items
-      : [{ descripcion: cuenta?.concepto || '', cantidad: 1, precioUnitario: total }];
+      : [{ descripcion: cuenta?.descripcion || cuenta?.concepto || '', cantidad: 1, precioUnitario: total }];
 
     setDialogInitial({
       fechaStr,

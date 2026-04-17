@@ -49,6 +49,18 @@ function agruparPorDia(arr, tipo) {
   }, {});
 }
 
+function getItemTimestamp(item) {
+  if (!item) return 0;
+  if (item._fechaDate instanceof Date) return item._fechaDate.getTime();
+  if (item.fecha && typeof item.fecha.toDate === "function") return item.fecha.toDate().getTime();
+  if (item.fecha && item.fecha.seconds) return item.fecha.seconds * 1000;
+  if (typeof item.fecha === "string" && item.fecha.includes("/")) {
+    const [d, m, y] = item.fecha.split("/");
+    return new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0).getTime();
+  }
+  return 0;
+}
+
 export default function ResumenContable({ tasaBCV }) {
   const isMobile = useMediaQuery("(max-width:600px)");
   const [fondoCajaChica, setFondoCajaChica] = useState(null);
@@ -363,14 +375,43 @@ export default function ResumenContable({ tasaBCV }) {
                 cierres.push(cierresPorDia[f]);
               }
             });
+            const ingresosOrdenados = [...ingresos].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
+            const egresosOperativos = egresos.filter((e) => (e.tipo || "") !== "gastoDia");
+            const egresosOperativosOrdenados = [...egresosOperativos].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
+            const gastosDelDiaFiltrados = egresos.filter((e) => (e.tipo || "") === "gastoDia");
+            const gastosSemanaOrdenados = [...gastosDelDiaFiltrados].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
             // Usar la tasa histórica del último cierre del rango, si existe
             const cierre =
               cierres.length > 0 ? cierres[cierres.length - 1] : undefined;
             // (Nota) tasaHistorica y totales globales no se usan más en este bloque; se mantienen los cálculos específicos más abajo
             // DEBUG: Mostrar montos en efectivo (USD) en consola
+            // Calcular total de "gastos del día" dentro del rango (usaremos para restar del efectivo)
+            const tasaParaConvGlobal = tasaBCV || factorConversion || 1;
+            const gastosDelDiaArrayGlobal = gastosDelDiaFiltrados;
+            const gastosSemanaUSD = gastosDelDiaArrayGlobal.reduce((acc, g) => {
+              if (typeof g.montoUSD === "number" && !isNaN(g.montoUSD)) return acc + g.montoUSD;
+              if (typeof g.montoBs === "number" && !isNaN(g.montoBs)) return acc + g.montoBs / tasaParaConvGlobal;
+              if (typeof g.monto === "number" && !isNaN(g.monto)) return acc + g.monto;
+              return acc;
+            }, 0);
+            const gastosSemanaBs = gastosDelDiaArrayGlobal.reduce((acc, g) => {
+              if (typeof g.montoBs === "number" && !isNaN(g.montoBs)) return acc + g.montoBs;
+              return acc;
+            }, 0);
+            const efectivoIngresosUSD = ingresosOrdenados.reduce((acc, i) => {
+              if (!Array.isArray(i.formasPago) || i.formasPago.length === 0) return acc;
+              return acc + i.formasPago.reduce((sum, fp) => {
+                const forma = (fp.formaPago || "").trim().toLowerCase();
+                if (["efectivo", "$", "usd"].includes(forma) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                  return sum + Number(fp.monto);
+                }
+                return sum;
+              }, 0);
+            }, 0);
+            const efectivoNetoResumenUSD = efectivoIngresosUSD - gastosSemanaUSD;
             try {
               const pagosEfectivo = [];
-              ingresos.forEach((i) => {
+              ingresosOrdenados.forEach((i) => {
                 if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
                   i.formasPago.forEach((fp) => {
                     const forma = (fp.formaPago || "").trim().toLowerCase();
@@ -387,12 +428,30 @@ export default function ResumenContable({ tasaBCV }) {
                 }
               });
               const totalEfectivoUSD = pagosEfectivo.reduce((acc, p) => acc + p.monto, 0);
-              // Mostrar array de montos y el total
+
+              // Calcular gastos del día (tipo === 'gastoDia') dentro del rango
+              const tasaParaConv = tasaBCV || factorConversion || 1;
+              const gastosDelDiaArray = egresos.filter((e) => (e.tipo || "") === "gastoDia");
+              const totalGastosDelDiaUSD = gastosDelDiaArray.reduce((acc, g) => {
+                if (typeof g.montoUSD === "number" && !isNaN(g.montoUSD)) return acc + g.montoUSD;
+                if (typeof g.montoBs === "number" && !isNaN(g.montoBs)) return acc + g.montoBs / tasaParaConv;
+                // Intentar otros campos compatibles
+                if (typeof g.monto === "number" && !isNaN(g.monto)) return acc + g.monto;
+                return acc;
+              }, 0);
+
+              const efectivoNetoUSD = totalEfectivoUSD - totalGastosDelDiaUSD;
+
+              // Mostrar array de montos y el total (debug)
               console.log(
                 "[ResumenContable] Montos en efectivo ($):",
                 pagosEfectivo.map((p) => p.monto),
                 "Total:",
-                totalEfectivoUSD
+                totalEfectivoUSD,
+                "Gastos del día (USD):",
+                totalGastosDelDiaUSD,
+                "Efectivo neto:",
+                efectivoNetoUSD
               );
             } catch (_) { /* noop */ }
 
@@ -484,7 +543,7 @@ export default function ResumenContable({ tasaBCV }) {
                         })}`;
                       texto += `\n`;
                       // Egresos
-                      texto += `Egresos totales: $ ${egresos
+                      texto += `Egresos totales: $ ${egresosOperativos
                         .reduce(
                           (acc, e) =>
                             acc +
@@ -497,7 +556,7 @@ export default function ResumenContable({ tasaBCV }) {
                           minimumFractionDigits: 2,
                         })}`;
                       texto += `\n`;
-                      texto += `Egresos totales: Bs. ${egresos
+                      texto += `Egresos totales: Bs. ${egresosOperativos
                         .reduce(
                           (acc, e) =>
                             acc +
@@ -568,7 +627,7 @@ export default function ResumenContable({ tasaBCV }) {
                         }
                         return acc;
                       }, 0);
-                      let totalEgresosUSD = egresos.reduce(
+                      let totalEgresosUSD = egresosOperativos.reduce(
                         (acc, e) =>
                           acc +
                           (typeof e.montoUSD === "number" && e.montoUSD > 0
@@ -576,7 +635,7 @@ export default function ResumenContable({ tasaBCV }) {
                             : 0),
                         0
                       );
-                      let totalEgresosBs = egresos.reduce(
+                      let totalEgresosBs = egresosOperativos.reduce(
                         (acc, e) =>
                           acc +
                           (typeof e.montoBs === "number" && e.montoBs > 0
@@ -596,7 +655,7 @@ export default function ResumenContable({ tasaBCV }) {
                       // Total Pago Móvil en Bs y en $
                       texto += `Total Pago Movil: Bs. ${totalBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })} / $ ${totalBsUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
                       // Total $ en cierre
-                      const totalCierreUSD = totalUSD + totalBsUSD;
+                      const totalCierreUSD = totalUSD + totalBsUSD - gastosSemanaUSD;
                       texto += `\nTotal $ en cierre: $ ${totalCierreUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
                       // Abrir WhatsApp con el texto
                       const url = `https://wa.me/?text=${encodeURIComponent(
@@ -608,6 +667,11 @@ export default function ResumenContable({ tasaBCV }) {
                     {isMobile ? "Compartir" : "Enviar"}
                   </Button>
                 </Box>
+                  <Box sx={{ mt: 1, mb: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      Gastos de la semana: $ {gastosSemanaUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
                 {/* ...el resto del renderizado permanece igual... */}
                 {/* <Typography
                     variant="subtitle1"
@@ -737,6 +801,11 @@ export default function ResumenContable({ tasaBCV }) {
                           });
                         }
                       });
+                      if (!desglose.efectivo) {
+                        desglose.efectivo = { usd: 0, bs: 0, usdEquivBs: 0 };
+                      }
+                      desglose.efectivo.usd -= gastosSemanaUSD;
+
                       return Object.entries(desglose)
                         .sort((a, b) => a[0].localeCompare(b[0]))
                         .map(([formaNorm, montos]) => {
@@ -771,7 +840,7 @@ export default function ResumenContable({ tasaBCV }) {
                       // Sumar solo los valores que se muestran en la tabla de egresos
                       let totalUSD = 0;
                       let totalBs = 0;
-                      egresos.forEach((e) => {
+                      egresosOperativos.forEach((e) => {
                         if (typeof e.montoUSD === "number" && e.montoUSD > 0) {
                           totalUSD += e.montoUSD;
                         }
@@ -785,6 +854,20 @@ export default function ResumenContable({ tasaBCV }) {
                         minimumFractionDigits: 2,
                       })}`;
                     })()}
+                  </Typography>
+                  <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                    <b>• Gastos semana:</b>
+                    {` $ ${gastosSemanaUSD.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })} | Bs. ${gastosSemanaBs.toLocaleString("de-DE", {
+                      minimumFractionDigits: 2,
+                    })}`}
+                  </Typography>
+                  <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                    <b>• Efectivo neto:</b>
+                    {` $ ${efectivoNetoResumenUSD.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}`}
                   </Typography>
                   {/* <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Utilidad:</b>
@@ -905,7 +988,7 @@ export default function ResumenContable({ tasaBCV }) {
                         minWidth: 28,
                         textAlign: 'center'
                       }}>
-                        {ingresos.length}
+                        {ingresosOrdenados.length}
                       </Box> */}
                     </Box>
                   </AccordionSummary>
@@ -918,12 +1001,12 @@ export default function ResumenContable({ tasaBCV }) {
                     >
                       {isMobile ? (
                         <Box>
-                          {ingresos.length === 0 ? (
+                          {ingresosOrdenados.length === 0 ? (
                             <Typography align="center" color="text.secondary" sx={{ py: 1 }}>
                               Sin ingresos
                             </Typography>
                           ) : (
-                            ingresos.map((i, idx) => {
+                            ingresosOrdenados.map((i, idx) => {
                               // Calcular totales por registro
                               let totalUSD = 0;
                               let totalBs = 0;
@@ -996,14 +1079,14 @@ export default function ResumenContable({ tasaBCV }) {
                                 <Checkbox
                                   size="small"
                                   inputProps={{ 'aria-label': 'Seleccionar todos ingresos' }}
-                                  checked={ingresos.length > 0 && ingresos.every((it, ix) => selectedIngresos.has(getIngresoKey(it, ix)))}
-                                  indeterminate={ingresos.some((it, ix) => selectedIngresos.has(getIngresoKey(it, ix))) && !(ingresos.length > 0 && ingresos.every((it, ix) => selectedIngresos.has(getIngresoKey(it, ix))))}
+                                  checked={ingresosOrdenados.length > 0 && ingresosOrdenados.every((it, ix) => selectedIngresos.has(getIngresoKey(it, ix)))}
+                                  indeterminate={ingresosOrdenados.some((it, ix) => selectedIngresos.has(getIngresoKey(it, ix))) && !(ingresosOrdenados.length > 0 && ingresosOrdenados.every((it, ix) => selectedIngresos.has(getIngresoKey(it, ix))))}
                                   onChange={(e) => {
                                     const checked = e.target.checked;
                                     setSelectedIngresos((prev) => {
                                       const next = new Set(prev);
-                                      if (checked) ingresos.forEach((it, ix) => next.add(getIngresoKey(it, ix)));
-                                      else ingresos.forEach((it, ix) => next.delete(getIngresoKey(it, ix)));
+                                      if (checked) ingresosOrdenados.forEach((it, ix) => next.add(getIngresoKey(it, ix)));
+                                      else ingresosOrdenados.forEach((it, ix) => next.delete(getIngresoKey(it, ix)));
                                       return next;
                                     });
                                   }}
@@ -1031,7 +1114,7 @@ export default function ResumenContable({ tasaBCV }) {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {ingresos.length === 0 ? (
+                            {ingresosOrdenados.length === 0 ? (
                               <TableRow>
                                 <TableCell
                                   colSpan={5}
@@ -1046,7 +1129,7 @@ export default function ResumenContable({ tasaBCV }) {
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              ingresos.map((i, idx) => (
+                              ingresosOrdenados.map((i, idx) => (
                                 <TableRow key={idx} sx={{ height: 28 }}>
                                   <TableCell sx={{ py: 0.5, fontSize: 13, width: 36 }}>
                                     <Checkbox
@@ -1174,7 +1257,7 @@ export default function ResumenContable({ tasaBCV }) {
                         minWidth: 28,
                         textAlign: 'center'
                       }}>
-                        {egresos.length}
+                        {egresosOperativosOrdenados.length}
                       </Box> */}
                     </Box>
                   </AccordionSummary>
@@ -1187,12 +1270,12 @@ export default function ResumenContable({ tasaBCV }) {
                     >
                       {isMobile ? (
                         <Box>
-                          {egresos.length === 0 ? (
+                          {egresosOperativos.length === 0 ? (
                             <Typography align="center" color="text.secondary" sx={{ py: 1 }}>
                               Sin egresos
                             </Typography>
                           ) : (
-                            egresos.map((e, idx) => (
+                              egresosOperativosOrdenados.map((e, idx) => (
                               <Paper key={idx} sx={{ p: 1.5, mb: 1 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
                                   <Checkbox
@@ -1242,14 +1325,14 @@ export default function ResumenContable({ tasaBCV }) {
                                 <Checkbox
                                   size="small"
                                   inputProps={{ 'aria-label': 'Seleccionar todos egresos' }}
-                                  checked={egresos.length > 0 && egresos.every((it, ix) => selectedEgresos.has(getEgresoKey(it, ix)))}
-                                  indeterminate={egresos.some((it, ix) => selectedEgresos.has(getEgresoKey(it, ix))) && !(egresos.length > 0 && egresos.every((it, ix) => selectedEgresos.has(getEgresoKey(it, ix))))}
+                                  checked={egresosOperativosOrdenados.length > 0 && egresosOperativosOrdenados.every((it, ix) => selectedEgresos.has(getEgresoKey(it, ix)))}
+                                  indeterminate={egresosOperativosOrdenados.some((it, ix) => selectedEgresos.has(getEgresoKey(it, ix))) && !(egresosOperativosOrdenados.length > 0 && egresosOperativosOrdenados.every((it, ix) => selectedEgresos.has(getEgresoKey(it, ix))))}
                                   onChange={(e) => {
                                     const checked = e.target.checked;
                                     setSelectedEgresos((prev) => {
                                       const next = new Set(prev);
-                                      if (checked) egresos.forEach((it, ix) => next.add(getEgresoKey(it, ix)));
-                                      else egresos.forEach((it, ix) => next.delete(getEgresoKey(it, ix)));
+                                      if (checked) egresosOperativosOrdenados.forEach((it, ix) => next.add(getEgresoKey(it, ix)));
+                                      else egresosOperativosOrdenados.forEach((it, ix) => next.delete(getEgresoKey(it, ix)));
                                       return next;
                                     });
                                   }}
@@ -1283,7 +1366,7 @@ export default function ResumenContable({ tasaBCV }) {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {egresos.length === 0 ? (
+                            {egresosOperativosOrdenados.length === 0 ? (
                               <TableRow>
                                 <TableCell
                                   colSpan={6}
@@ -1298,7 +1381,7 @@ export default function ResumenContable({ tasaBCV }) {
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              egresos.map((e, idx) => (
+                              egresosOperativosOrdenados.map((e, idx) => (
                                 <TableRow key={idx} sx={{ height: 28 }}>
                                   <TableCell sx={{ py: 0.5, fontSize: 13, width: 36 }}>
                                     <Checkbox
@@ -1346,6 +1429,134 @@ export default function ResumenContable({ tasaBCV }) {
                                         minimumFractionDigits: 2,
                                       })
                                       : "-"}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+                <Accordion
+                  sx={{
+                    mb: 1,
+                    boxShadow: "none",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: 1,
+                  }}
+                >
+                  <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
+                    sx={{
+                      bgcolor: "#fff4e6",
+                      minHeight: { xs: 44, sm: 36 },
+                      "& .MuiAccordionSummary-content": { my: 0.5 },
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography fontWeight={700} sx={{ color: '#b26a00' }} fontSize={15}>
+                        GASTOS DE LA SEMANA
+                      </Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ py: 0.5 }}>
+                    <Box
+                      sx={{
+                        width: "100%",
+                        overflowX: { xs: "auto", sm: "visible" },
+                      }}
+                    >
+                      {isMobile ? (
+                        <Box>
+                          {gastosSemanaOrdenados.length === 0 ? (
+                            <Typography align="center" color="text.secondary" sx={{ py: 1 }}>
+                              Sin gastos registrados
+                            </Typography>
+                          ) : (
+                            gastosSemanaOrdenados.map((g, idx) => (
+                              <Paper key={g.id || idx} sx={{ p: 1.5, mb: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 0.5 }}>
+                                  <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
+                                    {g.proveedor || g.descripcion || '-'}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                                    {formatFecha(g)}
+                                  </Typography>
+                                </Box>
+                                {g.numeroDocumento && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                    Doc: {g.numeroDocumento}
+                                  </Typography>
+                                )}
+                                {g.descripcion && g.proveedor !== g.descripcion && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                    {g.descripcion}
+                                  </Typography>
+                                )}
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+                                  <Typography variant="body2">
+                                    <b>$</b> {typeof g.montoUSD === "number" && g.montoUSD > 0 ? g.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 }) : '-'}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    <b>Bs</b> {typeof g.montoBs === "number" && g.montoBs > 0 ? g.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 }) : '-'}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                                    Tasa: {(g.tasaFactura || g.tasa)
+                                      ? (g.tasaFactura || g.tasa).toLocaleString("de-DE", { minimumFractionDigits: 2 })
+                                      : '-'}
+                                  </Typography>
+                                </Box>
+                              </Paper>
+                            ))
+                          )}
+                        </Box>
+                      ) : (
+                        <Table
+                          component={Paper}
+                          size="small"
+                          sx={{ boxShadow: "none", mb: 0, minWidth: 560 }}
+                        >
+                          <TableHead>
+                            <TableRow sx={{ height: 28 }}>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>Fecha</TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>Proveedor</TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>Descripción</TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: 13 }}>Factura/N-E</TableCell>
+                              <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>Monto ($)</TableCell>
+                              <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>Monto (Bs)</TableCell>
+                              <TableCell align="right" sx={{ py: 0.5, fontSize: 13 }}>Tasa</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {gastosSemanaOrdenados.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary', py: 0.5, fontSize: 13 }}>
+                                  Sin gastos registrados
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              gastosSemanaOrdenados.map((g, idx) => (
+                                <TableRow key={g.id || idx} sx={{ height: 28 }}>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13, whiteSpace: 'nowrap' }}>{formatFecha(g)}</TableCell>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>{g.proveedor || '-'}</TableCell>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13 }}>{g.descripcion || '-'}</TableCell>
+                                  <TableCell sx={{ py: 0.5, fontSize: 13, whiteSpace: 'nowrap' }}>{g.numeroDocumento || '-'}</TableCell>
+                                  <TableCell align="right" sx={{ py: 0.5, fontSize: 13, whiteSpace: 'nowrap' }}>
+                                    {typeof g.montoUSD === "number" && g.montoUSD > 0
+                                      ? g.montoUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })
+                                      : '-'}
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ py: 0.5, fontSize: 13, whiteSpace: 'nowrap' }}>
+                                    {typeof g.montoBs === "number" && g.montoBs > 0
+                                      ? g.montoBs.toLocaleString("de-DE", { minimumFractionDigits: 2 })
+                                      : '-'}
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ py: 0.5, fontSize: 13, whiteSpace: 'nowrap' }}>
+                                    {(g.tasaFactura || g.tasa)
+                                      ? (g.tasaFactura || g.tasa).toLocaleString("de-DE", { minimumFractionDigits: 2 })
+                                      : '-'}
                                   </TableCell>
                                 </TableRow>
                               ))

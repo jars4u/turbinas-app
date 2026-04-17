@@ -70,6 +70,7 @@ export default function ServicioEditorDialog({
   const isServicioCerrado = !!editId && !!estadoActual?.defaultFacturar;
   const disableEdicion = !!actionLoading || isServicioCerrado;
   const disableEstadoChange = !!actionLoading;
+  const isCompactMobile = isXs;
 
   // Manejar solo el texto de entrada del Autocomplete para evitar reseteos al actualizar la lista
   const handleClienteInputChange = React.useCallback((event, value, reason) => {
@@ -138,8 +139,11 @@ export default function ServicioEditorDialog({
           borderRadius: { xs: 0, sm: 1 },
           m: { xs: 0, sm: 'auto' },
           bgcolor: "grey.50",
-          height: { xs: 'auto', sm: 'auto' },
-          display: 'block',
+          height: { xs: '100dvh', sm: 'auto' },
+          maxHeight: { xs: '100dvh', sm: 'none' },
+          display: { xs: 'flex', sm: 'block' },
+          flexDirection: { xs: 'column', sm: 'unset' },
+          overflow: { xs: 'hidden', sm: 'visible' },
           position: 'relative',
         },
       }}
@@ -166,24 +170,25 @@ export default function ServicioEditorDialog({
       )}
       <DialogTitle
         sx={(theme) => ({
-          px: { xs: 2, sm: 3 },
-          py: { xs: 1.5, sm: 2 },
+          px: { xs: 1.25, sm: 3 },
+          py: { xs: 1, sm: 2 },
           bgcolor: theme.palette.mode === 'light' ? theme.palette.primary.main : theme.palette.primary.dark,
           color: theme.palette.primary.contrastText,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexShrink: 0,
         })}
       >
-        <Typography variant={isXs ? "subtitle1" : "h6"} fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant={isCompactMobile ? "body1" : "h6"} fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1, lineHeight: 1.2 }}>
           {editId ? "Información del servicio" : "Registrar servicio"}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {editId && (
             <>
               <Tooltip title="Eliminar servicio">
                 <span>
-                  <IconButton onClick={onDeleteClick} color="inherit" size="small" disabled={disableEdicion}>
+                  <IconButton onClick={onDeleteClick} color="inherit" size="small" disabled={disableEdicion} sx={{ p: { xs: 0.5, sm: 1 } }}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </span>
@@ -191,7 +196,7 @@ export default function ServicioEditorDialog({
             </>
           )}
           <Tooltip title="Cerrar">
-            <IconButton aria-label="Cerrar" onClick={onClose} color="inherit" size="small" disabled={actionLoading}>
+            <IconButton aria-label="Cerrar" onClick={onClose} color="inherit" size="small" disabled={actionLoading} sx={{ p: { xs: 0.5, sm: 1 } }}>
               <CloseIcon />
             </IconButton>
           </Tooltip>
@@ -202,17 +207,18 @@ export default function ServicioEditorDialog({
         sx={{
           minWidth: { xs: "auto", sm: 400 },
           maxWidth: { xs: "100vw", sm: "100%" },
-          py: { xs: 1, sm: 2 },
+          py: { xs: 0.5, sm: 2 },
           position: "relative",
           display: 'block',
           overflow: 'visible',
           px: { xs: 1, sm: 3 },
+          flexShrink: 0,
         }}
       >
         {/* Overlay global gestionado arriba para bloquear toda la interfaz durante guardado */}
 
         {editId && (
-          <Box sx={{ width: "100%", display: "flex", alignItems: 'center', gap: 1, my: 1 }}>
+          <Box sx={{ width: "100%", display: "flex", alignItems: 'center', gap: 0.75, my: { xs: 0.5, sm: 1 }, flexWrap: 'wrap' }}>
             <Typography variant="caption" color="text.secondary">Estado:</Typography>
             <Chip
               label={
@@ -222,7 +228,7 @@ export default function ServicioEditorDialog({
               }
               color={chipColor}
               size="small"
-              sx={{ fontSize: "0.85rem", height: 26, cursor: disableEstadoChange ? "default" : "pointer" }}
+              sx={{ fontSize: { xs: "0.74rem", sm: "0.85rem" }, height: { xs: 22, sm: 26 }, cursor: disableEstadoChange ? "default" : "pointer" }}
               onClick={disableEstadoChange ? undefined : onOpenEstadoModal}
             />
           </Box>
@@ -245,19 +251,44 @@ export default function ServicioEditorDialog({
           minWidth: { xs: "auto", sm: 400 },
           maxWidth: { xs: "100vw", sm: "100%" },
           display: 'block',
-          overflow: 'visible',
-          px: { xs: 1, sm: 3 },
-          py: { xs: 1, sm: 2 },
+          overflow: 'hidden',
+          px: { xs: 0.75, sm: 3 },
+          py: { xs: 0.5, sm: 2 },
+          flex: { xs: '1 1 auto', sm: '0 0 auto' },
+          '& .MuiCard-root': {
+            borderRadius: { xs: 1.25, sm: 2 },
+          },
+          '& .MuiCardContent-root': {
+            p: { xs: 0.875, sm: 2 },
+            '&:last-child': {
+              pb: { xs: 0.875, sm: 2 },
+            },
+          },
+          '& .MuiTextField-root .MuiInputBase-root': {
+            minHeight: { xs: 38, sm: 'auto' },
+          },
+          '& .MuiTextField-root .MuiInputBase-input': {
+            fontSize: { xs: '0.92rem', sm: '1rem' },
+            py: { xs: 0.35, sm: 0.5 },
+          },
+          '& .MuiInputAdornment-root': {
+            fontSize: { xs: '0.82rem', sm: 'inherit' },
+          },
+          '& .MuiFormHelperText-root': {
+            mt: { xs: 0.25, sm: 0.375 },
+            fontSize: { xs: '0.68rem', sm: '0.75rem' },
+            lineHeight: 1.15,
+          },
         }}
       >
-        <Stack spacing={{ xs: 1, sm: 2 }}>
+        <Stack spacing={{ xs: 0.75, sm: 2 }}>
           {/* Tarjeta: Datos de la turbina */}
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
             <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 0.5, sm: 1 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <EngineeringIcon color="primary" fontSize="small" />
-                  <Typography variant="subtitle2" fontWeight={700}>Datos de la turbina</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: { xs: '0.84rem', sm: '0.875rem' } }}>Datos de la turbina</Typography>
                 </Box>
               </Box>
               <TextField
@@ -278,14 +309,14 @@ export default function ServicioEditorDialog({
           {/* Tarjeta: Datos del servicio */}
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
             <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 0.5, sm: 1 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <BuildCircleIcon color="primary" fontSize="small" />
-                  <Typography variant="subtitle2" fontWeight={700}>Datos del servicio</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: { xs: '0.84rem', sm: '0.875rem' } }}>Datos del servicio</Typography>
                 </Box>
               </Box>
-              <Stack spacing={1.25}>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }}>
+              <Stack spacing={{ xs: 0.75, sm: 1.25 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0.75, sm: 2 }}>
                   <TextField
                     margin="none"
                     label="Servicio"
@@ -323,7 +354,7 @@ export default function ServicioEditorDialog({
                   disabled={disableEdicion}
                   InputProps={{ sx: { fontSize: '1rem', py: 0.5 } }}
                 />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0.75, sm: 2 }}>
                   {paymentUSDEnabled && (
                     <TextField
                       margin="none"
@@ -387,10 +418,10 @@ export default function ServicioEditorDialog({
           {/* Tarjeta: Datos del cliente */}
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
             <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 0.5, sm: 1 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <PersonIcon color="primary" fontSize="small" />
-                  <Typography variant="subtitle2" fontWeight={700}>Datos del cliente</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: { xs: '0.84rem', sm: '0.875rem' } }}>Datos del cliente</Typography>
                 </Box>
               </Box>
               <>
@@ -453,12 +484,12 @@ export default function ServicioEditorDialog({
                   onChange={onCustomerPhoneChange}
                   disabled={disableEdicion}
                   InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                  sx={{ mt: 1.25 }}
+                  sx={{ mt: { xs: 0.75, sm: 1.25 } }}
                   placeholder="+58-424-xxxxxxx"
                   helperText={
                     form.customerPhone
                       ? (/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
-                        ? "Formato: +58-424-xxxxxxx"
+                        ? (isCompactMobile ? "" : "Formato: +58-424-xxxxxxx")
                         : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)")
                       : ""
                   }
@@ -480,18 +511,25 @@ export default function ServicioEditorDialog({
           flexDirection: { xs: "column", sm: "row" },
           alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "flex-start",
-          px: { xs: 2, sm: 2 },
-          py: { xs: 1.5, sm: 1.5 },
+          px: { xs: 1, sm: 2 },
+          py: { xs: 0.75, sm: 1.5 },
           mb: 0,
-          gap: 1,
+          gap: { xs: 0.75, sm: 1 },
           borderTop: "1px solid",
           borderColor: "divider",
           bgcolor: "background.paper",
           flexWrap: { xs: "nowrap", sm: "nowrap" },
+          flexShrink: 0,
+          '& .MuiButton-root': {
+            minHeight: { xs: 34, sm: 36 },
+            fontSize: { xs: '0.74rem', sm: '0.8125rem' },
+            px: { xs: 1, sm: 1.5 },
+            lineHeight: 1.15,
+          },
         }}
       >
         {isRegistering ? (
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: '100%' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(2, minmax(0, 1fr))' }, gap: { xs: 0.75, sm: 1 }, width: '100%' }}>
             <Button onClick={onClose} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }} disabled={actionLoading}>
               Cancelar
             </Button>
@@ -508,7 +546,7 @@ export default function ServicioEditorDialog({
           </Box>
         ) : (
           editSection ? (
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: '100%' }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(2, minmax(0, 1fr))' }, gap: { xs: 0.75, sm: 1 }, width: '100%' }}>
               <Button onClick={onCancelEditSection} variant="outlined" size="small" color="error" sx={{ flex: 1, minWidth: 120, justifyContent: 'center' }} disabled={actionLoading}>
                 Cancelar
               </Button>
@@ -533,10 +571,11 @@ export default function ServicioEditorDialog({
             editId && (
               <Box
                 sx={{
-                  display: 'flex',
+                  display: { xs: 'grid', sm: 'flex' },
+                  gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'none' },
                   flexDirection: 'row',
-                  flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                  gap: 1,
+                  flexWrap: { xs: 'nowrap', sm: 'nowrap' },
+                  gap: { xs: 0.75, sm: 1 },
                   width: '100%'
                 }}
               >
@@ -563,7 +602,7 @@ export default function ServicioEditorDialog({
                   variant="outlined"
                   size="small"
                   color="success"
-                  endIcon={<WhatsAppIcon />}
+                  endIcon={isCompactMobile ? null : <WhatsAppIcon />}
                   onClick={onWhatsAppSend}
                   disabled={actionLoading || !form.customerPhone}
                   sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
@@ -579,13 +618,13 @@ export default function ServicioEditorDialog({
                   disabled={disableEdicion || porCobrarDisabled}
                   title={porCobrarTitle}
                 >
-                  Por Cobrar
+                  {isCompactMobile ? "Cobrar" : "Por Cobrar"}
                 </Button>
                 <Button
                   variant="contained"
                   color="success"
                   size="small"
-                  startIcon={<PointOfSaleIcon />}
+                  startIcon={isCompactMobile ? null : <PointOfSaleIcon />}
                   sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: 1 }, minWidth: 110, justifyContent: 'center' }}
                   onClick={onOpenFactura}
                   disabled={disableEdicion || facturarDisabled}

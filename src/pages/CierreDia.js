@@ -25,6 +25,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CajaChica from "../components/CajaChica";
 import Ingresos from "../components/Ingresos";
 import Egresos from "../components/Egresos";
+import GastosDia from "../components/GastosDia";
 import CuentasPorPagar from "../components/CuentasPorPagar";
 import CuentasPorCobrar from "../components/CuentasPorCobrar";
 import CierreDiaMonthlyCharts from "../components/CierreDiaMonthlyCharts";
@@ -368,6 +369,7 @@ export default function CierreDia() {
               <Tab label="Resumen" />
               <Tab label="Ingresos" />
               <Tab label="Egresos" />
+              <Tab label="Gastos del día" />
               <Tab label="Caja Chica" />
               <Tab label="Por Pagar" />
               <Tab label="Por Cobrar" />
@@ -384,7 +386,7 @@ export default function CierreDia() {
                 )}
               </Box>
             )}
-            {tabIndex === 5 && (
+            {tabIndex === 6 && (
               <Box sx={{ p: 2 }}>
                 <CuentasPorCobrar />
               </Box>
@@ -428,11 +430,23 @@ export default function CierreDia() {
                     <Skeleton variant="rounded" width="100%" height={180} />
                   </Box>
                 ) : (
-                  <CajaChica tasaBCV={tasaBCV} isOwner={isOwner} />
+                  <GastosDia tasaBCV={tasaBCV} isOwner={isOwner} />
                 )}
               </Box>
             )}
             {tabIndex === 4 && (
+              <Box sx={{ p: 2 }}>
+                {loadingTasa || !vehiculos.length ? (
+                  <Box>
+                    <Skeleton variant="text" width={200} height={20} sx={{ mb: 1 }} />
+                    <Skeleton variant="rounded" width="100%" height={180} />
+                  </Box>
+                ) : (
+                  <CajaChica tasaBCV={tasaBCV} isOwner={isOwner} />
+                )}
+              </Box>
+            )}
+            {tabIndex === 5 && (
               <Box sx={{ p: 2 }}>
                 {/* Aquí se implementa el componente CuentasPorPagar */}
                 <CuentasPorPagar cuentas={[]} />

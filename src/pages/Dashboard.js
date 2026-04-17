@@ -1317,11 +1317,18 @@ export default function Dashboard() {
             modalidad: 'servicio',
             vehiculoId: editId || null,
             vehiculo: form.vehiculo || '',
+            placa: form.placa || '',
             servicio: form.servicio || '',
             precio: parseFloat(form.precio) || 0,
             precioBs: parseFloat(form.precioBs) || 0,
-            observaciones: `${form.customerName || ''} - ${form.customerPhone || ''}`,
-            status: 'por_cobrar'
+            observaciones: form.observaciones || '',
+            customerName: form.customerName || '',
+            customerPhone: form.customerPhone || '',
+            status: 'por_cobrar',
+            fechaRegistro: Date.now(),
+            arrivalTime: editId
+              ? vehiculos.find((v) => v.id === editId)?.arrivalTime || Date.now()
+              : Date.now(),
           };
           await addDoc(collection(db, 'cuentasPorCobrar'), nuevaCuenta);
           try {

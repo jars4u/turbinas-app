@@ -152,6 +152,20 @@ export default function HistorialVehiculos() {
 
   const [estadosServicio, setEstadosServicio] = React.useState([]);
 
+  // Ref al input de búsqueda para dar focus al entrar en la página
+  const searchRef = React.useRef(null);
+
+  React.useEffect(() => {
+    try {
+      if (searchRef && searchRef.current && typeof searchRef.current.focus === 'function') {
+        // usar setTimeout corto para asegurar render en algunos navegadores
+        setTimeout(() => searchRef.current.focus(), 50);
+      }
+    } catch (e) {
+      // noop
+    }
+  }, []);
+
   React.useEffect(() => {
     // Cargar lista de estados para mostrar labels legibles en la tabla
     obtenerEstadosServicio()
@@ -554,6 +568,7 @@ export default function HistorialVehiculos() {
               placeholder="Buscar por modelo, servicio, cliente, usuario, factura..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
+              ref={searchRef}
               style={{
                 padding: "8px 10px",
                 fontSize: "clamp(12px, 3.5vw, 16px)",

@@ -20,11 +20,11 @@ export default function CuentasPorCobrar() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [cuentaServicio, setCuentaServicio] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editDialogForm, setEditDialogForm] = useState({ vehiculo: '', servicio: '', observaciones: '', precio: '', precioBs: '', customerName: '', customerPhone: '+58' });
+  const [editDialogForm, setEditDialogForm] = useState({ vehiculo: '', placa: '', servicio: '', observaciones: '', precio: '', precioBs: '', customerName: '', customerPhone: '+58' });
   const [editDialogId, setEditDialogId] = useState(null);
   // editModalidad no es necesario tras unificar modalidad servicio
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
-  const [registerForm, setRegisterForm] = useState({ vehiculo: '', servicio: '', observaciones: '', precio: '', precioBs: '', customerName: '', customerPhone: '+58' });
+  const [registerForm, setRegisterForm] = useState({ vehiculo: '', placa: '', servicio: '', observaciones: '', precio: '', precioBs: '', customerName: '', customerPhone: '+58' });
   const [clientes, setClientes] = useState([]);
 
   // Eliminar cuenta por cobrar
@@ -42,6 +42,7 @@ export default function CuentasPorCobrar() {
     const v = normalizeCuenta(cuenta);
     setEditDialogForm({
       vehiculo: v.vehiculo || '',
+      placa: cuenta.placa || '',
       servicio: v.servicio || '',
       observaciones: v.observaciones || '',
       precio: v.precio || '',
@@ -60,6 +61,7 @@ export default function CuentasPorCobrar() {
     const updatedData = {
       modalidad: 'servicio',
       vehiculo: (editDialogForm.vehiculo || '').toUpperCase(),
+      placa: (editDialogForm.placa || '').toUpperCase(),
       servicio: (editDialogForm.servicio || '').toUpperCase(),
       observaciones: editDialogForm.observaciones || '',
       precio: parseFloat(editDialogForm.precio) || 0,
@@ -126,12 +128,19 @@ export default function CuentasPorCobrar() {
     return null;
   };
 
+  const formatCuentaFecha = (cuenta) => {
+    const ts = toMillis(cuenta.fechaRegistro) ?? toMillis(cuenta.arrivalTime);
+    if (!ts) return '-';
+    return new Date(ts).toLocaleDateString('es-VE');
+  };
+
   // Normalizar a esquema de servicio (soporta legacy 'documento')
   const normalizeCuenta = (cuenta) => {
     if (!cuenta) return { vehiculo: '', servicio: '', observaciones: '', precio: 0, precioBs: 0 };
     if (cuenta.modalidad === 'servicio' || !cuenta.modalidad) {
       return {
         vehiculo: cuenta.vehiculo || '',
+        placa: cuenta.placa || '',
         servicio: cuenta.servicio || '',
         observaciones: cuenta.observaciones || '',
         precio: typeof cuenta.precio === 'number' ? cuenta.precio : (parseFloat(cuenta.precio) || 0),
@@ -161,6 +170,7 @@ export default function CuentasPorCobrar() {
       <Table component={Paper} size="small" sx={{ mb: 2, display: { xs: 'none', md: 'table' } }}>
         <TableHead>
           <TableRow>
+            <TableCell>Fecha</TableCell>
             <TableCell>Modelo</TableCell>
             <TableCell>Servicio</TableCell>
             <TableCell>Cliente</TableCell>
@@ -184,7 +194,7 @@ export default function CuentasPorCobrar() {
             ))
           ) : cuentas.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} align="center">No hay cuentas por cobrar registradas.</TableCell>
+              <TableCell colSpan={7} align="center">No hay cuentas por cobrar registradas.</TableCell>
             </TableRow>
           ) : (
             [...cuentas]
@@ -199,6 +209,7 @@ export default function CuentasPorCobrar() {
                   const v = normalizeCuenta(cuenta);
                   return (
                     <>
+                      <TableCell>{formatCuentaFecha(cuenta)}</TableCell>
                       <TableCell>{v.vehiculo ? v.vehiculo.toUpperCase() : '-'}</TableCell>
                       <TableCell>{v.servicio ? v.servicio.toUpperCase() : '-'}</TableCell>
                       <TableCell>{(cuenta.customerName || cuenta.cliente || '')}</TableCell>
@@ -268,8 +279,8 @@ export default function CuentasPorCobrar() {
                       <Typography variant="body2" sx={{ fontWeight: 700 }}>
                         {v.vehiculo ? v.vehiculo.toUpperCase() : '-'}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Servicio
+                      <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'right' }}>
+                        {formatCuentaFecha(cuenta)}
                       </Typography>
                     </Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -395,6 +406,7 @@ export default function CuentasPorCobrar() {
           await addDoc(collection(db, 'cuentasPorCobrar'), {
             modalidad: 'servicio',
             vehiculo: (registerForm.vehiculo || '').toUpperCase(),
+            placa: (registerForm.placa || '').toUpperCase(),
             servicio: (registerForm.servicio || '').toUpperCase(),
             precio: parseFloat(registerForm.precio) || 0,
             precioBs: parseFloat(registerForm.precioBs) || 0,
@@ -405,7 +417,7 @@ export default function CuentasPorCobrar() {
             fechaRegistro: Date.now()
           });
           setRegisterDialogOpen(false);
-          setRegisterForm({ vehiculo: '', servicio: '', observaciones: '', precio: '', precioBs: '', customerName: '', customerPhone: '+58' });
+          setRegisterForm({ vehiculo: '', placa: '', servicio: '', observaciones: '', precio: '', precioBs: '', customerName: '', customerPhone: '+58' });
           setSnackbarMsg('Cuenta por cobrar registrada');
           setSnackbarOpen(true);
         }}

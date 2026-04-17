@@ -43,6 +43,11 @@ export async function guardarEgreso(egreso) {
   });
 }
 
+export async function guardarGastoDia(gasto) {
+  // Helper para guardar gastos del día con tipo fijo
+  return guardarEgreso({ ...gasto, tipo: 'gastoDia' });
+}
+
 export async function actualizarEgreso(id, egreso) {
   const db = getFirestore();
   if (!id) throw new Error("actualizarEgreso: id requerido");
