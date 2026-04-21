@@ -21,6 +21,15 @@ import {
 import { useTheme } from "@mui/material/styles";
 import ReceiptOutlinedIcon from '@mui/icons-material/ReceiptOutlined';
 
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'efectivo', label: 'Efectivo ($)' },
+  { value: 'binance', label: 'Binance ($)' },
+  { value: 'pago movil', label: 'Pago móvil (Bs)' },
+  { value: 'zelle', label: 'Zelle ($)' },
+  { value: 'transferencia', label: 'Transferencia', disabled: true },
+  { value: 'credito', label: 'Crédito', disabled: true },
+];
+
 
 export default function PaymentModal({ open, onClose, form, onRegister }) {
   const theme = useTheme();
@@ -34,33 +43,44 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
     referencia: "",
     formaPago2: "",
     monto2: "",
-    referencia2: ""
+    referencia2: "",
+    formaPago3: "",
+    monto3: "",
+    referencia3: ""
   });
   const [agregarFormaPago, setAgregarFormaPago] = useState(false);
+  const [agregarTerceraFormaPago, setAgregarTerceraFormaPago] = useState(false);
   const [facturaIntento, setFacturaIntento] = useState(false);
   // ...variables y efectos eliminados, ya no se usan para mostrar el precio
+
+  const buildFormaPago = (formaPago, monto, referencia) => ({
+    formaPago: formaPago ? formaPago.toUpperCase() : '',
+    monto,
+    referencia: referencia ? referencia.toUpperCase() : '',
+    salidaInventario,
+  });
+
+  const handleFacturaFieldChange = (field) => (event) => {
+    setFacturaForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
 
   const handleRegister = async () => {
     setFacturaIntento(true);
     // Validación mínima: campos obligatorios
     if (!facturaForm.numeroFactura || !facturaForm.formaPago || !facturaForm.monto) return;
+    if (agregarFormaPago && (!facturaForm.formaPago2 || !facturaForm.monto2)) return;
+    if (agregarTerceraFormaPago && (!facturaForm.formaPago3 || !facturaForm.monto3)) return;
     setLoading(true);
     let formasPago = [];
     // Primera forma de pago
-    formasPago.push({
-      formaPago: facturaForm.formaPago ? facturaForm.formaPago.toUpperCase() : '',
-      monto: facturaForm.monto,
-      referencia: facturaForm.referencia ? facturaForm.referencia.toUpperCase() : '',
-      salidaInventario: salidaInventario,
-    });
+    formasPago.push(buildFormaPago(facturaForm.formaPago, facturaForm.monto, facturaForm.referencia));
     // Segunda forma de pago si corresponde
     if (agregarFormaPago && facturaForm.formaPago2 && facturaForm.monto2) {
-      formasPago.push({
-        formaPago: facturaForm.formaPago2 ? facturaForm.formaPago2.toUpperCase() : '',
-        monto: facturaForm.monto2,
-        referencia: facturaForm.referencia2 ? facturaForm.referencia2.toUpperCase() : '',
-        salidaInventario: salidaInventario,
-      });
+      formasPago.push(buildFormaPago(facturaForm.formaPago2, facturaForm.monto2, facturaForm.referencia2));
+    }
+    // Tercera forma de pago si corresponde
+    if (agregarTerceraFormaPago && facturaForm.formaPago3 && facturaForm.monto3) {
+      formasPago.push(buildFormaPago(facturaForm.formaPago3, facturaForm.monto3, facturaForm.referencia3));
     }
     const payload = {
       numeroFactura: facturaForm.numeroFactura ? facturaForm.numeroFactura.toUpperCase() : '',
@@ -69,9 +89,10 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
     console.log('Payload registro pago:', payload);
     await onRegister(payload);
     setLoading(false);
-    setFacturaForm({ numeroFactura: "", formaPago: "", monto: "", referencia: "", formaPago2: "", monto2: "", referencia2: "" });
+    setFacturaForm({ numeroFactura: "", formaPago: "", monto: "", referencia: "", formaPago2: "", monto2: "", referencia2: "", formaPago3: "", monto3: "", referencia3: "" });
     setFacturaIntento(false);
     setAgregarFormaPago(false);
+    setAgregarTerceraFormaPago(false);
     onClose();
   };
 
@@ -140,7 +161,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             name="numeroFactura"
             size="small"
             value={facturaForm.numeroFactura}
-            onChange={e => setFacturaForm({ ...facturaForm, numeroFactura: e.target.value })}
+            onChange={handleFacturaFieldChange('numeroFactura')}
             fullWidth
             required
             error={facturaIntento && !facturaForm.numeroFactura}
@@ -152,17 +173,16 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             <Select
               name="formaPago"
               value={facturaForm.formaPago}
-              onChange={e => setFacturaForm({ ...facturaForm, formaPago: e.target.value })}
+              onChange={handleFacturaFieldChange('formaPago')}
               displayEmpty
               required
             >
               <MenuItem value="">Forma de pago...</MenuItem>
-              <MenuItem value="efectivo">Efectivo ($)</MenuItem>
-              <MenuItem value="binance">Binance ($)</MenuItem>
-              <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
-              <MenuItem value="zelle">Zelle ($)</MenuItem>
-              <MenuItem value="transferencia" disabled>Transferencia</MenuItem>
-              <MenuItem value="credito" disabled>Crédito</MenuItem>
+              {PAYMENT_METHOD_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
+                  {option.label}
+                </MenuItem>
+              ))}
             </Select>
             {facturaIntento && !facturaForm.formaPago && (
               <FormHelperText>Campo obligatorio</FormHelperText>
@@ -175,7 +195,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             type="number"
             inputProps={{ step: "0.01", min: 0 }}
             value={facturaForm.monto}
-            onChange={e => setFacturaForm({ ...facturaForm, monto: e.target.value })}
+            onChange={handleFacturaFieldChange('monto')}
             required
             error={facturaIntento && !facturaForm.monto}
             helperText={facturaIntento && !facturaForm.monto ? 'Campo obligatorio' : ''}
@@ -188,12 +208,32 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
           fullWidth
           size="small"
           value={facturaForm.referencia}
-          onChange={e => setFacturaForm({ ...facturaForm, referencia: e.target.value })}
+          onChange={handleFacturaFieldChange('referencia')}
           sx={{ mb: 2 }}
         />
         <FormControlLabel
           sx={{ mb: 2 }}
-          control={<Checkbox checked={agregarFormaPago} onChange={e => setAgregarFormaPago(e.target.checked)} />}
+          control={
+            <Checkbox
+              checked={agregarFormaPago}
+              onChange={e => {
+                const checked = e.target.checked;
+                setAgregarFormaPago(checked);
+                if (!checked) {
+                  setAgregarTerceraFormaPago(false);
+                  setFacturaForm((prev) => ({
+                    ...prev,
+                    formaPago2: '',
+                    monto2: '',
+                    referencia2: '',
+                    formaPago3: '',
+                    monto3: '',
+                    referencia3: ''
+                  }));
+                }
+              }}
+            />
+          }
           label="Agregar segunda forma de pago"
         />
         {agregarFormaPago && (
@@ -203,17 +243,16 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
                 <Select
                   name="formaPago2"
                   value={facturaForm.formaPago2}
-                  onChange={e => setFacturaForm({ ...facturaForm, formaPago2: e.target.value })}
+                  onChange={handleFacturaFieldChange('formaPago2')}
                   displayEmpty
                   required
                 >
                   <MenuItem value="">Forma de pago...</MenuItem>
-                  <MenuItem value="efectivo">Efectivo ($)</MenuItem>
-                  <MenuItem value="binance">Binance ($)</MenuItem>
-                  <MenuItem value="pago movil">Pago móvil (Bs)</MenuItem>
-                  <MenuItem value="zelle">Zelle ($)</MenuItem>
-                  <MenuItem value="transferencia" disabled>Transferencia</MenuItem>
-                  <MenuItem value="credito" disabled>Crédito</MenuItem>
+                  {PAYMENT_METHOD_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
                 </Select>
                 {facturaIntento && !facturaForm.formaPago2 && (
                   <FormHelperText>Campo obligatorio</FormHelperText>
@@ -226,7 +265,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
                 type="number"
                 inputProps={{ step: "0.01", min: 0 }}
                 value={facturaForm.monto2}
-                onChange={e => setFacturaForm({ ...facturaForm, monto2: e.target.value })}
+                onChange={handleFacturaFieldChange('monto2')}
                 required
                 error={facturaIntento && !facturaForm.monto2}
                 helperText={facturaIntento && !facturaForm.monto2 ? 'Campo obligatorio' : ''}
@@ -238,10 +277,78 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
               name="referencia2"
               size="small"
               value={facturaForm.referencia2}
-              onChange={e => setFacturaForm({ ...facturaForm, referencia2: e.target.value })}
+              onChange={handleFacturaFieldChange('referencia2')}
               fullWidth
               sx={{ mb: 2 }}
             />
+            <FormControlLabel
+              sx={{ mb: 2 }}
+              control={
+                <Checkbox
+                  checked={agregarTerceraFormaPago}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setAgregarTerceraFormaPago(checked);
+                    if (!checked) {
+                      setFacturaForm((prev) => ({
+                        ...prev,
+                        formaPago3: '',
+                        monto3: '',
+                        referencia3: ''
+                      }));
+                    }
+                  }}
+                />
+              }
+              label="Agregar tercera forma de pago"
+            />
+            {agregarTerceraFormaPago && (
+              <>
+                <Box sx={{ mb: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                  <FormControl size="small" fullWidth error={facturaIntento && !facturaForm.formaPago3}>
+                    <Select
+                      name="formaPago3"
+                      value={facturaForm.formaPago3}
+                      onChange={handleFacturaFieldChange('formaPago3')}
+                      displayEmpty
+                      required
+                    >
+                      <MenuItem value="">Forma de pago...</MenuItem>
+                      {PAYMENT_METHOD_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {facturaIntento && !facturaForm.formaPago3 && (
+                      <FormHelperText>Campo obligatorio</FormHelperText>
+                    )}
+                  </FormControl>
+                  <TextField
+                    label="Monto"
+                    name="monto3"
+                    size="small"
+                    type="number"
+                    inputProps={{ step: "0.01", min: 0 }}
+                    value={facturaForm.monto3}
+                    onChange={handleFacturaFieldChange('monto3')}
+                    required
+                    error={facturaIntento && !facturaForm.monto3}
+                    helperText={facturaIntento && !facturaForm.monto3 ? 'Campo obligatorio' : ''}
+                    fullWidth
+                  />
+                </Box>
+                <TextField
+                  label="Referencia / Observaciones"
+                  name="referencia3"
+                  size="small"
+                  value={facturaForm.referencia3}
+                  onChange={handleFacturaFieldChange('referencia3')}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                />
+              </>
+            )}
           </>
         )}
       </DialogContent>
