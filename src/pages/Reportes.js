@@ -311,6 +311,11 @@ function buildPdfMarkup({ reportData, fontFamily, generatedAt }) {
 
       <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:22px;">
         <div style="background:#fff;border:1px solid #e3ddd2;border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(15,43,70,0.06);">
+          <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6b77;margin-bottom:10px;">Servicios entregados</div>
+          <div style="font-size:26px;font-weight:700;color:#17324a;line-height:1.1;">${reportData?.summary?.serviciosEntregados || 0}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">Vehículos entregados en el periodo</div>
+        </div>
+        <div style="background:#fff;border:1px solid #e3ddd2;border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(15,43,70,0.06);">
           <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6b77;margin-bottom:10px;">Ingresos</div>
           <div style="font-size:26px;font-weight:700;color:#17324a;line-height:1.1;">${formatUsd(reportData?.summary?.ingresosUSD)}</div>
           <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">${ingresosBreakdown}</div>
@@ -321,19 +326,14 @@ function buildPdfMarkup({ reportData, fontFamily, generatedAt }) {
           <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">${egresosBreakdown}</div>
         </div>
         <div style="background:#fff;border:1px solid #e3ddd2;border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(15,43,70,0.06);">
-          <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6b77;margin-bottom:10px;">Neto</div>
-          <div style="font-size:26px;font-weight:700;color:#17324a;line-height:1.1;">${formatUsd(reportData?.summary?.netoUSD)}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">${netoBreakdown}</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e3ddd2;border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(15,43,70,0.06);">
-          <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6b77;margin-bottom:10px;">Servicios entregados</div>
-          <div style="font-size:26px;font-weight:700;color:#17324a;line-height:1.1;">${reportData?.summary?.serviciosEntregados || 0}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">Vehículos entregados en el periodo</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e3ddd2;border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(15,43,70,0.06);">
           <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6b77;margin-bottom:10px;">Nómina</div>
           <div style="font-size:26px;font-weight:700;color:#17324a;line-height:1.1;">${formatUsd(reportData?.summary?.nominaUSD)}</div>
           <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">Total pagado en el rango</div>
+        </div>
+        <div style="background:#fff;border:1px solid #e3ddd2;border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(15,43,70,0.06);">
+          <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6b77;margin-bottom:10px;">Neto</div>
+          <div style="font-size:26px;font-weight:700;color:#17324a;line-height:1.1;">${formatUsd(reportData?.summary?.netoUSD)}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">${netoBreakdown}</div>
         </div>
       </div>
 

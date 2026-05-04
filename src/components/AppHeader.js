@@ -135,7 +135,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             title="Ir al dashboard"
             aria-label="Logo"
           />
-          <Chip label="v.5.5" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
+          <Chip label="v.5.7" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
         </Box>
         <Box
           sx={{
