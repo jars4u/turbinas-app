@@ -9,6 +9,7 @@ import HistorialVehiculos from "./pages/HistorialVehiculos";
 import Configuracion from "./pages/Configuracion";
 import CierreDia from "./pages/CierreDia";
 import AccesoDenegado from "./pages/AccesoDenegado";
+import Reportes from "./pages/Reportes";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotasFlotantes from "./components/NotasFlotantes";
 
@@ -76,6 +77,11 @@ function AppRoutes() {
         <Route path="/inventario" element={
           <ProtectedRoute>
             <Inventario usuarioActivo={usuario} />
+          </ProtectedRoute>
+        } />
+        <Route path="/reportes" element={
+          <ProtectedRoute>
+            <Reportes isAdmin={isAdmin} isOwner={isOwner} />
           </ProtectedRoute>
         } />
         <Route path="/nomina" element={

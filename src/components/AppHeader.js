@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton, TextField, InputAdornment, Menu, MenuItem, ListItemIcon, ListItemText, Badge, Container } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HistoryIcon from "@mui/icons-material/History";
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PersonIcon from "@mui/icons-material/Person";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
@@ -359,6 +360,23 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                   </IconButton>
                 </span>
               </Tooltip>
+              <Tooltip title="Reportes" arrow>
+                <span>
+                  <IconButton
+                    color="default"
+                    size="small"
+                    sx={(theme) => ({
+                      color: isActive('/reportes') ? theme.palette.primary.main : "#757575",
+                      borderBottom: isActive('/reportes') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+                      borderRadius: 0
+                    })}
+                    onClick={() => navigate("/reportes")}
+                    aria-label="Ir a reportes"
+                  >
+                    <AssessmentOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
               <Tooltip title="Cierre del día" arrow>
                 <span>
                   <IconButton
@@ -423,6 +441,10 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
               <MenuItem onClick={() => { handleCloseActions(); navigate('/historial'); }}>
                 <ListItemIcon><HistoryIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Historial" />
+              </MenuItem>
+              <MenuItem onClick={() => { handleCloseActions(); navigate('/reportes'); }}>
+                <ListItemIcon><AssessmentOutlinedIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Reportes" />
               </MenuItem>
               <MenuItem onClick={() => { handleCloseActions(); navigate('/cierredia'); }}>
                 <ListItemIcon><PointOfSaleIcon fontSize="small" /></ListItemIcon>

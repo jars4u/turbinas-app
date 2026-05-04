@@ -11,7 +11,6 @@ import {
   CircularProgress,
   Chip,
   TextField,
-  Autocomplete,
   Card,
   CardContent,
   Stack,
@@ -26,6 +25,7 @@ import EngineeringIcon from "@mui/icons-material/Engineering";
 import BuildCircleIcon from "@mui/icons-material/BuildCircle";
 import PersonIcon from "@mui/icons-material/Person";
 import ConfirmDialog from "../common/ConfirmDialog";
+import ClienteAutocompleteField from "../common/ClienteAutocompleteField";
 
 export default function ServicioEditorDialog({
   open,
@@ -72,55 +72,6 @@ export default function ServicioEditorDialog({
   const disableEstadoChange = !!actionLoading;
   const isCompactMobile = isXs;
 
-  // Manejar solo el texto de entrada del Autocomplete para evitar reseteos al actualizar la lista
-  const handleClienteInputChange = React.useCallback((event, value, reason) => {
-    if (typeof onClienteInputChange === 'function') {
-      onClienteInputChange(event, value, reason);
-    }
-    // Actualizar el nombre solo cuando el usuario escribe o limpia manualmente
-    if (typeof onChange === 'function') {
-      if (reason === 'input' || reason === 'clear' || reason === 'reset') {
-        onChange({ target: { name: 'customerName', value: value || '' } });
-      }
-    }
-  }, [onClienteInputChange, onChange]);
-
-  // Fallback al seleccionar una opción: si no hay handler, actualizar nombre y teléfono básicos
-  const handleClienteChange = React.useCallback((event, value) => {
-    const valueObj = typeof value === 'string' ? { nombre: value, telefono: '' } : (value || null);
-    const nombre = valueObj ? (valueObj.nombre || '') : '';
-    const telefonoRaw = valueObj ? (valueObj.telefono || '') : '';
-    const telefono = telefonoRaw
-      ? (String(telefonoRaw).startsWith('+58') ? telefonoRaw : ('+58' + String(telefonoRaw).replace(/^0+/, '')))
-      : '';
-    // Notificar al padre si provee handler
-    if (typeof onClienteChange === 'function') {
-      onClienteChange(event, valueObj);
-    }
-    // En todos los casos, garantizar que el campo se llene solo con el nombre
-    if (typeof onChange === 'function') {
-      onChange({ target: { name: 'customerName', value: nombre } });
-      if (telefono) {
-        onChange({ target: { name: 'customerPhone', value: telefono } });
-      }
-    }
-  }, [onClienteChange, onChange]);
-
-  // Mejorar filtrado (por nombre y teléfono, búsqueda en cualquier posición)
-  // Filtrado por prefijo: solo por nombre (acento-insensible)
-  const filterOptions = (options, { inputValue }) => {
-    const q = normalizeText(inputValue);
-    return (options || []).filter((opt) => normalizeText(opt?.nombre).startsWith(q));
-  };
-
-  const normalizeText = (s) =>
-    String(s || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
-
-  // Hidratación del texto al re-editar: se controla por inputValue (customerName)
   return (
     <Dialog
       open={open}
@@ -251,7 +202,7 @@ export default function ServicioEditorDialog({
           minWidth: { xs: "auto", sm: 400 },
           maxWidth: { xs: "100vw", sm: "100%" },
           display: 'block',
-          overflow: 'hidden',
+          overflow: 'visible',
           px: { xs: 0.75, sm: 3 },
           py: { xs: 0.5, sm: 2 },
           flex: { xs: '1 1 auto', sm: '0 0 auto' },
@@ -283,8 +234,8 @@ export default function ServicioEditorDialog({
       >
         <Stack spacing={{ xs: 0.75, sm: 2 }}>
           {/* Tarjeta: Datos de la turbina */}
-          <Card variant="outlined" sx={{ borderRadius: 2 }}>
-            <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+          <Card variant="outlined" sx={{ borderRadius: 2, overflow: 'visible' }}>
+            <CardContent sx={{ p: { xs: 1, sm: 2 }, overflow: 'visible' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 0.5, sm: 1 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <EngineeringIcon color="primary" fontSize="small" />
@@ -425,79 +376,38 @@ export default function ServicioEditorDialog({
                 </Box>
               </Box>
               <>
-                <Autocomplete
-                  options={clientes || []}
-                  getOptionLabel={(opt) => typeof opt === 'string' ? opt : (opt?.nombre ? opt.nombre : "")}
-                  inputValue={form.customerName || ""}
-                  onInputChange={handleClienteInputChange}
-                  onChange={handleClienteChange}
-                  filterOptions={filterOptions}
+                <ClienteAutocompleteField
+                  clientes={clientes}
+                  nombre={form.customerName || ""}
+                  telefono={form.customerPhone || ""}
                   disabled={disableEdicion}
-                  freeSolo
-                  selectOnFocus
-                  blurOnSelect
-                  clearOnBlur={false}
-                  handleHomeEndKeys
-                  sx={{ width: "100%" }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      margin="none"
-                      label="Cliente (Nombre)"
-                      name="customerName"
-                      fullWidth
-                      size="small"
-                      disabled={disableEdicion}
-                      sx={{ width: "100%" }}
-                      InputProps={{
-                        ...params.InputProps,
-                        sx: { fontSize: "1rem", py: 0.5 },
-                      }}
-                    />
-                  )}
-                  renderOption={(props, option) => (
-                    <li {...props}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Typography variant="body2" sx={{ lineHeight: 1.2 }}>{option?.nombre || ''}</Typography>
-                        {option?.telefono && (
-                          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.1 }}>
-                            {option.telefono}
-                          </Typography>
-                        )}
-                      </Box>
-                    </li>
-                  )}
-                />
-                <TextField
-                  margin="none"
-                  label="Cliente (Teléfono)"
-                  name="customerPhone"
-                  fullWidth
-                  size="small"
-                  value={
-                    form.customerPhone
-                      ? (form.customerPhone.startsWith("+58")
-                        ? form.customerPhone
-                        : "+58" + form.customerPhone.replace(/^0+/, ""))
-                      : ""
-                  }
-                  onChange={onCustomerPhoneChange}
-                  disabled={disableEdicion}
-                  InputProps={{ sx: { fontSize: "1rem", py: 0.5 } }}
-                  sx={{ mt: { xs: 0.75, sm: 1.25 } }}
-                  placeholder="+58-424-xxxxxxx"
-                  helperText={
-                    form.customerPhone
-                      ? (/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
-                        ? (isCompactMobile ? "" : "Formato: +58-424-xxxxxxx")
-                        : "Debe ser +58 seguido de 10 dígitos (ej: +584246065449)")
-                      : ""
-                  }
-                  error={
-                    form.customerPhone
-                      ? !/^\+58\d{10}$/.test(form.customerPhone.replace(/[-\s]/g, ""))
-                      : false
-                  }
+                  compact={isCompactMobile}
+                  onNombreChange={(value, meta) => {
+                    if (typeof onClienteInputChange === 'function') {
+                      onClienteInputChange(meta?.event || null, value, meta?.reason || 'input');
+                    } else if (typeof onChange === 'function') {
+                      onChange({ target: { name: 'customerName', value } });
+                    }
+                  }}
+                  onTelefonoChange={(value, meta) => {
+                    if (typeof onCustomerPhoneChange === 'function') {
+                      onCustomerPhoneChange({ target: { value } }, meta?.reason);
+                    } else if (typeof onChange === 'function') {
+                      onChange({ target: { name: 'customerPhone', value } });
+                    }
+                  }}
+                  onClienteSelect={(cliente, meta) => {
+                    if (typeof onClienteChange === 'function') {
+                      onClienteChange(meta?.event || null, cliente);
+                    } else if (typeof onChange === 'function' && cliente?.nombre) {
+                      onChange({ target: { name: 'customerName', value: cliente.nombre || '' } });
+                    }
+                    if (typeof onClienteChange !== 'function' && typeof onChange === 'function' && cliente?.telefono) {
+                      const phone = String(cliente.telefono || '');
+                      const normalized = phone.startsWith('+58') ? phone : '+58' + phone.replace(/^0+/, '');
+                      onChange({ target: { name: 'customerPhone', value: normalized } });
+                    }
+                  }}
                 />
               </>
             </CardContent>

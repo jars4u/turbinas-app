@@ -39,6 +39,7 @@ import PaymentModal from "../components/PaymentModal";
 import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/reporteDiaSnapshotFirebase";
 import ServicioEditorDialog from "../components/dashboard/ServicioEditorDialog";
 import EstadoChangeDialog from "../components/dashboard/EstadoChangeDialog";
+import { normalizeClientes } from "../lib/clientesFirebase";
 
 // Sanitiza cualquier undefined en null, recursivamente
 function sanitizeDeep(obj) {
@@ -98,21 +99,13 @@ export default function Dashboard() {
   const [clientes, setClientes] = useState([]);
   useEffect(() => {
     const unsubscribe = escucharVehiculos((data) => {
-      // Extraer clientes únicos por nombre y teléfono
-      const clientesUnicos = [];
-      const seen = new Set();
-      data.forEach((v) => {
-        const nombre = v.customerName?.trim() || "";
-        const telefono = v.customerPhone?.trim() || "";
-        if (nombre && telefono) {
-          const key = nombre + "|" + telefono;
-          if (!seen.has(key)) {
-            clientesUnicos.push({ nombre, telefono });
-            seen.add(key);
-          }
-        }
-      });
-      setClientes(clientesUnicos);
+      const clientesNormalizados = normalizeClientes(
+        data.map((vehiculo) => ({
+          nombre: vehiculo.customerName,
+          telefono: vehiculo.customerPhone,
+        }))
+      );
+      setClientes(clientesNormalizados);
     });
     return () => unsubscribe();
   }, []);
@@ -1258,17 +1251,17 @@ export default function Dashboard() {
         clientes={clientes}
         onClienteInputChange={(e, newInputValue, reason) => {
           if (reason === "input") {
-            setForm({ ...form, customerName: newInputValue });
+            setForm((prev) => ({ ...prev, customerName: newInputValue }));
             setIsEditing(true);
           }
         }}
         onClienteChange={(e, value) => {
           if (value && value.nombre) {
-            setForm({
-              ...form,
+            setForm((prev) => ({
+              ...prev,
               customerName: value.nombre,
               customerPhone: value.telefono,
-            });
+            }));
             setIsEditing(true);
           }
         }}
@@ -1280,7 +1273,7 @@ export default function Dashboard() {
           value = value.replace(/^\+58/, "+58");
           const soloNumeros = value.slice(3).replace(/[^\d]/g, "");
           value = "+58" + soloNumeros;
-          setForm({ ...form, customerPhone: value });
+          setForm((prev) => ({ ...prev, customerPhone: value }));
           setIsEditing(true);
         }}
         isEditing={isEditing}
