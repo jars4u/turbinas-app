@@ -36,6 +36,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import ServicioTimeline from "../components/ServicioTimeline";
 import HistoryIcon from "@mui/icons-material/History";
+import WhatsAppEnvioModal from "../components/WhatsAppEnvioModal";
 import { obtenerIngresos } from "../lib/ingresosFirebase";
 
 function ServicioHistorialModal({ open, onClose, servicio }) {
@@ -120,6 +121,8 @@ export default function HistorialVehiculos() {
   const [openHistorial, setOpenHistorial] = React.useState(false);
   const [servicioSeleccionado, setServicioSeleccionado] = React.useState(null);
   const [openColumnModal, setOpenColumnModal] = React.useState(false);
+  const [whatsOpen, setWhatsOpen] = React.useState(false);
+  const [selectedPhone, setSelectedPhone] = React.useState("");
   const [pageMobile, setPageMobile] = React.useState(0);
   const [rowsPerPageMobile, setRowsPerPageMobile] = React.useState(20);
   const [pageDesktop, setPageDesktop] = React.useState(0);
@@ -1016,7 +1019,15 @@ export default function HistorialVehiculos() {
                                 sx={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'text.secondary', lineHeight: 1.2 }}
                               >
                                 <span style={{ fontWeight: 600 }}>{v.customerName || '-'}</span>
-                                {v.customerPhone ? <span style={{ color: '#757575' }}>{` · ${v.customerPhone}`}</span> : null}
+                                {v.customerPhone ? (
+                                  <span
+                                    style={{ color: '#1976d2', cursor: 'pointer' }}
+                                    onClick={(e) => { e.stopPropagation(); setSelectedPhone(v.customerPhone); setWhatsOpen(true); }}
+                                    aria-label="Enviar WhatsApp"
+                                  >
+                                    {` · ${v.customerPhone}`}
+                                  </span>
+                                ) : null}
                               </Typography>
                               {(v.factura && v.factura !== '-') || v.montoEfectivoUSD || v.montoZelleUSD || v.montoBinanceUSD || v.montoBs ? (
                                 <Typography
@@ -1456,7 +1467,15 @@ export default function HistorialVehiculos() {
                               textOverflow: "ellipsis",
                             }}
                           >
-                            {v.customerPhone || "-"}
+                            {v.customerPhone ? (
+                              <span
+                                style={{ color: '#1976d2', cursor: 'pointer' }}
+                                onClick={(e) => { e.stopPropagation(); setSelectedPhone(v.customerPhone); setWhatsOpen(true); }}
+                                aria-label="Enviar WhatsApp"
+                              >
+                                {v.customerPhone}
+                              </span>
+                            ) : "-"}
                           </TableCell>
                         )}
                         {columnasVisibles.precio && (
@@ -1825,6 +1844,11 @@ export default function HistorialVehiculos() {
         open={openHistorial}
         onClose={() => setOpenHistorial(false)}
         servicio={servicioSeleccionado}
+      />
+      <WhatsAppEnvioModal
+        open={whatsOpen}
+        onClose={() => setWhatsOpen(false)}
+        initialPhone={selectedPhone}
       />
     </Layout>
   );

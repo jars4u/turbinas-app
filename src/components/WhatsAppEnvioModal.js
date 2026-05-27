@@ -3,7 +3,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, M
 import { obtenerClientes } from "../lib/clientesFirebase";
 import { obtenerPlantillas } from "../lib/plantillasFirebase";
 
-export default function WhatsAppEnvioModal({ open, onClose, plantillaDefault }) {
+export default function WhatsAppEnvioModal({ open, onClose, plantillaDefault, initialPhone }) {
     const [clientes, setClientes] = useState([]);
     const [searchCliente, setSearchCliente] = useState("");
     const [anchorEl, setAnchorEl] = useState(null);
@@ -19,7 +19,21 @@ export default function WhatsAppEnvioModal({ open, onClose, plantillaDefault }) 
             setLoading(true);
             const clientesData = await obtenerClientes();
             const plantillasData = await obtenerPlantillas();
-            setClientes(clientesData);
+            // Si se proporcionó un número inicial, intentar preseleccionar el cliente
+            const normalize = (s) => (s || "").toString().replace(/[^\d]/g, "");
+            const initialNorm = normalize(initialPhone);
+            let clientesFinal = clientesData || [];
+            if (initialNorm) {
+                const match = (clientesData || []).find(c => normalize(c.telefono) === initialNorm || (normalize(c.telefono).endsWith(initialNorm) && initialNorm.length >= 8));
+                if (match) {
+                    // si hay match, lo dejaremos y setearemos clienteId luego
+                } else {
+                    // crear cliente temporal para mostrar el teléfono y permitir envío
+                    const temp = { id: '__external_phone__', nombre: initialPhone || 'Cliente', telefono: initialPhone };
+                    clientesFinal = [temp, ...(clientesData || [])];
+                }
+            }
+            setClientes(clientesFinal);
             setPlantillas(plantillasData);
             setLoading(false);
             // Selección por defecto
@@ -30,9 +44,15 @@ export default function WhatsAppEnvioModal({ open, onClose, plantillaDefault }) 
                 setPlantillaId(plantillasData[0].id);
                 setMensaje(plantillasData[0].mensaje);
             }
+            // Si hay initialPhone, preseleccionar cliente correspondiente (incluye cliente temporal)
+            if (initialNorm) {
+                const normalize2 = (s) => (s || "").toString().replace(/[^\d]/g, "");
+                const found = (clientesFinal || []).find(c => normalize2(c.telefono) === initialNorm || (normalize2(c.telefono).endsWith(initialNorm) && initialNorm.length >= 8));
+                if (found) setClienteId(found.id);
+            }
         }
         if (open) fetchData();
-    }, [open, plantillaDefault, setPlantillaId, setMensaje]);
+    }, [open, plantillaDefault, setPlantillaId, setMensaje, initialPhone]);
 
     useEffect(() => {
         // Actualiza el mensaje al cambiar plantilla
