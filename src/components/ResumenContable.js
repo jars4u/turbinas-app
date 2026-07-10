@@ -408,7 +408,7 @@ export default function ResumenContable({ tasaBCV }) {
                 return sum;
               }, 0);
             }, 0);
-            const efectivoNetoResumenUSD = efectivoIngresosUSD - gastosSemanaUSD;
+              const efectivoNetoResumenUSD = efectivoIngresosUSD;
             try {
               const pagosEfectivo = [];
               ingresosOrdenados.forEach((i) => {
