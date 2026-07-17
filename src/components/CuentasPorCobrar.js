@@ -163,7 +163,7 @@ export default function CuentasPorCobrar() {
       <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
         Cuentas por Cobrar
       </Typography>
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
         <Button variant="contained" color="primary" onClick={() => setRegisterDialogOpen(true)}>Registrar cuenta</Button>
       </Box>
       {/* Tabla escritorio */}
@@ -229,8 +229,11 @@ export default function CuentasPorCobrar() {
                           startIcon={<PaidIcon />}
                           sx={{ ml: 1 }}
                           onClick={() => {
+                            // Se preserva la cuenta completa (cliente, teléfono, vehiculoId, fechas)
+                            // y solo se normalizan los campos de visualización, para no perder
+                            // datos al momento de cobrar.
                             const vServ = normalizeCuenta(cuenta);
-                            setCuentaServicio({ ...vServ, id: cuenta.id });
+                            setCuentaServicio({ ...cuenta, ...vServ, id: cuenta.id });
                             setPaymentModalOpen(true);
                           }}
                         >
@@ -315,8 +318,10 @@ export default function CuentasPorCobrar() {
                         size="small"
                         startIcon={<PaidIcon />}
                         onClick={() => {
+                          // Igual que en la vista de escritorio: no descartar datos del cliente
+                          // ni el vínculo con el servicio original.
                           const vServ = normalizeCuenta(cuenta);
-                          setCuentaServicio({ ...vServ, id: cuenta.id });
+                          setCuentaServicio({ ...cuenta, ...vServ, id: cuenta.id });
                           setPaymentModalOpen(true);
                         }}
                       >
@@ -401,20 +406,16 @@ export default function CuentasPorCobrar() {
         }}
         paymentUSDEnabled={false}
         onRegisterSave={async () => {
-          const { db } = await import('../firebase');
-          const { addDoc, collection } = await import('firebase/firestore');
-          await addDoc(collection(db, 'cuentasPorCobrar'), {
-            modalidad: 'servicio',
-            vehiculo: (registerForm.vehiculo || '').toUpperCase(),
-            placa: (registerForm.placa || '').toUpperCase(),
-            servicio: (registerForm.servicio || '').toUpperCase(),
-            precio: parseFloat(registerForm.precio) || 0,
-            precioBs: parseFloat(registerForm.precioBs) || 0,
-            observaciones: registerForm.observaciones || '',
-            customerName: (registerForm.customerName || '').toUpperCase(),
-            customerPhone: registerForm.customerPhone || '',
-            cliente: (registerForm.customerName || '').toUpperCase(),
-            fechaRegistro: Date.now()
+          const { crearCuentaPorCobrar } = await import('../lib/cuentasPorCobrarFirebase');
+          await crearCuentaPorCobrar({
+            vehiculo: registerForm.vehiculo,
+            placa: registerForm.placa,
+            servicio: registerForm.servicio,
+            precio: registerForm.precio,
+            precioBs: registerForm.precioBs,
+            observaciones: registerForm.observaciones,
+            customerName: registerForm.customerName,
+            customerPhone: registerForm.customerPhone,
           });
           setRegisterDialogOpen(false);
           setRegisterForm({ vehiculo: '', placa: '', servicio: '', observaciones: '', precio: '', precioBs: '', customerName: '', customerPhone: '+58' });
@@ -434,29 +435,8 @@ export default function CuentasPorCobrar() {
         form={cuentaServicio || {}}
         onRegister={async (facturaData) => {
           if (!cuentaServicio) return;
-          const { db } = await import('../firebase');
-          const { addDoc, collection, doc, deleteDoc } = await import('firebase/firestore');
-          // Registrar ingreso como servicio, incluyendo datos de factura y formas de pago
-          const hoy = new Date();
-          const d = String(hoy.getDate()).padStart(2, '0');
-          const m = String(hoy.getMonth() + 1).padStart(2, '0');
-          const y = hoy.getFullYear();
-          await addDoc(collection(db, 'ingresosMovimientos'), {
-            tipo: 'servicio',
-            vehiculoId: cuentaServicio.vehiculoId || null,
-            vehiculo: (cuentaServicio.vehiculo || '').toUpperCase(),
-            servicio: (cuentaServicio.servicio || '').toUpperCase(),
-            precio: parseFloat(cuentaServicio.precio) || 0,
-            precioBs: parseFloat(cuentaServicio.precioBs) || 0,
-            observaciones: cuentaServicio.observaciones || '',
-            fecha: `${d}/${m}/${y}`,
-            factura: facturaData.numeroFactura || '',
-            customerName: (cuentaServicio.customerName || cuentaServicio.cliente || '').toUpperCase(),
-            customerPhone: cuentaServicio.customerPhone || '',
-            formasPago: facturaData.formasPago || [],
-            salidaInventario: facturaData.formasPago?.some(fp => fp.salidaInventario) || false
-          });
-          await deleteDoc(doc(db, 'cuentasPorCobrar', cuentaServicio.id));
+          const { cobrarCuentaPorCobrar } = await import('../lib/cuentasPorCobrarFirebase');
+          await cobrarCuentaPorCobrar(cuentaServicio, facturaData);
           setPaymentModalOpen(false);
           setCuentaServicio(null);
           setSnackbarMsg('Cobro de servicio registrado exitosamente');

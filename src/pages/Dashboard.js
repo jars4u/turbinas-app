@@ -1304,26 +1304,21 @@ export default function Dashboard() {
           }
         }}
         onPorCobrar={async () => {
-          const { db } = await import('../firebase');
-          const { addDoc, collection } = await import('firebase/firestore');
-          const nuevaCuenta = {
-            modalidad: 'servicio',
+          const { crearCuentaPorCobrar } = await import('../lib/cuentasPorCobrarFirebase');
+          await crearCuentaPorCobrar({
             vehiculoId: editId || null,
-            vehiculo: form.vehiculo || '',
-            placa: form.placa || '',
-            servicio: form.servicio || '',
-            precio: parseFloat(form.precio) || 0,
-            precioBs: parseFloat(form.precioBs) || 0,
-            observaciones: form.observaciones || '',
-            customerName: form.customerName || '',
-            customerPhone: form.customerPhone || '',
-            status: 'por_cobrar',
-            fechaRegistro: Date.now(),
+            vehiculo: form.vehiculo,
+            placa: form.placa,
+            servicio: form.servicio,
+            precio: form.precio,
+            precioBs: form.precioBs,
+            observaciones: form.observaciones,
+            customerName: form.customerName,
+            customerPhone: form.customerPhone,
             arrivalTime: editId
               ? vehiculos.find((v) => v.id === editId)?.arrivalTime || Date.now()
               : Date.now(),
-          };
-          await addDoc(collection(db, 'cuentasPorCobrar'), nuevaCuenta);
+          });
           try {
             if (editId) {
               const vehiculoActual = vehiculos.find(v => v.id === editId);

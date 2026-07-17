@@ -11,6 +11,7 @@ import {
   Fab,
   Tooltip,
   Chip,
+  Badge,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import StickyNote2Icon from "@mui/icons-material/StickyNote2";
@@ -114,15 +115,24 @@ function NotasFlotantes() {
       {/* FAB flotante */}
       <Box sx={{ position: "fixed", right: 16, bottom: 45, zIndex: 1300 }}>
         <Tooltip title={open ? "Cerrar notas" : "Notas"} placement="left">
-          <Fab
-            size="small"
-            color="primary"
-            onClick={toggleOpen}
-            sx={{ boxShadow: 6 }}
-            aria-label="notas"
+          <Badge
+            badgeContent={notes.length}
+            color="error"
+            max={9}
+            invisible={open || notes.length === 0}
+            overlap="circular"
+            sx={{ "& .MuiBadge-badge": { zIndex: 1301 } }}
           >
-            {open ? <CloseIcon /> : <StickyNote2Icon />}
-          </Fab>
+            <Fab
+              size="small"
+              color="primary"
+              onClick={toggleOpen}
+              sx={{ boxShadow: 6 }}
+              aria-label="notas"
+            >
+              {open ? <CloseIcon /> : <StickyNote2Icon />}
+            </Fab>
+          </Badge>
         </Tooltip>
       </Box>
 

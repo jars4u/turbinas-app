@@ -477,6 +477,13 @@ export default function HistorialVehiculos() {
           const serv = (ing.servicio || '').toString().trim();
           if (veh || serv) descripcion = `${veh}${veh && serv ? ' - ' : ''}${serv}`;
         }
+        // El nombre del servicio real vive en 'servicio'; solo si falta (ingresos
+        // antiguos que solo guardaban 'descripcion') se deriva de ahí. Antes se
+        // mostraba 'observaciones' (notas libres) en esta columna por error.
+        let servicioDisplay = (ing.servicio || '').toString().trim();
+        if (!servicioDisplay && typeof ing.descripcion === 'string' && ing.descripcion.includes(' - ')) {
+          servicioDisplay = ing.descripcion.split(' - ').slice(1).join(' - ').trim();
+        }
         return {
           id: ing.id,
           factura: ing.factura || "-",
@@ -485,7 +492,7 @@ export default function HistorialVehiculos() {
           customerName: ing.customerName || "-",
           customerPhone: ing.customerPhone || "-",
           vehiculo: (ing.vehiculo || '').toString().trim() || "-",
-          servicio: (ing.observaciones || '').toString().trim() || "-",
+          servicio: servicioDisplay || "-",
           formaPago: formasPago.length ? formasPago.join(", ") : "-",
           referencia: referencias.length ? referencias.join(", ") : "-",
           
@@ -505,8 +512,10 @@ export default function HistorialVehiculos() {
         id: c.id,
         vehiculo: c.vehiculo || '-',
         servicio: c.servicio || '-',
-        customerName: c.observaciones?.split(' - ')[0] || '-',
-        customerPhone: c.observaciones?.split(' - ')[1] || '-',
+        // Usar los campos reales de cliente; antes se derivaban (incorrectamente)
+        // partiendo el texto libre de 'observaciones'.
+        customerName: c.customerName || c.cliente || '-',
+        customerPhone: c.customerPhone || '-',
         precio: c.precio || '-',
         factura: '-',
         formaPago: '-',
