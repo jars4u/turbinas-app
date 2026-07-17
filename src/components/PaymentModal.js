@@ -16,9 +16,7 @@ import {
   FormControl,
   FormHelperText,
   Divider,
-  useMediaQuery
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import ReceiptOutlinedIcon from '@mui/icons-material/ReceiptOutlined';
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -32,8 +30,6 @@ const PAYMENT_METHOD_OPTIONS = [
 
 
 export default function PaymentModal({ open, onClose, form, onRegister }) {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [salidaInventario, setSalidaInventario] = useState(form.salidaInventario || false);
   const [loading, setLoading] = useState(false);
   const [facturaForm, setFacturaForm] = useState({
@@ -106,7 +102,6 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
       }}
       fullWidth
       maxWidth="sm"
-      fullScreen={fullScreen}
       scroll="paper"
     >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1.5 }}>
@@ -117,7 +112,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
         sx={{
           pt: 1.5,
           px: { xs: 2, sm: 3 },
-          maxHeight: { xs: 'calc(100dvh - 140px)', sm: 'unset' },
+          maxHeight: { xs: 'calc(80vh - 130px)', sm: 'unset' },
           overflowY: { xs: 'auto', sm: 'visible' }
         }}
       >

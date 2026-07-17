@@ -11,15 +11,14 @@ import {
   Chip,
   Divider,
   TextField,
-  Select,
-  MenuItem,
   Snackbar,
   Alert,
   useMediaQuery,
   Container,
-  Grid,
   Skeleton,
   Fade,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
 import VehicleCard from "../components/VehicleCard";
 import Layout from "../components/Layout";
@@ -32,8 +31,12 @@ import {
   eliminarVehiculo,
 } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
-import SortIcon from "@mui/icons-material/Sort";
+import { formatTiempoRelativo, obtenerColorAging } from "../lib/dateUtils";
 import AddIcon from "@mui/icons-material/Add";
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
 import ReporteDia from "../components/ReporteDia";
 import PaymentModal from "../components/PaymentModal";
 import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/reporteDiaSnapshotFirebase";
@@ -143,6 +146,13 @@ export default function Dashboard() {
   const [ordenEstado, setOrdenEstado] = useState("");
   const [ordenAsc, setOrdenAsc] = useState(true);
   const [busqueda, setBusqueda] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  // Actualizar el tiempo transcurrido cada minuto (para el indicador de aging en móvil)
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
   // Cambiar status y guardar en la base de datos
   // const navigate = useNavigate(); // no usado directamente tras Layout
   // usuario.email está disponible desde el contexto
@@ -599,46 +609,104 @@ export default function Dashboard() {
   const estadoOcultar = estadosServicio.find((e) => e.dejarDeMostrar);
   const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
 
+  // Lista única de servicios filtrados (estado + búsqueda) y ordenados, reutilizada
+  // por el contador del título, la vista móvil y la vista desktop.
+  const serviciosFiltrados = [...vehiculos]
+    .filter(
+      (v) =>
+        (v.status || v.estado) !== nombreOcultar &&
+        (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
+        coincideBusqueda(v, busqueda)
+    )
+    .sort((a, b) => {
+      if (!ordenEstado)
+        return ordenAsc
+          ? a.arrivalTime - b.arrivalTime
+          : b.arrivalTime - a.arrivalTime;
+      if (ordenAsc)
+        return (
+          (a.status || a.estado).localeCompare(b.status || b.estado) ||
+          a.arrivalTime - b.arrivalTime
+        );
+      return (
+        (b.status || b.estado).localeCompare(a.status || a.estado) ||
+        b.arrivalTime - a.arrivalTime
+      );
+    });
+
+  const hayFiltrosActivos = Boolean(ordenEstado) || Boolean(busqueda);
+
+  const EstadoVacio = () => (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        py: 6,
+        px: 2,
+        color: "text.secondary",
+      }}
+    >
+      <InboxOutlinedIcon sx={{ fontSize: 40, mb: 1, opacity: 0.5 }} />
+      <Typography variant="body2" sx={{ mb: hayFiltrosActivos ? 1.5 : 0 }}>
+        {hayFiltrosActivos
+          ? "No hay servicios que coincidan con este filtro"
+          : "No hay turbinas en servicio en este momento"}
+      </Typography>
+      {hayFiltrosActivos && (
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => {
+            setOrdenEstado("");
+            setBusqueda("");
+          }}
+        >
+          Quitar filtros
+        </Button>
+      )}
+    </Box>
+  );
+
   return (
     <Layout searchValue={busqueda} onSearchChange={setBusqueda}>
       <Container
         maxWidth="xl"
         sx={{
-          py: 4,
+          py: { xs: 2, sm: 4 },
           maxWidth: "100%",
           width: "100%",
           px: { xs: 2, sm: 4 },
         }}
       >
-      <Divider sx={{ mb: 2 }} />
+      <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
       <Box
         sx={{
           display: "flex",
           flexDirection: { xs: "column", sm: "row" },
-          alignItems: { xs: "center", sm: "center" },
-          justifyContent: { xs: "center", sm: "space-between" },
-          mb: 2,
-          gap: { xs: 1.5, sm: 0 },
+          alignItems: { xs: "stretch", sm: "center" },
+          justifyContent: "space-between",
+          mb: { xs: 1.5, sm: 2 },
+          gap: { xs: 1.5, sm: 2 },
         }}
       >
         <Box
           sx={{
-            width: { xs: "100%", sm: "auto" },
             display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
+            alignItems: "baseline",
             justifyContent: { xs: "center", sm: "flex-start" },
+            gap: 1,
           }}
         >
           <Typography
             variant="h5"
-            gutterBottom
             sx={{
               m: 0,
               fontSize: { xs: "1.25rem", sm: "2rem" },
               fontWeight: 600,
               textAlign: { xs: "center", sm: "left" },
-              width: { xs: "auto", sm: "auto" },
             }}
           >
             Turbinas en servicio
@@ -648,61 +716,49 @@ export default function Dashboard() {
             sx={{
               fontWeight: 400,
               fontSize: { xs: "1rem", sm: "1.25rem" },
-              marginLeft: 1,
-              textAlign: "center",
-              minWidth: 40,
+              color: "text.secondary",
             }}
           >
             (
-            {
-              [...vehiculos].filter(
-                (v) =>
-                  (v.status || v.estado) !== nombreOcultar &&
-                  (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
-                  coincideBusqueda(v, busqueda)
-              ).length
-            }
+            {serviciosFiltrados.length}
             )
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'center', sm: 'flex-end' } }}>
-          {/* <Button
-            variant="outlined"
-            color="warning"
-            size="small"
-            sx={{
-              minWidth: 140,
-              opacity: hasInicioHoy ? 0.6 : 1,
-              width: { xs: '100%', sm: 'auto' },
-              display: { xs: 'none', sm: 'inline-flex' }
-            }}
-            onClick={abrirInicioManual}
-            title={hasInicioHoy ? "El inicio de hoy ya está fijado" : "Definir manualmente el inicio del día"}
-            disabled={hasInicioHoy}
-          >
-            Fijar inicio hoy
-          </Button> */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            alignItems: "center",
+            justifyContent: { xs: "center", sm: "flex-end" },
+          }}
+        >
+          <Tooltip title="Reporte semanal" arrow>
+            <IconButton
+              size="small"
+              onClick={() => setOpenReporteDia(true)}
+              aria-label="Ver reporte semanal"
+              sx={{
+                color: "#616161",
+                border: "1px solid #bdbdbd",
+                borderRadius: 1.5,
+              }}
+            >
+              <AssessmentOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            sx={{ borderColor: '#bdbdbd', color: '#616161', maxWidth: { xs: 320, sm: "none" } , width: { xs: '100%', sm: 'auto' } }}
-            onClick={() => setOpenReporteDia(true)}
-          >
-            Reporte semanal
-          </Button>
-          <Button
-            variant="outlined"
+            variant="contained"
             color="primary"
             size="small"
             startIcon={<AddIcon />}
             onClick={() => handleOpen()}
+            disabled={isObserver}
             sx={{
+              boxShadow: "none",
               width: { xs: "100%", sm: "auto" },
               maxWidth: { xs: 320, sm: "none" },
             }}
-            disabled={isObserver}
           >
             Registrar servicio
           </Button>
@@ -749,104 +805,83 @@ export default function Dashboard() {
         </DialogActions>
       </Dialog>
       </Box>
-      {/* Resumen de trabajos por estado sincronizado */}
+      {/* Barra unificada: filtro por estado (chips) + orden */}
       <Box
         sx={{
           display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: { xs: "center", sm: "center" },
-          justifyContent: { xs: "center", sm: "space-between" },
+          alignItems: "center",
+          gap: 1,
           mb: 2,
-          gap: { xs: 2, sm: 0 },
+          overflowX: "auto",
+          overflowY: "hidden",
+          pb: 0.5,
+          "&::-webkit-scrollbar": { height: 4 },
         }}
       >
-        <Box
-          sx={{
-            display: { xs: "none", sm: "flex" },
-            flexDirection: { xs: "row", sm: "row" },
-            flexWrap: { xs: "wrap", sm: "nowrap" },
-            gap: { xs: 1, sm: 4 },
-            alignItems: { xs: "center", sm: "center" },
-            width: { xs: "100%", sm: "auto" },
-            justifyContent: { xs: "center", sm: "flex-start" },
-          }}
-        >
-          {estadosServicio
-            .filter((estado) => estado.nombre !== "entregado")
-            .map((estado) => (
-              <Typography
+        <Chip
+          label={`Todos (${
+            vehiculosRaw.filter(
+              (v) =>
+                (v.status || v.estado) !== nombreOcultar &&
+                v.status !== "por_cobrar" &&
+                coincideBusqueda(v, busqueda)
+            ).length
+          })`}
+          size="small"
+          onClick={() => setOrdenEstado("")}
+          color={!ordenEstado ? "primary" : "default"}
+          variant={!ordenEstado ? "filled" : "outlined"}
+          sx={{ flexShrink: 0 }}
+        />
+        {estadosServicio
+          .filter((estado) => estado.nombre !== "entregado")
+          .map((estado) => {
+            const validColors = [
+              "default",
+              "primary",
+              "secondary",
+              "error",
+              "info",
+              "success",
+              "warning",
+            ];
+            const chipColor = validColors.includes(estado.color)
+              ? estado.color
+              : "default";
+            const count = vehiculosRaw.filter(
+              (v) =>
+                (v.status || v.estado) === estado.nombre &&
+                v.status !== "por_cobrar" &&
+                coincideBusqueda(v, busqueda)
+            ).length;
+            const active = ordenEstado === estado.nombre;
+            return (
+              <Chip
                 key={estado.nombre}
-                variant="body2"
-                fontWeight={600}
-                sx={{
-                  textAlign: { xs: "center", sm: "left" },
-                  width: { xs: "auto", sm: "auto" },
-                  fontSize: { xs: "0.95rem", sm: "1.15rem" },
-                  px: { xs: 0.5, sm: 0 },
-                  color:
-                    estado.color === "grey"
-                      ? "#757575"
-                      : (theme) =>
-                        theme.palette[estado.color]?.main ||
-                        theme.palette.text.primary,
-                }}
-              >
-                {estado.label}:{" "}
-                {
-                  vehiculos.filter(
-                    (v) => (v.status || v.estado) === estado.nombre
-                  ).length
-                }
-              </Typography>
-            ))}
-        </Box>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 1,
-            width: { xs: "100%", sm: "auto" },
-            mt: { xs: 1, sm: 0 },
-          }}
-        >
-          <SortIcon sx={{ color: "text.secondary", fontSize: 20 }} />
-          <Select
+                label={`${estado.label} (${count})`}
+                size="small"
+                onClick={() => setOrdenEstado(active ? "" : estado.nombre)}
+                color={active ? chipColor : "default"}
+                variant={active ? "filled" : "outlined"}
+                sx={{ flexShrink: 0 }}
+              />
+            );
+          })}
+        <Box sx={{ flex: 1, minWidth: 8 }} />
+        <Tooltip title={ordenAsc ? "Más antiguos primero" : "Más recientes primero"} arrow>
+          <IconButton
             size="small"
-            value={ordenEstado}
-            onChange={(e) => setOrdenEstado(e.target.value)}
-            displayEmpty
-            sx={{
-              minWidth: 120,
-              color: "text.secondary",
-              width: { xs: "100%", sm: "auto" },
-            }}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            {estadosServicio.map((estado) => (
-              <MenuItem key={estado.nombre} value={estado.nombre}>
-                {estado.label}
-              </MenuItem>
-            ))}
-          </Select>
-          <Button
-            size="small"
-            variant="outlined"
             onClick={() => setOrdenAsc((prev) => !prev)}
-            sx={{
-              minWidth: 36,
-              px: 1,
-              color: "text.secondary",
-              borderColor: "#b4b4b4ff",
-              boxShadow: "none",
-              width: { xs: "100%", sm: "auto" },
-              mt: { xs: 1, sm: 0 },
-              "&:hover": { bgcolor: "#e0e0e0" },
-            }}
+            aria-label="Cambiar orden"
+            sx={{ color: "text.secondary", flexShrink: 0 }}
           >
-            {ordenAsc ? "Asc" : "Desc"}
-          </Button>
-        </Box>
+            {ordenAsc ? (
+              <ArrowUpwardIcon fontSize="small" />
+            ) : (
+              <ArrowDownwardIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
       </Box>
       {loadingVehiculos || loadingEstados ? (
         isXs ? (
@@ -888,16 +923,20 @@ export default function Dashboard() {
             ))}
           </Box>
         ) : (
-          <Grid container spacing={3} columns={6} sx={{ mt: 1 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+              gap: 3,
+              mt: 1,
+            }}
+          >
             {[...Array(12)].map((_, idx) => (
-              <Grid key={idx} sx={{ mb: 3 }}>
+              <Box key={idx}>
                 <Box
                   sx={{
-                    width: 210,
-                    minWidth: 210,
-                    maxWidth: 210,
+                    width: "100%",
                     minHeight: 180,
-                    mx: 1.5,
                     display: "flex",
                     flexDirection: "column",
                     p: 0.8,
@@ -931,9 +970,9 @@ export default function Dashboard() {
                   {/* Observaciones */}
                   <Skeleton variant="text" width={150} height={14} />
                 </Box>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         )
       ) : (
         <>
@@ -944,31 +983,10 @@ export default function Dashboard() {
               width: "100%",
             }}
           >
-            {[...vehiculos]
-              .filter(
-                (v) =>
-                  (v.status || v.estado) !== nombreOcultar &&
-                  (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
-                  coincideBusqueda(v, busqueda)
-              )
-              .sort((a, b) => {
-                if (!ordenEstado)
-                  return ordenAsc
-                    ? a.arrivalTime - b.arrivalTime
-                    : b.arrivalTime - a.arrivalTime;
-                if (ordenAsc)
-                  return (
-                    (a.status || a.estado).localeCompare(
-                      b.status || b.estado
-                    ) || a.arrivalTime - b.arrivalTime
-                  );
-                return (
-                  (b.status || b.estado).localeCompare(
-                    a.status || a.estado
-                  ) || b.arrivalTime - a.arrivalTime
-                );
-              })
-              .map((v) => {
+            {serviciosFiltrados.length === 0 ? (
+              <EstadoVacio />
+            ) : (
+              serviciosFiltrados.map((v) => {
                 const estadoObj = estadosServicio.find(
                   (e) => e.nombre === (v.status || v.estado)
                 );
@@ -998,6 +1016,9 @@ export default function Dashboard() {
                   hour: '2-digit',
                   minute: '2-digit'
                 });
+                const elapsedMinutes = Math.max(0, Math.floor((now - dt.getTime()) / 60000));
+                const agingColor = obtenerColorAging(elapsedMinutes);
+                const fechaAbsoluta = `${fechaStr} · ${horaStr}`;
                 return (
                   <Box
                     key={v.id}
@@ -1041,12 +1062,14 @@ export default function Dashboard() {
                         )}
                       </Box>
                       <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                          {fechaStr}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {horaStr}
-                        </Typography>
+                        <Tooltip title={fechaAbsoluta} arrow placement="top-end">
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end', cursor: 'default' }}>
+                            <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: agingColor, flexShrink: 0 }} />
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                              {formatTiempoRelativo(elapsedMinutes)}
+                            </Typography>
+                          </Box>
+                        </Tooltip>
                       </Box>
                     </Box>
                     {v.observaciones && (
@@ -1056,7 +1079,8 @@ export default function Dashboard() {
                     )}
                   </Box>
                 );
-              })}
+              })
+            )}
             {/* Skeleton de creación mientras se registra un nuevo servicio (al final, con fade) */}
             <Fade in={creatingSkeleton && isRegistering} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
               <Box
@@ -1093,57 +1117,33 @@ export default function Dashboard() {
             </Fade>
           </Box>
           {/* Vista cards en desktop/tablet */}
-          <Grid
-            container
-            spacing={3}
-            columns={6}
-            sx={{ display: { xs: "none", sm: "flex" } }}
-            mt={1}
+          <Box
+            sx={{
+              display: { xs: "none", sm: "grid" },
+              gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+              gap: 3,
+              mt: 1,
+            }}
           >
             {(() => {
-              // Calcular el alto máximo de los VehicleCard
-              const heights = [...vehiculos]
-                .filter(
-                  (v) =>
-                    (v.status || v.estado) !== nombreOcultar &&
-                    (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
-                    coincideBusqueda(v, busqueda)
-                )
-                .map((v) => {
-                  // Estimar el alto por cantidad de líneas de texto
-                  let base = 180;
-                  if (v.observaciones) base += 18;
-                  if (v.servicio) base += 18;
-                  if (v.vehiculo) base += 18;
-                  return base;
-                });
+              if (serviciosFiltrados.length === 0) {
+                return (
+                  <Box sx={{ gridColumn: "1 / -1" }}>
+                    <EstadoVacio />
+                  </Box>
+                );
+              }
+              // Estimar el alto máximo de los VehicleCard por cantidad de líneas de texto
+              const heights = serviciosFiltrados.map((v) => {
+                let base = 180;
+                if (v.observaciones) base += 18;
+                if (v.servicio) base += 18;
+                if (v.vehiculo) base += 18;
+                return base;
+              });
               const maxHeight = Math.max(...heights, 180);
-              return [...vehiculos]
-                .filter(
-                  (v) =>
-                    (v.status || v.estado) !== nombreOcultar &&
-                    (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
-                    coincideBusqueda(v, busqueda)
-                )
-                .sort((a, b) => {
-                  if (!ordenEstado)
-                    return ordenAsc
-                      ? a.arrivalTime - b.arrivalTime
-                      : b.arrivalTime - a.arrivalTime;
-                  if (ordenAsc)
-                    return (
-                      (a.status || a.estado).localeCompare(
-                        b.status || b.estado
-                      ) || a.arrivalTime - b.arrivalTime
-                    );
-                  return (
-                    (b.status || b.estado).localeCompare(
-                      a.status || a.estado
-                    ) || b.arrivalTime - a.arrivalTime
-                  );
-                })
-                .map((v) => (
-                  <Grid key={v.id} sx={{ mb: 3 }}>
+              return serviciosFiltrados.map((v) => (
+                  <Box key={v.id}>
                     <VehicleCard
                       vehiculo={v}
                       onEdit={() => handleOpen(v)}
@@ -1153,19 +1153,16 @@ export default function Dashboard() {
                       usuarioActivo={usuarioActivo}
                       height={maxHeight}
                     />
-                  </Grid>
+                  </Box>
                 ));
             })()}
             {/* Skeleton de creación en escritorio mientras se registra (al final, con fade) */}
             <Fade in={creatingSkeleton && isRegistering} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
-              <Grid sx={{ mb: 3 }}>
+              <Box>
                 <Box
                   sx={{
-                    width: 210,
-                    minWidth: 210,
-                    maxWidth: 210,
+                    width: "100%",
                     minHeight: 180,
-                    mx: 1.5,
                     display: "flex",
                     flexDirection: "column",
                     p: 0.8,
@@ -1196,9 +1193,9 @@ export default function Dashboard() {
                     Guardando servicio...
                   </Typography> */}
                 </Box>
-              </Grid>
+              </Box>
             </Fade>
-          </Grid>
+          </Box>
         </>
       )}
       <ServicioEditorDialog
