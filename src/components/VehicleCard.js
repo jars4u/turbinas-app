@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import { actualizarVehiculo } from "../lib/vehiculosFirebase";
+import { formatTiempoRelativo, obtenerColorAging } from "../lib/dateUtils";
 
 import {
   Card,
@@ -13,6 +14,7 @@ import {
   Box,
   Popover,
   Button,
+  Tooltip,
 } from "@mui/material";
 import Divider from '@mui/material/Divider';
 // VisibilityOutlinedIcon removed because price button is commented out
@@ -54,6 +56,18 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   const [currentStatus, setCurrentStatus] = useState(vehiculo.status || "servicio");
   const [estadosServicio, setEstadosServicio] = useState([]);
   const [popoverConfirm, setPopoverConfirm] = useState({ open: false, anchorEl: null, estado: null, newStatus: null });
+  const [now, setNow] = useState(Date.now());
+
+  // Actualizar el tiempo transcurrido cada minuto (para el indicador de aging)
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const elapsedMinutes = Math.max(0, Math.floor((now - arrivalTimeNum) / 60000));
+  // Indicador de aging: verde (<2h), ámbar (2-6h), rojo (>6h) desde el registro del servicio
+  const agingColor = obtenerColorAging(elapsedMinutes);
+  const fechaAbsoluta = `${new Date(arrivalTimeNum).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "2-digit" })} · ${new Date(arrivalTimeNum).toLocaleTimeString("es-VE", { timeZone: "America/Caracas" })}`;
 
   // defaultFacturar es un estado normal (p.ej. facturado) y debe permitir abrir el menú
   // para cambiar a otro estado si fuese necesario.
@@ -119,12 +133,10 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
     <Card
       variant="outlined"
       sx={{
-        width: 210,
-        minWidth: 210,
-        maxWidth: 210,
+        width: "100%",
+        minWidth: 0,
         minHeight: 180,
         height: height || 'auto',
-        mx: 1.5,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
@@ -215,25 +227,33 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
         </Box>
       </Popover>
       <CardContent>
-        <div
-          style={{
+        <Box
+          sx={{
             display: "flex",
             flexDirection: "row",
             alignItems: "flex-start",
             justifyContent: "space-between",
             width: "100%",
             overflow: "hidden",
-            gap: 4,
+            gap: 0.5,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", minWidth: 60 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 400, letterSpacing: 0.1, lineHeight: 1 }}>
-              {new Date(arrivalTimeNum).toLocaleDateString("es-VE", { day: "2-digit", month: "2-digit", year: "2-digit" })}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', fontWeight: 400, letterSpacing: 0.1, lineHeight: 2 }}>
-              {new Date(arrivalTimeNum).toLocaleTimeString("es-VE", { timeZone: "America/Caracas" })}
-            </Typography>
-          </div>
+          <Typography
+            variant="subtitle2"
+            title={nombreVehiculo}
+            sx={{
+              fontWeight: 700,
+              fontSize: "0.85rem",
+              lineHeight: 1.3,
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {nombreVehiculo && nombreVehiculo.toUpperCase()}
+          </Typography>
           <Chip
             label={
               estadosServicio.find(e => e.nombre === currentStatus)?.label || "Sin estado"
@@ -248,7 +268,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
               e.stopPropagation();
               handleChipClick(e);
             }}
-            sx={{ cursor: "pointer", maxWidth: 90, fontSize: '0.70rem', height: 22 }}
+            sx={{ cursor: "pointer", maxWidth: 90, fontSize: '0.70rem', height: 22, flexShrink: 0 }}
           />
           <Menu
             anchorEl={anchorEl}
@@ -278,15 +298,20 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
               </MenuItem>
             ))}
           </Menu>
-        </div>
-        {/* <Typography variant="caption" color="secondary" my={1}>
-          {`Tiempo: ${formatElapsed(currentStatus === "servicio" ? elapsed : stoppedElapsed ?? elapsed)}`}
-        </Typography> */}
+        </Box>
+        <Tooltip title={fechaAbsoluta} arrow placement="top-start">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.3, cursor: "default", width: "fit-content" }}>
+            <Box sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: agingColor, flexShrink: 0 }} />
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.68rem" }}>
+              {formatTiempoRelativo(elapsedMinutes)}
+            </Typography>
+          </Box>
+        </Tooltip>
         <Divider sx={{ my: 1 }} />
         {/* Cliente y teléfono en una sola línea, abajo antes del precio */}
         {vehiculo.customerName && vehiculo.customerPhone && (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'left', justifyContent: 'flex-start', mt: 1, mb: 0.2 }}>
-            <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap', textTransform: 'uppercase', fontWeight: 600 }}>
               {vehiculo.customerName}
             </Typography>
             <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
@@ -294,13 +319,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
             </Typography>
           </Box>
         )}
-        <Typography variant="subtitle2" fontWeight={600} color="primary" gutterBottom>
-          Datos de la turbina
-        </Typography>
-        <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
-          {nombreVehiculo && nombreVehiculo.toUpperCase()}
-        </Typography>
-        <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '1rem' }}>
+        <Typography variant="caption" display="block" sx={{ mb: 0.2, fontSize: '0.85rem', color: 'text.secondary' }}>
           {servicio}
         </Typography>
         {vehiculo.observaciones && (

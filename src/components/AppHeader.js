@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
-import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton, TextField, InputAdornment, Menu, MenuItem, ListItemIcon, ListItemText, Badge, Container } from "@mui/material";
+import { AppBar, Toolbar, Box, Chip, Avatar, Typography, Button, Divider, Tooltip, IconButton, TextField, InputAdornment, Menu, MenuItem, ListItemIcon, ListItemText, ListSubheader, Badge, Container } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HistoryIcon from "@mui/icons-material/History";
 import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
@@ -135,7 +135,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
             title="Ir al dashboard"
             aria-label="Logo"
           />
-          <Chip label="v.5.7" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
+          <Chip label="v.6.0" size="small" sx={{ fontSize: '0.72rem', height: 22, mb: 0.5 }} />
         </Box>
         <Box
           sx={{
@@ -309,23 +309,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                   </IconButton>
                 </span>
               </Tooltip>
-              <Tooltip title="Nómina" arrow>
-                <span>
-                  <IconButton
-                    color="default"
-                    size="small"
-                    sx={(theme) => ({
-                      color: isActive('/nomina') ? theme.palette.primary.main : "#757575",
-                      borderBottom: isActive('/nomina') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
-                      borderRadius: 0
-                    })}
-                    onClick={() => navigate("/nomina")}
-                    aria-label="Ir a cálculo de nómina"
-                  >
-                    <GroupIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              {/* Grupo operativo: uso diario en la operación del taller */}
               <Tooltip title="Inventario" arrow>
                 <span>
                   <IconButton
@@ -357,6 +341,25 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                     aria-label="Ir a historial"
                   >
                     <HistoryIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Divider orientation="vertical" flexItem sx={{ height: 20, alignSelf: 'center', mx: 0.5 }} />
+              {/* Grupo administración: gestión, finanzas y configuración */}
+              <Tooltip title="Nómina" arrow>
+                <span>
+                  <IconButton
+                    color="default"
+                    size="small"
+                    sx={(theme) => ({
+                      color: isActive('/nomina') ? theme.palette.primary.main : "#757575",
+                      borderBottom: isActive('/nomina') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+                      borderRadius: 0
+                    })}
+                    onClick={() => navigate("/nomina")}
+                    aria-label="Ir a cálculo de nómina"
+                  >
+                    <GroupIcon fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -430,10 +433,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
               anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
               transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
-              <MenuItem onClick={() => { handleCloseActions(); navigate('/nomina'); }}>
-                <ListItemIcon><GroupIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Nómina" />
-              </MenuItem>
+              <ListSubheader sx={{ lineHeight: '28px', fontSize: 11, fontWeight: 600, color: 'text.secondary' }}>Operativo</ListSubheader>
               <MenuItem onClick={() => { handleCloseActions(); navigate('/inventario'); }}>
                 <ListItemIcon><Inventory2OutlinedIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Inventario" />
@@ -441,6 +441,11 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
               <MenuItem onClick={() => { handleCloseActions(); navigate('/historial'); }}>
                 <ListItemIcon><HistoryIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Historial" />
+              </MenuItem>
+              <ListSubheader sx={{ lineHeight: '28px', fontSize: 11, fontWeight: 600, color: 'text.secondary' }}>Administración</ListSubheader>
+              <MenuItem onClick={() => { handleCloseActions(); navigate('/nomina'); }}>
+                <ListItemIcon><GroupIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Nómina" />
               </MenuItem>
               <MenuItem onClick={() => { handleCloseActions(); navigate('/reportes'); }}>
                 <ListItemIcon><AssessmentOutlinedIcon fontSize="small" /></ListItemIcon>

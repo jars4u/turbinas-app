@@ -265,7 +265,7 @@ export default function EgresoFacturaDialog({
   };
 
   return (
-    <Dialog open={open} onClose={handleDialogClose} fullWidth maxWidth="md" fullScreen={isMobile}>
+    <Dialog open={open} onClose={handleDialogClose} fullWidth maxWidth="md">
       <DialogTitle sx={{ pb: 0 }}>
         <Stack direction="row" alignItems="center" spacing={1}>
           <ReceiptLongIcon fontSize="small" />
