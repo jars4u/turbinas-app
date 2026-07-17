@@ -29,6 +29,17 @@ export default function Inventario({ usuarioActivo }) {
           id: doc.id,
           ...doc.data(),
         }));
+        // Mostrar siempre el movimiento más reciente primero
+        movs.sort((a, b) => {
+          const getMillis = (f) => {
+            if (!f) return 0;
+            if (f.seconds) return f.seconds * 1000;
+            if (f instanceof Date) return f.getTime();
+            const parsed = new Date(f).getTime();
+            return Number.isFinite(parsed) ? parsed : 0;
+          };
+          return getMillis(b.fecha) - getMillis(a.fecha);
+        });
         setMovimientos(movs);
       },
       (err) => {

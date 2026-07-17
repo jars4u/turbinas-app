@@ -122,7 +122,8 @@ export async function obtenerIngresos() {
         id: doc.id
       };
     })
-  .sort((a, b) => (a.fechaRaw?.getTime() || 0) - (b.fechaRaw?.getTime() || 0));
+  // Mostrar siempre el ingreso más reciente primero
+  .sort((a, b) => (b.fechaRaw?.getTime() || 0) - (a.fechaRaw?.getTime() || 0));
 }
 
 export async function eliminarIngreso(id) {

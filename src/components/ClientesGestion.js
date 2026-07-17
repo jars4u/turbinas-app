@@ -137,7 +137,7 @@ export default function ClientesGestion() {
                     setModelosLoading(true);
                     setModelosDialogOpen(true);
                     let modelos = Array.isArray(c.modelosServicios) ? [...c.modelosServicios] : [];
-                    modelos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+                    modelos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
                     setModelosCliente(modelos);
                     setModelosLoading(false);
                   }}
@@ -336,7 +336,7 @@ export default function ClientesGestion() {
                       setModelosLoading(true);
                       setModelosDialogOpen(true);
                       let modelos = Array.isArray(c.modelosServicios) ? [...c.modelosServicios] : [];
-                      modelos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+                      modelos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
                       setModelosCliente(modelos);
                       setModelosLoading(false);
                     }}>

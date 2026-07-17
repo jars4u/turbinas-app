@@ -1305,6 +1305,12 @@ export default function Dashboard() {
         }}
         onPorCobrar={async () => {
           const { crearCuentaPorCobrar } = await import('../lib/cuentasPorCobrarFirebase');
+          // La fecha del servicio (creación original) debe preservarse tal
+          // cual: no se sustituye por el momento en que se envía a cuentas
+          // por cobrar, para no perder la antigüedad real de la deuda.
+          const fechaServicioOriginal = editId
+            ? vehiculos.find((v) => v.id === editId)?.arrivalTime || Date.now()
+            : Date.now();
           await crearCuentaPorCobrar({
             vehiculoId: editId || null,
             vehiculo: form.vehiculo,
@@ -1315,9 +1321,8 @@ export default function Dashboard() {
             observaciones: form.observaciones,
             customerName: form.customerName,
             customerPhone: form.customerPhone,
-            arrivalTime: editId
-              ? vehiculos.find((v) => v.id === editId)?.arrivalTime || Date.now()
-              : Date.now(),
+            fechaRegistro: fechaServicioOriginal,
+            arrivalTime: fechaServicioOriginal,
           });
           try {
             if (editId) {

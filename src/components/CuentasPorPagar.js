@@ -34,7 +34,10 @@ export default function CuentasPorPagar() {
     import('../firebase').then(({ db }) => {
       import('firebase/firestore').then(({ collection, onSnapshot }) => {
         unsubscribe = onSnapshot(collection(db, 'cuentasPorPagar'), (snapshot) => {
-          setCuentas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Mostrar siempre la cuenta más reciente primero
+          data.sort((a, b) => (b?.fechaTimestamp?.seconds || 0) - (a?.fechaTimestamp?.seconds || 0));
+          setCuentas(data);
           setLoading(false);
         });
       });
