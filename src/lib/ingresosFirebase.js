@@ -1,5 +1,6 @@
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { obtenerFactorConversion } from "./factorConversionFirebase";
+import { esMetodoBs } from "./metodosPago";
 
 const db = getFirestore();
 const INGRESOS_COLLECTION = "ingresosMovimientos";
@@ -14,10 +15,9 @@ export async function guardarIngreso(ingreso) {
   );
   // Si ya existe formasPago como array, respétalo y no reproceses los campos sueltos
   if (Array.isArray(mov.formasPago) && mov.formasPago.length > 0) {
-    // Asegurar factor/usdEquiv para pago movil y normalizar montoBs
+    // Asegurar factor/usdEquiv para las formas de pago en Bs y normalizar montoBs
     mov.formasPago = mov.formasPago.map(fp => {
-      const formaNorm = (fp.formaPago || '').toString().trim().toLowerCase();
-      if (formaNorm === 'pago movil') {
+      if (esMetodoBs(fp.formaPago)) {
         const montoBs = fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))
           ? Number(fp.montoBs)
           : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : undefined);
@@ -43,13 +43,13 @@ export async function guardarIngreso(ingreso) {
     mov.formasPago = [
       Object.fromEntries(Object.entries({
         formaPago: mov.formaPago,
-        ...(mov.formaPago === 'pago movil'
+        ...(esMetodoBs(mov.formaPago)
           ? { montoBs: Number(mov.monto), referencia: mov.referencia, factorConversion: Number(factor), usdEquiv: Number(factor) ? (Number(mov.monto) / Number(factor)) : undefined }
           : { monto: Number(mov.monto), referencia: mov.referencia })
       }).filter(([_, v]) => v !== undefined && v !== null)),
       Object.fromEntries(Object.entries({
         formaPago: mov.formaPago2,
-        ...(mov.formaPago2 === 'pago movil'
+        ...(esMetodoBs(mov.formaPago2)
           ? { montoBs: Number(mov.monto2), referencia: mov.referencia2, factorConversion: Number(factor), usdEquiv: Number(factor) ? (Number(mov.monto2) / Number(factor)) : undefined }
           : { monto: Number(mov.monto2), referencia: mov.referencia2 })
       }).filter(([_, v]) => v !== undefined && v !== null))
@@ -64,7 +64,7 @@ export async function guardarIngreso(ingreso) {
     mov.formasPago = [
       Object.fromEntries(Object.entries({
         formaPago: mov.formaPago,
-        ...(mov.formaPago === 'pago movil'
+        ...(esMetodoBs(mov.formaPago)
           ? { montoBs: Number(mov.monto), referencia: mov.referencia, factorConversion: Number(factor), usdEquiv: Number(factor) ? (Number(mov.monto) / Number(factor)) : undefined }
           : { monto: Number(mov.monto), referencia: mov.referencia })
       }).filter(([_, v]) => v !== undefined && v !== null))

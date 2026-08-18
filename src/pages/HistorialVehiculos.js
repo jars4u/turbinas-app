@@ -38,6 +38,7 @@ import ServicioTimeline from "../components/ServicioTimeline";
 import HistoryIcon from "@mui/icons-material/History";
 import WhatsAppEnvioModal from "../components/WhatsAppEnvioModal";
 import { obtenerIngresos } from "../lib/ingresosFirebase";
+import { esMetodoBs } from "../lib/metodosPago";
 
 function ServicioHistorialModal({ open, onClose, servicio }) {
   const eventos = React.useMemo(() => {
@@ -343,8 +344,6 @@ export default function HistorialVehiculos() {
         let montosBs = [];
           let factores = [];
         let estadosFactura = [];
-        const pagoMovilRegex = /pago[\s\u00A0_-]*m[oó]vil/i;
-        const usdRegex = /zelle|efectivo|binance|d[oó]lar(es)?|usd/i;
         const efectivoRegex = /efectivo/i;
         const zelleRegex = /zelle/i;
         const binanceRegex = /binance/i;
@@ -353,13 +352,13 @@ export default function HistorialVehiculos() {
             ing.formasPago.forEach((fp) => {
               formasPago.push(fp.formaPago || "-");
               referencias.push(fp.referencia || "-");
-              if (fp.formaPago && pagoMovilRegex.test(fp.formaPago)) {
+              if (esMetodoBs(fp.formaPago)) {
                 if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
                 else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
                   if (fp.factorConversion !== undefined && fp.factorConversion !== null && !isNaN(Number(fp.factorConversion))) {
                     factores.push(Number(fp.factorConversion).toLocaleString("de-DE", { maximumFractionDigits: 0 }));
                   }
-              } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
+              } else if (fp.formaPago) {
                 if (fp.monto !== undefined) {
                   montosUSD.push(`$${fp.monto}`);
                   if (efectivoRegex.test(fp.formaPago)) montosEfectivoUSD.push(`$${fp.monto}`);
@@ -371,13 +370,13 @@ export default function HistorialVehiculos() {
           } else {
             formasPago.push(ing.formaPago || "-");
             referencias.push(ing.referencia || "-");
-            if (ing.formaPago && pagoMovilRegex.test(ing.formaPago)) {
+            if (esMetodoBs(ing.formaPago)) {
               if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
               else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
                 if (ing.factorConversion !== undefined && ing.factorConversion !== null && !isNaN(Number(ing.factorConversion))) {
                   factores.push(Number(ing.factorConversion).toLocaleString("de-DE", { maximumFractionDigits: 0 }));
                 }
-            } else if (ing.formaPago && usdRegex.test(ing.formaPago)) {
+            } else if (ing.formaPago) {
               if (ing.monto !== undefined) {
                 montosUSD.push(`$${ing.monto}`);
                 if (efectivoRegex.test(ing.formaPago)) montosEfectivoUSD.push(`$${ing.monto}`);
@@ -415,8 +414,6 @@ export default function HistorialVehiculos() {
         let montosBinanceUSD = [];
         let montosBs = [];
         let factores = [];
-        const pagoMovilRegex = /pago[\s\u00A0_-]*m[oó]vil/i;
-        const usdRegex = /zelle|efectivo|binance|d[oó]lar(es)?|usd/i;
         const efectivoRegex = /efectivo/i;
         const zelleRegex = /zelle/i;
         const binanceRegex = /binance/i;
@@ -424,13 +421,13 @@ export default function HistorialVehiculos() {
           ing.formasPago.forEach((fp) => {
             formasPago.push(fp.formaPago || "-");
             referencias.push(fp.referencia || "-");
-            if (fp.formaPago && pagoMovilRegex.test(fp.formaPago)) {
+            if (esMetodoBs(fp.formaPago)) {
               if (fp.montoBs !== undefined) montosBs.push(`Bs. ${fp.montoBs}`);
               else if (fp.monto !== undefined) montosBs.push(`Bs. ${fp.monto}`);
               if (fp.factorConversion !== undefined && fp.factorConversion !== null && !isNaN(Number(fp.factorConversion))) {
                 factores.push(Number(fp.factorConversion).toLocaleString("de-DE", { maximumFractionDigits: 0 }));
               }
-            } else if (fp.formaPago && usdRegex.test(fp.formaPago)) {
+            } else if (fp.formaPago) {
               if (fp.monto !== undefined) {
                 montosUSD.push(`$${fp.monto}`);
                 if (efectivoRegex.test(fp.formaPago)) montosEfectivoUSD.push(`$${fp.monto}`);
@@ -442,13 +439,13 @@ export default function HistorialVehiculos() {
         } else {
           formasPago.push(ing.formaPago || "-");
           referencias.push(ing.referencia || "-");
-          if (ing.formaPago && pagoMovilRegex.test(ing.formaPago)) {
+          if (esMetodoBs(ing.formaPago)) {
             if (ing.montoBs !== undefined) montosBs.push(`Bs. ${ing.montoBs}`);
             else if (ing.monto !== undefined) montosBs.push(`Bs. ${ing.monto}`);
             if (ing.factorConversion !== undefined && ing.factorConversion !== null && !isNaN(Number(ing.factorConversion))) {
               factores.push(Number(ing.factorConversion).toLocaleString("de-DE", { maximumFractionDigits: 0 }));
             }
-          } else if (ing.formaPago && usdRegex.test(ing.formaPago)) {
+          } else if (ing.formaPago) {
             if (ing.monto !== undefined) {
               montosUSD.push(`$${ing.monto}`);
               if (efectivoRegex.test(ing.formaPago)) montosEfectivoUSD.push(`$${ing.monto}`);
@@ -1302,7 +1299,7 @@ export default function HistorialVehiculos() {
                     <TableCell>Binance ($)</TableCell>
                   )}
                   {columnasVisibles.montoBs && (
-                    <TableCell>Pago móvil (Bs)</TableCell>
+                    <TableCell>Monto (Bs)</TableCell>
                   )}
                   {columnasVisibles.factor && (
                     <TableCell>Factor</TableCell>
@@ -1799,7 +1796,7 @@ export default function HistorialVehiculos() {
                         case "montoBinanceUSD":
                           return "Binance ($)";
                         case "montoBs":
-                          return "Pago móvil (Bs)";
+                          return "Monto (Bs)";
                         case "factor":
                           return "Factor";
                         case "estadoFactura":

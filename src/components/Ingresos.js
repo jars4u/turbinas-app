@@ -26,6 +26,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import AddIcon from "@mui/icons-material/Add";
+import { esMetodoBs, metodoBsPorDefecto, normalizarMetodo } from "../lib/metodosPago";
 
 
 export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
@@ -83,23 +84,23 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
     let precioUSD = '';
     let precioBs = '';
     if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
-      // Priorizar pago movil para Bs, de lo contrario primer no "pago movil" para USD
-      const pm = ing.formasPago.find(fp => (fp.formaPago || '').trim().toLowerCase() === 'pago movil');
-      const usd = ing.formasPago.find(fp => (fp.formaPago || '').trim().toLowerCase() !== 'pago movil');
+      // Priorizar la forma de pago en Bs; si no hay, la primera en divisa
+      const pm = ing.formasPago.find(fp => esMetodoBs(fp.formaPago));
+      const usd = ing.formasPago.find(fp => !esMetodoBs(fp.formaPago));
       if (pm) {
-        pagoMetodo = 'pago movil';
+        pagoMetodo = normalizarMetodo(pm.formaPago) || metodoBsPorDefecto();
         precioBs = (pm.montoBs !== undefined && pm.montoBs !== null) ? pm.montoBs : (pm.monto !== undefined && pm.monto !== null ? pm.monto : '');
       } else if (usd) {
-        pagoMetodo = (usd.formaPago || usd.metodo || 'efectivo').toString().trim().toLowerCase();
+        pagoMetodo = normalizarMetodo(usd.formaPago || usd.metodo) || 'efectivo';
         precioUSD = usd.monto !== undefined && usd.monto !== null ? usd.monto : '';
       }
     } else {
       // Legacy campos
-      if ((ing.formaPago || '').trim().toLowerCase() === 'pago movil') {
-        pagoMetodo = 'pago movil';
+      if (esMetodoBs(ing.formaPago)) {
+        pagoMetodo = normalizarMetodo(ing.formaPago) || metodoBsPorDefecto();
         precioBs = ing.montoBs ?? ing.monto ?? '';
       } else {
-        pagoMetodo = (ing.formaPago || 'efectivo').toString().trim().toLowerCase();
+        pagoMetodo = normalizarMetodo(ing.formaPago) || 'efectivo';
         precioUSD = ing.monto ?? '';
       }
     }
@@ -130,18 +131,20 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
     if (!editId) return;
     const db = getFirestore();
     // Construir formasPago a partir de ambos campos para respetar cambios de divisa
-    const metodo = (editForm.paymentUSDMethod || 'efectivo').toString().trim().toLowerCase();
+    const metodo = normalizarMetodo(editForm.paymentUSDMethod) || 'efectivo';
     const formasPago = [];
     const montoUSD = editForm.precio !== undefined && editForm.precio !== null && editForm.precio !== '' ? Number(editForm.precio) : undefined;
     const montoBs = editForm.precioBs !== undefined && editForm.precioBs !== null && editForm.precioBs !== '' ? Number(editForm.precioBs) : undefined;
 
     if (montoBs !== undefined && !isNaN(montoBs) && montoBs > 0) {
-      // Guardar montos en Bs como 'pago movil' (histórico del proyecto)
-      formasPago.push({ formaPago: 'pago movil', montoBs: montoBs });
+      // El monto en Bs se guarda con la forma de pago seleccionada si es en Bs;
+      // si la seleccionada es en divisa, se usa la forma en Bs configurada por defecto.
+      const metodoBs = esMetodoBs(metodo) ? metodo : metodoBsPorDefecto();
+      formasPago.push({ formaPago: metodoBs, montoBs: montoBs });
     }
 
     if (montoUSD !== undefined && !isNaN(montoUSD) && montoUSD > 0) {
-      // Para montos en USD usar el método seleccionado (si es 'pago movil' es inusual, pero respetamos metodo)
+      // Para montos en divisa se respeta el método seleccionado
       formasPago.push({ formaPago: metodo || 'efectivo', monto: montoUSD });
     }
     const ingresoEditadoRaw = {
@@ -417,10 +420,10 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                       if (Array.isArray(ing.formasPago)) {
                         ing.formasPago.forEach(fp => {
                           const forma = (fp.formaPago || '').trim().toLowerCase();
-                          if (forma !== 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
+                          if (!esMetodoBs(forma) && fp.monto != null && !isNaN(Number(fp.monto))) {
                             totalUSD += Number(fp.monto);
                           }
-                          if (forma === 'pago movil') {
+                          if (esMetodoBs(forma)) {
                             const v = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
                               ? Number(fp.montoBs)
                               : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
@@ -476,10 +479,10 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                       refs = ing.formasPago.map(fp => fp.referencia || '-');
                       ing.formasPago.forEach(fp => {
                         const f = (fp.formaPago || '').trim().toLowerCase();
-                        if (f !== 'pago movil' && fp.monto != null && !isNaN(Number(fp.monto))) {
+                        if (!esMetodoBs(f) && fp.monto != null && !isNaN(Number(fp.monto))) {
                           totalUSD += Number(fp.monto);
                         }
-                        if (f === 'pago movil') {
+                        if (esMetodoBs(f)) {
                           const v = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
                             ? Number(fp.montoBs)
                             : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
@@ -576,10 +579,10 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                       if (Array.isArray(ing.formasPago)) {
                         ing.formasPago.forEach(fp => {
                           const forma = (fp.formaPago || '').trim().toLowerCase();
-                          if (forma !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
+                          if (!esMetodoBs(forma) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
                             totalUSD += Number(fp.monto);
                           }
-                          if (forma === 'pago movil') {
+                          if (esMetodoBs(forma)) {
                             const v = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
                               ? Number(fp.montoBs)
                               : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
@@ -688,7 +691,7 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                       const montosUSD = ing.formasPago
                         .filter(fp => {
                           const f = (fp.formaPago || '').trim().toLowerCase();
-                          return f !== 'pago movil' && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto));
+                          return !esMetodoBs(f) && fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto));
                         })
                         .map(fp => Number(fp.monto).toLocaleString("en-US", { minimumFractionDigits: 2 }));
                       return montosUSD.length > 0 ? montosUSD.join(' + ') : "-";
@@ -698,10 +701,10 @@ export default function Ingresos({ tasaBCV, onOpenRegistrarIngreso }) {
                 </TableCell>
                 <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                   {(() => {
-                    // Mostrar monto en Bs solo si la forma de pago es 'pago movil', usando el atributo monto
+                    // Mostrar monto en Bs solo para las formas de pago en bolívares
                     if (Array.isArray(ing.formasPago) && ing.formasPago.length > 0) {
                       const montosBs = ing.formasPago
-                        .filter(fp => fp.formaPago && fp.formaPago.trim().toLowerCase() === 'pago movil' && ((fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) || (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))))
+                        .filter(fp => esMetodoBs(fp.formaPago) && ((fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs))) || (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)))))
                         .map(fp => Number(fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)) ? fp.montoBs : fp.monto).toLocaleString("de-DE", { minimumFractionDigits: 2 }));
                       return montosBs.length > 0 ? montosBs.join(' + ') : "-";
                     }

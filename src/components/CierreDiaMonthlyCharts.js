@@ -33,6 +33,7 @@ import {
 import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { obtenerEgresos } from "../lib/egresosFirebase";
 import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
+import { esMetodoBs, nombreMetodo, normalizarMetodo } from "../lib/metodosPago";
 
 dayjs.locale("es");
 
@@ -71,24 +72,30 @@ function usdFormatter(value) {
   })}`;
 }
 
+// Etiqueta a mostrar en los gráficos: usa el nombre configurado en
+// Configuración > Formas de pago para que los métodos nuevos aparezcan igual.
 function normalizeMetodo(raw) {
-  const m = (raw || "").toString().trim().toLowerCase();
-  if (!m) return "otros";
-  if (m === "pago movil" || m === "pago móvil") return "pago móvil";
-  if (m === "punto" || m === "punto de venta") return "punto";
-  if (m === "transferencia") return "transferencia";
-  if (m === "zelle") return "zelle";
-  if (m === "efectivo") return "efectivo";
-  return m;
+  const clave = normalizarMetodo(raw);
+  if (!clave) return "otros";
+  return nombreMetodo(clave);
 }
 
 function normalizeMetodoKey(name) {
-  return (name || "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
+  return normalizarMetodo(name);
+}
+
+// Color estable para métodos sin color fijo en la paleta
+function colorPorHash(key) {
+  const paleta = [
+    CHART_COLORS.blue,
+    CHART_COLORS.purple,
+    CHART_COLORS.cyan,
+    CHART_COLORS.orange,
+    CHART_COLORS.green,
+  ];
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) % 9973;
+  return paleta[hash % paleta.length];
 }
 
 function getMetodoColor(name, theme) {
@@ -99,8 +106,9 @@ function getMetodoColor(name, theme) {
   if (key === "pago movil") return CHART_COLORS.orange;
   if (key === "transferencia") return CHART_COLORS.blue;
   if (key === "zelle") return CHART_COLORS.purple;
-  if (key === "punto") return CHART_COLORS.cyan;
-  return theme.palette.grey?.[600] || CHART_COLORS.grey;
+  if (key === "punto" || key === "punto de venta") return CHART_COLORS.cyan;
+  if (key === "otros" || !key) return theme.palette.grey?.[600] || CHART_COLORS.grey;
+  return colorPorHash(key);
 }
 
 function getIngresoUSD(mov, { factorConversionGlobal, tasaBCV }) {
@@ -122,15 +130,15 @@ function getIngresoUSD(mov, { factorConversionGlobal, tasaBCV }) {
   for (const fp of formasPago) {
     const metodo = normalizeMetodo(fp?.formaPago);
 
-    // Para pagos NO pago móvil, típicamente viene `monto` como USD
-    if (metodo !== "pago móvil") {
+    // Métodos en divisa: el monto ya viene en USD
+    if (!esMetodoBs(fp?.formaPago)) {
       const usd = pickPositive(fp?.monto, fp?.montoUSD, fp?.usdEquiv) || 0;
       totalUSD += usd;
       byMetodo[metodo] = (byMetodo[metodo] || 0) + usd;
       continue;
     }
 
-    // Pago móvil: viene en Bs -> convertir a USD
+    // Métodos en bolívares: convertir a USD
     const usdEquiv = pickPositive(fp?.usdEquiv);
     if (usdEquiv) {
       totalUSD += usdEquiv;
@@ -551,7 +559,7 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
       </Paper>
 
       <Typography variant="caption" color="text.secondary" sx={{ px: 0.5 }}>
-        Todo se muestra en USD. Pago móvil/egresos en Bs se convierten a USD usando
+        Todo se muestra en USD. Los pagos y egresos en Bs se convierten a USD usando
         factor de conversión (cuando existe) y/o la tasa BCV.
       </Typography>
     </Box>

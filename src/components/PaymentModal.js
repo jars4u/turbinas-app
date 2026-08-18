@@ -16,20 +16,33 @@ import {
   FormControl,
   FormHelperText,
   Divider,
+  InputAdornment,
 } from "@mui/material";
 import ReceiptOutlinedIcon from '@mui/icons-material/ReceiptOutlined';
+import { useMetodosPago } from "../context/MetodosPagoContext";
+import { etiquetaMetodo, getMonedaMetodo, normalizarMetodo, simboloMoneda } from "../lib/metodosPago";
 
-const PAYMENT_METHOD_OPTIONS = [
-  { value: 'efectivo', label: 'Efectivo ($)' },
-  { value: 'binance', label: 'Binance ($)' },
-  { value: 'pago movil', label: 'Pago móvil (Bs)' },
-  { value: 'zelle', label: 'Zelle ($)' },
-  { value: 'transferencia', label: 'Transferencia', disabled: true },
-  { value: 'credito', label: 'Crédito', disabled: true },
-];
 
 
 export default function PaymentModal({ open, onClose, form, onRegister }) {
+  const { metodosActivos } = useMetodosPago();
+  // Opciones tomadas de Configuración > Formas de pago (solo las activas)
+  const paymentMethodOptions = metodosActivos.map((m) => ({
+    value: normalizarMetodo(m.clave || m.nombre),
+    label: etiquetaMetodo(m.clave || m.nombre, metodosActivos),
+  }));
+  // Símbolo de la moneda de la forma de pago elegida, para dejar claro qué se captura
+  const adornoMoneda = (formaPago) => (
+    formaPago
+      ? {
+          startAdornment: (
+            <InputAdornment position="start">
+              {simboloMoneda(getMonedaMetodo(formaPago, metodosActivos))}
+            </InputAdornment>
+          ),
+        }
+      : undefined
+  );
   const [salidaInventario, setSalidaInventario] = useState(form.salidaInventario || false);
   const [loading, setLoading] = useState(false);
   const [facturaForm, setFacturaForm] = useState({
@@ -173,8 +186,8 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
               required
             >
               <MenuItem value="">Forma de pago...</MenuItem>
-              {PAYMENT_METHOD_OPTIONS.map((option) => (
-                <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
+              {paymentMethodOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
                   {option.label}
                 </MenuItem>
               ))}
@@ -189,6 +202,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
             size="small"
             type="number"
             inputProps={{ step: "0.01", min: 0 }}
+            InputProps={adornoMoneda(facturaForm.formaPago)}
             value={facturaForm.monto}
             onChange={handleFacturaFieldChange('monto')}
             required
@@ -243,8 +257,8 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
                   required
                 >
                   <MenuItem value="">Forma de pago...</MenuItem>
-                  {PAYMENT_METHOD_OPTIONS.map((option) => (
-                    <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
+                  {paymentMethodOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
                       {option.label}
                     </MenuItem>
                   ))}
@@ -259,6 +273,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
                 size="small"
                 type="number"
                 inputProps={{ step: "0.01", min: 0 }}
+                InputProps={adornoMoneda(facturaForm.formaPago2)}
                 value={facturaForm.monto2}
                 onChange={handleFacturaFieldChange('monto2')}
                 required
@@ -309,8 +324,8 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
                       required
                     >
                       <MenuItem value="">Forma de pago...</MenuItem>
-                      {PAYMENT_METHOD_OPTIONS.map((option) => (
-                        <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
+                      {paymentMethodOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
                           {option.label}
                         </MenuItem>
                       ))}
@@ -325,6 +340,7 @@ export default function PaymentModal({ open, onClose, form, onRegister }) {
                     size="small"
                     type="number"
                     inputProps={{ step: "0.01", min: 0 }}
+                    InputProps={adornoMoneda(facturaForm.formaPago3)}
                     value={facturaForm.monto3}
                     onChange={handleFacturaFieldChange('monto3')}
                     required

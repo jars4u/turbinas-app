@@ -26,6 +26,8 @@ import BuildCircleIcon from "@mui/icons-material/BuildCircle";
 import PersonIcon from "@mui/icons-material/Person";
 import ConfirmDialog from "../common/ConfirmDialog";
 import ClienteAutocompleteField from "../common/ClienteAutocompleteField";
+import { useMetodosPago } from "../../context/MetodosPagoContext";
+import { etiquetaMetodo, normalizarMetodo } from "../../lib/metodosPago";
 
 export default function ServicioEditorDialog({
   open,
@@ -67,6 +69,7 @@ export default function ServicioEditorDialog({
   onPaymentUSDMethodChange,
   isManualIngreso,
 }) {
+  const { metodosActivos } = useMetodosPago();
   const isServicioCerrado = !!editId && !!estadoActual?.defaultFacturar;
   const disableEdicion = !!actionLoading || isServicioCerrado;
   const disableEstadoChange = !!actionLoading;
@@ -322,13 +325,14 @@ export default function ServicioEditorDialog({
                       sx={{ flex: 1, minWidth: 120, '& .MuiInputBase-input': { fontSize: '1rem', py: 0.5 } }}
                     >
                       <option value="" disabled hidden>Selecciona una forma</option>
-                      <option value="efectivo">Efectivo</option>
-                      <option value="binance">Binance ($)</option>
-                      <option value="pago movil">Pago móvil</option>
-                      <option value="zelle">Zelle</option>
-                      {/* <option value="transferencia">Transferencia</option>
-                      <option value="divisas">Divisas</option>
-                      <option value="otro">Otro</option> */}
+                      {metodosActivos.map((m) => {
+                        const clave = normalizarMetodo(m.clave || m.nombre);
+                        return (
+                          <option key={clave} value={clave}>
+                            {etiquetaMetodo(clave, metodosActivos)}
+                          </option>
+                        );
+                      })}
                     </TextField>
                   )}
                   <TextField

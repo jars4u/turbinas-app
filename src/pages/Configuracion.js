@@ -32,6 +32,8 @@ import NominaEmpleados from "../components/NominaEmpleados";
 import ConfiguracionCajaChica from "../components/ConfiguracionCajaChica";
 import ConfiguracionReporte from "../components/ConfiguracionReporte";
 import UsuariosGestion from "../components/UsuariosGestion";
+import ConfiguracionMetodosPago from "../components/ConfiguracionMetodosPago";
+import PaymentsIcon from "@mui/icons-material/Payments";
 
 
 export default function Configuracion() {
@@ -48,6 +50,7 @@ export default function Configuracion() {
     { key: 'nomina', label: 'Nómina', icon: <WorkIcon /> },
     { key: 'caja', label: 'Caja Chica', icon: <AccountBalanceWalletIcon /> },
     { key: 'factor', label: 'Factor de Conversión', icon: <PriceChangeIcon /> },
+    { key: 'metodosPago', label: 'Formas de Pago', icon: <PaymentsIcon /> },
     { key: 'plantillas', label: 'Plantilla de Mensajes', icon: <MessageIcon /> },
   ];
 
@@ -73,6 +76,8 @@ export default function Configuracion() {
         return <ConfiguracionCajaChica />;
       case 'factor':
         return <FactorConversionPrecios />;
+      case 'metodosPago':
+        return <ConfiguracionMetodosPago />;
       case 'plantillas':
         return <PlantillaMensajes />;
       default:

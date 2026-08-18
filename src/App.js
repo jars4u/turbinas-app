@@ -4,6 +4,7 @@ import CalculoNominaPage from "./pages/CalculoNomina";
 
 import React from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { MetodosPagoProvider } from "./context/MetodosPagoContext";
 import Dashboard from "./pages/Dashboard";
 import HistorialVehiculos from "./pages/HistorialVehiculos";
 import Configuracion from "./pages/Configuracion";
@@ -16,7 +17,9 @@ import NotasFlotantes from "./components/NotasFlotantes";
 function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <MetodosPagoProvider>
+        <AppRoutes />
+      </MetodosPagoProvider>
     </AuthProvider>
   );
 }

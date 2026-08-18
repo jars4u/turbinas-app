@@ -34,6 +34,7 @@ import ResumenContable from "../components/ResumenContable";
 import ServicioEditorDialog from "../components/dashboard/ServicioEditorDialog";
 import { obtenerClientes } from "../lib/clientesFirebase";
 import { guardarIngreso } from "../lib/ingresosFirebase";
+import { esMetodoBs, normalizarMetodo } from "../lib/metodosPago";
 import { useMediaQuery } from "@mui/material";
 import { guardarCierreDiario } from "../lib/cierresDiariosFirebase";
 
@@ -476,13 +477,13 @@ export default function CierreDia() {
 // Handlers del diálogo de ingreso manual
 function mapIngresoFromForm(form) {
   const formasPago = [];
-  const metodo = (form.paymentUSDMethod || 'efectivo').toString().trim().toLowerCase();
+  const metodo = normalizarMetodo(form.paymentUSDMethod) || 'efectivo';
   const montoUSD = form.precio !== undefined && form.precio !== null && form.precio !== "" ? Number(form.precio) : undefined;
   const montoBs = form.precioBs !== undefined && form.precioBs !== null && form.precioBs !== "" ? Number(form.precioBs) : undefined;
-  if (metodo === 'pago movil') {
+  if (esMetodoBs(metodo)) {
     const montoParaBs = (montoBs && !isNaN(montoBs) && montoBs > 0) ? montoBs : (montoUSD && !isNaN(montoUSD) && montoUSD > 0 ? montoUSD : undefined);
     if (montoParaBs !== undefined) {
-      formasPago.push({ formaPago: 'pago movil', montoBs: Number(montoParaBs) });
+      formasPago.push({ formaPago: metodo, montoBs: Number(montoParaBs) });
     }
   } else {
     if (montoUSD && !isNaN(montoUSD) && montoUSD > 0) {

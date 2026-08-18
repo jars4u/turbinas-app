@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { esMetodoBs } from "./metodosPago";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -286,8 +287,7 @@ function getIngresoTotals(ingreso) {
 
   return formasPago.reduce(
     (acc, formaPago) => {
-      const metodo = String(formaPago?.formaPago || "").trim().toLowerCase();
-      if (metodo === "pago movil" || metodo === "pago móvil") {
+      if (esMetodoBs(formaPago?.formaPago)) {
         const montoBs = normalizeNumber(formaPago?.montoBs || formaPago?.monto);
         const usdEquiv = pickPositive(formaPago?.usdEquiv);
         const factorConversion = pickPositive(formaPago?.factorConversion);
