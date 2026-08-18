@@ -1,25 +1,26 @@
 import React, { useEffect, useState } from "react";
-import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
-import { obtenerTasaBCV } from "../lib/tasaBCVFirebase";
+import { obtenerTasaBCVPorMoneda, MONEDAS_BCV } from "../lib/tasasBCV";
+import useFactorConversion from "../hooks/useFactorConversion";
 import { Typography } from "@mui/material";
 
 export default function PrecioConvertido({ precio }) {
-  const [factor, setFactor] = useState(null);
+  const { factor, detalle, cargando } = useFactorConversion();
   const [tasa, setTasa] = useState(null);
-  const [loading, setLoading] = useState(true);
 
+  // La tasa del dólar se consulta al vuelo para expresar el equivalente en $
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      const f = await obtenerFactorConversion();
-      const t = await obtenerTasaBCV();
-      setFactor(f);
-      setTasa(t);
-      setLoading(false);
-    }
-    fetchData();
-  }, []);
+    let activo = true;
+    obtenerTasaBCVPorMoneda(MONEDAS_BCV.USD)
+      .then((t) => {
+        if (activo) setTasa(t);
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [detalle]);
 
+  const loading = cargando;
   let resultado = null;
   const precioNum = parseFloat(precio);
   let resultadoBs = null;

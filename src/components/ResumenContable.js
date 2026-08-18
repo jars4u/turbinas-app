@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
+import useFactorConversion from "../hooks/useFactorConversion";
 import Skeleton from "@mui/material/Skeleton";
 import { obtenerFondoCajaChica } from "../lib/configuracionCajaChicaFirebase";
 import { obtenerMovimientosCajaChica } from "../lib/cajaChicaFirebase";
@@ -97,14 +97,7 @@ export default function ResumenContable({ tasaBCV }) {
       setMovimientosCajaChica(movs);
     });
   }, []);
-  const [factorConversion, setFactorConversion] = useState(1);
-  useEffect(() => {
-    async function fetchFactor() {
-      const val = await obtenerFactorConversion();
-      setFactorConversion(val);
-    }
-    fetchFactor();
-  }, []);
+  const { factor: factorConversion } = useFactorConversion();
   const [datosPorDia, setDatosPorDia] = useState({});
   const [cierresPorDia, setCierresPorDia] = useState({});
   const [loading, setLoading] = useState(true);

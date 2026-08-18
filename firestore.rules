@@ -1,4 +1,13 @@
 rules_version = '2';
+
+// ATENCIÓN: este archivo está incompleto frente a lo que usa la app. Solo cubre
+// usuarios, configuracion, egresos, proveedores, metodosPago e ingresosMovimientos.
+// Faltan, entre otras: vehiculos, clientes, estadosServicio, cierresDiarios,
+// cuentasPorCobrar, cajaChicaMovimientos, movimientos, inventario, empleados,
+// cargos, nominas, notas, plantillasMensajes y columnasUsuario. Como al final hay
+// un "denegar todo", desplegarlo tal cual dejaría la app sin acceso a esas
+// colecciones: completar primero con las reglas que ya están en producción.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -40,8 +49,9 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
-    // EJEMPLO para otras colecciones: permitir escribir solo a admin/owner
-    match /configuraciones/{docId} {
+    // Configuración general: factor de conversión, tasa BCV, caja chica, etc.
+    // (la colección se llama "configuracion", en singular, como la usa la app)
+    match /configuracion/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }

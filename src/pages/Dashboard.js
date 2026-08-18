@@ -22,7 +22,7 @@ import {
 } from "@mui/material";
 import VehicleCard from "../components/VehicleCard";
 import Layout from "../components/Layout";
-import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
+import useFactorConversion from "../hooks/useFactorConversion";
 import {
   obtenerVehiculos,
   escucharVehiculos,
@@ -74,7 +74,8 @@ const debugReporte = (...args) => {
 
 export default function Dashboard() {
   const isXs = useMediaQuery('(max-width:600px)');
-  const [factorConversion, setFactorConversion] = useState(1);
+  // Factor de conversión vigente (manual, BCV dólar o BCV euro según configuración)
+  const { factor: factorConversion } = useFactorConversion();
   const [openReporteDia, setOpenReporteDia] = useState(false);
   // Modal para fijar manualmente "servicios al inicio" al comenzar el día
   const [openInicioModal, setOpenInicioModal] = useState(false);
@@ -113,32 +114,6 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
-  // Cargar factor de conversión al iniciar
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const val = await obtenerFactorConversion();
-        if (mounted && typeof val === 'number' && !isNaN(val) && val > 0) {
-          setFactorConversion(val);
-          // Si ya hay precio en $, recalcular Bs automáticamente con el factor cargado
-          setForm((prev) => {
-            const p = parseFloat(prev?.precio);
-            if (!isNaN(p)) {
-              const bs = (p * val).toFixed(2);
-              return { ...prev, precioBs: bs };
-            }
-            return prev;
-          });
-        }
-      } catch (_) {
-        // en caso de error, mantener factor por defecto (1)
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
   const [facturaOpen, setFacturaOpen] = useState(false);
@@ -331,6 +306,18 @@ export default function Dashboard() {
   const [editSection, setEditSection] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
+
+  // Si hay precio en $, recalcular Bs cuando cambie el factor vigente.
+  // Solo con el formulario cerrado, para no pisar lo que se esté escribiendo.
+  useEffect(() => {
+    if (!(factorConversion > 0) || open) return;
+    setForm((prev) => {
+      const p = parseFloat(prev?.precio);
+      if (isNaN(p)) return prev;
+      const bs = (p * factorConversion).toFixed(2);
+      return prev?.precioBs === bs ? prev : { ...prev, precioBs: bs };
+    });
+  }, [factorConversion, open]);
   // Estado para controlar edición de todas las secciones al registrar
   const isRegistering = editId === null;
 

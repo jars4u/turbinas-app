@@ -11,14 +11,15 @@ import {
   Divider,
   Button,
   Skeleton,
-  TextField,
   Tabs,
   Tab,
   Accordion,
   AccordionSummary,
   AccordionDetails,
 } from "@mui/material";
-import { guardarTasaBCV, obtenerTasaBCV } from "../lib/tasaBCVFirebase";
+import { guardarTasaBCV, guardarTasaEURBCV } from "../lib/tasaBCVFirebase";
+import { obtenerTasasBCV } from "../lib/tasasBCV";
+import TasaBCV from "../components/TasaBCV";
 
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -52,9 +53,11 @@ export default function CierreDia() {
   const [tabIndex, setTabIndex] = useState(0);
   // --- Estado para la tasa BCV ---
   const [tasaBCV, setTasaBCV] = useState(null);
+  const [tasaEUR, setTasaEUR] = useState(null);
   const [loadingTasa, setLoadingTasa] = useState(false);
   const [mostrarInputTasa, setMostrarInputTasa] = useState(false);
   const [tasaManual, setTasaManual] = useState("");
+  const [tasaEURManual, setTasaEURManual] = useState("");
   // Estado para ingresos manuales vía ServicioEditorDialog
   const isXs = useMediaQuery('(max-width:600px)');
   const [ingresoDialogOpen, setIngresoDialogOpen] = useState(false);
@@ -76,94 +79,22 @@ export default function CierreDia() {
   // Contenido reutilizable para Tasa BCV + Gráficas
   const MonitoreoContent = (
     <>
-      <Box
-        my={2}
-        p={2}
-        sx={{
-          border: "1px solid #ddd",
-          borderRadius: 2,
-          backgroundColor: "#f9f9f9",
-          textAlign: "center",
-        }}
-      >
-        <Typography variant="h6" fontWeight="bold">
-          Tasa de Cambio BCV
-        </Typography>
-        {loadingTasa ? (
-          <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-            <Skeleton variant="text" width={200} height={28} />
-            <Skeleton variant="text" width={260} height={14} />
-          </Box>
-        ) : mostrarInputTasa ? (
-          <Box>
-            <Typography variant="body2" color="error" sx={{ mb: 1 }}>
-              No se pudo obtener la tasa automáticamente. Ingresa el valor
-              manualmente:
-            </Typography>
-            <TextField
-              label="Tasa BCV manual"
-              type="number"
-              value={tasaManual}
-              onChange={(e) =>
-                setTasaManual(e.target.value.replace(/[^0-9.]/g, ""))
-              }
-              size="small"
-              sx={{ maxWidth: 180, mx: "auto" }}
-              inputProps={{
-                inputMode: "decimal",
-                pattern: "[0-9.]*",
-                step: "0.01",
-                min: 0,
-                style: { MozAppearance: "textfield" },
-              }}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              sx={{ mt: 1, ml: 1 }}
-              disabled={!tasaManual || !(isAdmin || isOwner)}
-              onClick={async () => {
-                setTasaBCV(parseFloat(tasaManual));
-                sessionStorage.setItem("tasaBCVManual", tasaManual);
-                setMostrarInputTasa(false);
-                if (isAdmin || isOwner) {
-                  await guardarTasaBCV(parseFloat(tasaManual)); // Guardar manual en Firestore
-                }
-              }}
-            >
-              Usar tasa
-            </Button>
-          </Box>
-        ) : (
-          <>
-            <Typography variant="h5" color="primary.main">
-              Bs.{" "}
-              {tasaBCV
-                ? tasaBCV.toLocaleString("de-DE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })
-                : "No disponible"}
-            </Typography>
-            {sessionStorage.getItem("tasaBCVManual") &&
-              tasaBCV ===
-                parseFloat(sessionStorage.getItem("tasaBCVManual")) && (
-                <Typography
-                  variant="caption"
-                  color="warning.main"
-                  sx={{ display: "block", mt: 1 }}
-                >
-                  Usando tasa BCV manual ingresada por el usuario durante
-                  esta sesión.
-                </Typography>
-              )}
-          </>
-        )}
-        <Typography variant="caption" color="text.secondary">
-          Fuente: Banco Central de Venezuela (BCV)
-        </Typography>
-      </Box>
+      <TasaBCV
+        tasaBCV={tasaBCV}
+        tasaEUR={tasaEUR}
+        loadingTasa={loadingTasa}
+        mostrarInputTasa={mostrarInputTasa}
+        tasaManual={tasaManual}
+        setTasaManual={setTasaManual}
+        tasaEURManual={tasaEURManual}
+        setTasaEURManual={setTasaEURManual}
+        setTasaBCV={setTasaBCV}
+        setTasaEUR={setTasaEUR}
+        setMostrarInputTasa={setMostrarInputTasa}
+        puedeGuardar={isAdmin || isOwner}
+        guardarTasaBCV={guardarTasaBCV}
+        guardarTasaEURBCV={guardarTasaEURBCV}
+      />
       <CierreDiaMonthlyCharts tasaBCV={tasaBCV} />
     </>
   );
@@ -215,81 +146,62 @@ export default function CierreDia() {
     }
   }, [vehiculos, estadosServicio, tasaBCV, cierreGuardado, isAdmin, isOwner]);
 
-  // --- Función para obtener la tasa del BCV ---
-  const fetchTasaBCV = useCallback(async () => {
-    setLoadingTasa(true);
-    setMostrarInputTasa(false);
-    try {
-      // Primer intento: api.dolarvzla (usar atributo current.usd)
-      const response = await fetch(
-        "https://api.dolarvzla.com/public/exchange-rate"
-      );
-      const data = await response.json();
-      if (data && data.current && (typeof data.current.usd === "number" || !isNaN(Number(data.current.usd)))) {
-        const usdVal = Number(data.current.usd);
-        setTasaBCV(usdVal);
-        if (isAdmin || isOwner) {
-          guardarTasaBCV(usdVal); // Guardar en Firestore solo admin/owner
-        }
-        if (!sessionStorage.getItem("tasaBCVManual")) {
-          sessionStorage.removeItem("tasaBCVManual");
-        }
-      } else {
-        throw new Error("No se obtuvo tasa del primer servicio");
-      }
-    } catch (error) {
-      // Segundo intento: ve.dolarapi.com
-      try {
-        const resp2 = await fetch("https://ve.dolarapi.com/v1/dolares");
-        const json2 = await resp2.json();
-        const oficialObj = Array.isArray(json2)
-          ? json2.find((d) => d.fuente === "oficial")
-          : null;
-        if (oficialObj && oficialObj.promedio) {
-          setTasaBCV(oficialObj.promedio);
-          if (isAdmin || isOwner) {
-            guardarTasaBCV(oficialObj.promedio); // Guardar en Firestore solo admin/owner
-          }
-          if (!sessionStorage.getItem("tasaBCVManual")) {
-            sessionStorage.removeItem("tasaBCVManual");
-          }
-        } else {
-          // Si no hay tasa, buscar en Firestore
-          const stored = sessionStorage.getItem("tasaBCVManual");
-          if (stored) {
-            setTasaBCV(parseFloat(stored));
-            setMostrarInputTasa(false);
-          } else {
-            const tasaBD = await obtenerTasaBCV();
-            if (tasaBD) {
-              setTasaBCV(tasaBD);
-              setMostrarInputTasa(false);
-            } else {
-              setTasaBCV(null);
-              setMostrarInputTasa(true);
-            }
-          }
-        }
-      } catch (error2) {
-        // Si falla todo, buscar en Firestore
-        const stored = sessionStorage.getItem("tasaBCVManual");
-        if (stored) {
-          setTasaBCV(parseFloat(stored));
-          setMostrarInputTasa(false);
-        } else {
-          const tasaBD = await obtenerTasaBCV();
-          if (tasaBD) {
-            setTasaBCV(tasaBD);
-            setMostrarInputTasa(false);
-          } else {
-            setTasaBCV(null);
-            setMostrarInputTasa(true);
-          }
-        }
-      }
+  // --- Tasas del BCV (dólar y euro) ---
+  const fetchTasaBCV = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setLoadingTasa(true);
+      setMostrarInputTasa(false);
     }
-    setLoadingTasa(false);
+
+    // Consulta el BCV y, si falla, recurre a lo último guardado en Firestore
+    const tasas = await obtenerTasasBCV({ forzar: silencioso });
+    const enVivo = tasas.fuente === "bcv";
+    const puedeGuardar = isAdmin || isOwner;
+
+    // Dólar: tasa en vivo > tasa manual de la sesión > respaldo guardado
+    const usdManual = parseFloat(sessionStorage.getItem("tasaBCVManual"));
+    if (enVivo && tasas.usd) {
+      setTasaBCV(tasas.usd);
+      if (puedeGuardar) guardarTasaBCV(tasas.usd);
+    } else if (usdManual > 0) {
+      setTasaBCV(usdManual);
+    } else if (tasas.usd) {
+      setTasaBCV(tasas.usd);
+    } else if (!silencioso) {
+      setTasaBCV(null);
+      setMostrarInputTasa(true);
+    }
+
+    // Euro: mismo orden de preferencia
+    const eurManual = parseFloat(sessionStorage.getItem("tasaEURManual"));
+    if (enVivo && tasas.eur) {
+      setTasaEUR(tasas.eur);
+      if (puedeGuardar) guardarTasaEURBCV(tasas.eur);
+    } else if (eurManual > 0) {
+      setTasaEUR(eurManual);
+    } else {
+      setTasaEUR(tasas.eur || null);
+    }
+
+    if (!silencioso) setLoadingTasa(false);
   }, [isAdmin, isOwner]);
+
+  // Mantener las tasas al día mientras la pantalla está abierta
+  useEffect(() => {
+    const REFRESCO_MS = 5 * 60 * 1000;
+    const refrescar = () => fetchTasaBCV(true);
+    const alVolver = () => {
+      if (document.visibilityState === "visible") refrescar();
+    };
+    const intervalo = setInterval(refrescar, REFRESCO_MS);
+    window.addEventListener("focus", refrescar);
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      clearInterval(intervalo);
+      window.removeEventListener("focus", refrescar);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [fetchTasaBCV]);
 
   if (!isAdmin && !isOwner) {
     return <AccesoDenegado />;

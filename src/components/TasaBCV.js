@@ -3,13 +3,19 @@ import { Box, Typography, TextField, Button, Skeleton } from "@mui/material";
 
 export default function TasaBCV({
   tasaBCV,
+  tasaEUR,
   loadingTasa,
   mostrarInputTasa,
   tasaManual,
   setTasaManual,
+  tasaEURManual,
+  setTasaEURManual,
   setTasaBCV,
+  setTasaEUR,
   setMostrarInputTasa,
-  guardarTasaBCV
+  puedeGuardar = true,
+  guardarTasaBCV,
+  guardarTasaEURBCV
 }) {
   return (
     <Box
@@ -28,6 +34,7 @@ export default function TasaBCV({
       {loadingTasa ? (
         <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <Skeleton variant="text" width={200} height={28} />
+          <Skeleton variant="text" width={200} height={28} />
           <Skeleton variant="text" width={260} height={14} />
         </Box>
       ) : mostrarInputTasa ? (
@@ -36,7 +43,7 @@ export default function TasaBCV({
             No se pudo obtener la tasa automáticamente. Ingresa el valor manualmente:
           </Typography>
           <TextField
-            label="Tasa BCV manual"
+            label="Tasa BCV manual ($)"
             type="number"
             value={tasaManual}
             onChange={(e) => setTasaManual(e.target.value.replace(/[^0-9.]/g, ""))}
@@ -50,17 +57,42 @@ export default function TasaBCV({
               style: { MozAppearance: "textfield" },
             }}
           />
+          <TextField
+            label="Tasa BCV manual (€)"
+            type="number"
+            value={tasaEURManual}
+            onChange={(e) => setTasaEURManual(e.target.value.replace(/[^0-9.]/g, ""))}
+            size="small"
+            sx={{ maxWidth: 180, mx: "auto", ml: { xs: 0, sm: 1 } }}
+            inputProps={{
+              inputMode: "decimal",
+              pattern: "[0-9.]*",
+              step: "0.01",
+              min: 0,
+              style: { MozAppearance: "textfield" },
+            }}
+          />
           <Button
             variant="contained"
             color="primary"
             size="small"
             sx={{ mt: 1, ml: 1 }}
-            disabled={!tasaManual}
+            disabled={!tasaManual || !puedeGuardar}
             onClick={async () => {
               setTasaBCV(parseFloat(tasaManual));
               sessionStorage.setItem("tasaBCVManual", tasaManual);
+              if (tasaEURManual) {
+                setTasaEUR(parseFloat(tasaEURManual));
+                sessionStorage.setItem("tasaEURManual", tasaEURManual);
+              }
               setMostrarInputTasa(false);
-              await guardarTasaBCV(parseFloat(tasaManual)); // Guardar manual en Firestore
+              if (puedeGuardar) {
+                // Guardar la tasa manual en Firestore
+                await guardarTasaBCV(parseFloat(tasaManual));
+                if (tasaEURManual && guardarTasaEURBCV) {
+                  await guardarTasaEURBCV(parseFloat(tasaEURManual));
+                }
+              }
             }}
           >
             Usar tasa
@@ -68,14 +100,43 @@ export default function TasaBCV({
         </Box>
       ) : (
         <>
-          <Typography variant="h5" color="primary.main">
-            Bs. {tasaBCV
-              ? tasaBCV.toLocaleString("de-DE", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })
-              : "No disponible"}
-          </Typography>
+          <Box
+            sx={{
+              mt: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+              gap: { xs: 2, sm: 5 },
+            }}
+          >
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Dólar (USD $)
+              </Typography>
+              <Typography variant="h5" color="primary.main">
+                Bs. {tasaBCV
+                  ? tasaBCV.toLocaleString("de-DE", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : "No disponible"}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Euro (EUR €)
+              </Typography>
+              <Typography variant="h5" color="secondary.main">
+                Bs. {tasaEUR
+                  ? tasaEUR.toLocaleString("de-DE", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : "No disponible"}
+              </Typography>
+            </Box>
+          </Box>
           {sessionStorage.getItem("tasaBCVManual") &&
             tasaBCV === parseFloat(sessionStorage.getItem("tasaBCVManual")) && (
               <Typography

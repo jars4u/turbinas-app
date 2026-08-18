@@ -32,7 +32,7 @@ import {
 
 import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { obtenerEgresos } from "../lib/egresosFirebase";
-import { obtenerFactorConversion } from "../lib/factorConversionFirebase";
+import useFactorConversion from "../hooks/useFactorConversion";
 import { esMetodoBs, nombreMetodo, normalizarMetodo } from "../lib/metodosPago";
 
 dayjs.locale("es");
@@ -213,7 +213,8 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
 
   const [ingresosAll, setIngresosAll] = useState([]);
   const [egresosAll, setEgresosAll] = useState([]);
-  const [factorConversion, setFactorConversion] = useState(1);
+  // Factor vigente según la configuración (manual, BCV dólar o BCV euro)
+  const { factor: factorConversion } = useFactorConversion();
 
   useEffect(() => {
     let mounted = true;
@@ -221,20 +222,17 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
     async function cargar() {
       setLoading(true);
       try {
-        const [ing, egr, factor] = await Promise.all([
+        const [ing, egr] = await Promise.all([
           obtenerIngresos(),
           obtenerEgresos(),
-          obtenerFactorConversion(),
         ]);
         if (!mounted) return;
         setIngresosAll(Array.isArray(ing) ? ing : []);
         setEgresosAll(Array.isArray(egr) ? egr : []);
-        setFactorConversion(pickPositive(factor) || 1);
       } catch (e) {
         if (!mounted) return;
         setIngresosAll([]);
         setEgresosAll([]);
-        setFactorConversion(1);
       } finally {
         if (mounted) setLoading(false);
       }
