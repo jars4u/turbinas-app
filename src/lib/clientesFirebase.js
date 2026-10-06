@@ -1,4 +1,5 @@
 import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { leerCompartido, invalidarLectura } from "./lecturasCompartidas";
 
 function normalizeNombre(nombre) {
   return String(nombre || "")
@@ -61,18 +62,23 @@ export function normalizeClientes(clientes = []) {
   });
 }
 
-export async function obtenerClientes() {
-  const db = getFirestore();
-  const snap = await getDocs(collection(db, "clientes"));
-  return normalizeClientes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+// Peticiones simultáneas comparten una sola consulta
+export function obtenerClientes() {
+  return leerCompartido("clientes", async () => {
+    const db = getFirestore();
+    const snap = await getDocs(collection(db, "clientes"));
+    return normalizeClientes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  });
 }
 
 export async function actualizarCliente(id, data) {
   const db = getFirestore();
   await updateDoc(doc(db, "clientes", id), data);
+  invalidarLectura("clientes");
 }
 
 export async function eliminarCliente(id) {
   const db = getFirestore();
   await deleteDoc(doc(db, "clientes", id));
+  invalidarLectura("clientes");
 }

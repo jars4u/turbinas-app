@@ -1,11 +1,15 @@
 import { getFirestore, collection, getDocs, addDoc, Timestamp } from "firebase/firestore";
+import { leerCompartido, invalidarLectura } from "./lecturasCompartidas";
 
-export async function obtenerCierresDiarios() {
-  const db = getFirestore();
-  const ref = collection(db, "cierresDiarios");
-  const snapshot = await getDocs(ref);
-  // Mapear los documentos a objetos
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+// Peticiones simultáneas comparten una sola consulta
+export function obtenerCierresDiarios() {
+  return leerCompartido("cierresDiarios", async () => {
+    const db = getFirestore();
+    const ref = collection(db, "cierresDiarios");
+    const snapshot = await getDocs(ref);
+    // Mapear los documentos a objetos
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  });
 }
 
 // Guarda un cierre diario en la colección 'cierresDiarios'
@@ -26,5 +30,6 @@ export async function guardarCierreDiario({ fecha, tasa, totalIngresosUSD, total
     usuario,
   };
   await addDoc(collection(db, "cierresDiarios"), cierre);
+  invalidarLectura("cierresDiarios");
   return cierre;
 }

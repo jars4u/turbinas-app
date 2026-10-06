@@ -1,10 +1,8 @@
 import GroupIcon from "@mui/icons-material/Group";
 import MessageIcon from '@mui/icons-material/Message';
-import PlantillaMensajes from "../components/PlantillaMensajes";
-import ClientesGestion from "../components/ClientesGestion";
 import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import React, { useState } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -20,21 +18,26 @@ import {
   Tabs,
   Tab,
   Divider,
+  LinearProgress,
 } from "@mui/material";
 import BadgeIcon from '@mui/icons-material/Badge';
 import SettingsIcon from "@mui/icons-material/Settings";
 import WorkIcon from "@mui/icons-material/Work";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import PriceChangeIcon from "@mui/icons-material/PriceChange";
-import EstadosServicios from "./EstadosServicios";
-import FactorConversionPrecios from "../components/FactorConversionPrecios";
-import NominaEmpleados from "../components/NominaEmpleados";
-import ConfiguracionCajaChica from "../components/ConfiguracionCajaChica";
-import ConfiguracionReporte from "../components/ConfiguracionReporte";
-import UsuariosGestion from "../components/UsuariosGestion";
-import ConfiguracionMetodosPago from "../components/ConfiguracionMetodosPago";
 import PaymentsIcon from "@mui/icons-material/Payments";
 
+
+// Cada sección se descarga solo al abrirla (solo se muestra una a la vez)
+const PlantillaMensajes = lazy(() => import("../components/PlantillaMensajes"));
+const ClientesGestion = lazy(() => import("../components/ClientesGestion"));
+const EstadosServicios = lazy(() => import("./EstadosServicios"));
+const FactorConversionPrecios = lazy(() => import("../components/FactorConversionPrecios"));
+const NominaEmpleados = lazy(() => import("../components/NominaEmpleados"));
+const ConfiguracionCajaChica = lazy(() => import("../components/ConfiguracionCajaChica"));
+const ConfiguracionReporte = lazy(() => import("../components/ConfiguracionReporte"));
+const UsuariosGestion = lazy(() => import("../components/UsuariosGestion"));
+const ConfiguracionMetodosPago = lazy(() => import("../components/ConfiguracionMetodosPago"));
 
 export default function Configuracion() {
   const { isAdmin } = useAuth();
@@ -161,7 +164,7 @@ export default function Configuracion() {
           </Box>
           {/* Área de contenido dinámico */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            {renderSection()}
+            <Suspense fallback={<LinearProgress sx={{ my: 2 }} />}>{renderSection()}</Suspense>
           </Box>
         </Box>
       ) : (
@@ -173,10 +176,15 @@ export default function Configuracion() {
             alignItems: "center",
           }}
         >
-          <img
-            src="/animaciones/User%20Authentication.gif"
-            alt="Sin permisos de administrador"
-            style={{ maxWidth: 220, marginBottom: 16 }}
+          {/* Video en bucle en lugar del GIF original (~75 KB vs ~2.8 MB) */}
+          <video
+            src="/animaciones/sin-permisos.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            aria-label="Sin permisos de administrador"
+            style={{ maxWidth: 220, width: "100%", marginBottom: 16 }}
           />
           <Typography variant="body1" align="center" px={{ xs: 2, md: 15 }}>
             No tienes permisos de administrador para acceder a la configuración,

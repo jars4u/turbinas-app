@@ -1,18 +1,28 @@
 import Login from "./pages/Login";
-import Inventario from "./pages/Inventario";
-import CalculoNominaPage from "./pages/CalculoNomina";
 
-import React from "react";
+import React, { Suspense, lazy, useEffect } from "react";
+import { LinearProgress } from "@mui/material";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { MetodosPagoProvider } from "./context/MetodosPagoContext";
-import Dashboard from "./pages/Dashboard";
-import HistorialVehiculos from "./pages/HistorialVehiculos";
-import Configuracion from "./pages/Configuracion";
-import CierreDia from "./pages/CierreDia";
 import AccesoDenegado from "./pages/AccesoDenegado";
-import Reportes from "./pages/Reportes";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotasFlotantes from "./components/NotasFlotantes";
+
+// Cada página se descarga en su propio chunk solo cuando se visita, en lugar de
+// cargar toda la app (gráficos, PDF, Excel, configuración...) al abrirla.
+const cargarDashboard = () => import("./pages/Dashboard");
+const Dashboard = lazy(cargarDashboard);
+const HistorialVehiculos = lazy(() => import("./pages/HistorialVehiculos"));
+const Configuracion = lazy(() => import("./pages/Configuracion"));
+const CierreDia = lazy(() => import("./pages/CierreDia"));
+const Reportes = lazy(() => import("./pages/Reportes"));
+const Inventario = lazy(() => import("./pages/Inventario"));
+const CalculoNominaPage = lazy(() => import("./pages/CalculoNomina"));
+
+// Indicador mientras llega el chunk de una página
+const CargandoPagina = (
+  <LinearProgress sx={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 2000 }} />
+);
 
 function App() {
   return (
@@ -24,37 +34,50 @@ function App() {
   );
 }
 
-function AppRoutes() {
-  const { usuario, isAdmin, isOwner, loadingAuth, handleLogout } = useAuth();
-  function ProtectedRoute({ children, skeleton }) {
-    if (loadingAuth) {
-      return skeleton || null;
-    }
-    if (!usuario) {
-      return <AccesoDenegado />;
-    }
-    return children;
+// Definido fuera de AppRoutes: si se declarara dentro, cada render de AppRoutes
+// crearía un tipo de componente nuevo y React desmontaría/remontaría la página
+// completa (repitiendo todas sus cargas) con cada cambio del contexto de auth.
+function ProtectedRoute({ children, skeleton }) {
+  const { usuario, loadingAuth } = useAuth();
+  if (loadingAuth) {
+    return skeleton || null;
   }
+  if (!usuario) {
+    return <AccesoDenegado />;
+  }
+  return children;
+}
 
-  // Skeleton para la página de configuración
-  const ConfigSkeleton = (
-    <div style={{ maxWidth: 700, margin: '40px auto', padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eee', marginRight: 12 }} />
-        <div style={{ width: 180, height: 28, borderRadius: 6, background: '#eee' }} />
-      </div>
-      <div style={{ width: 140, height: 36, borderRadius: 6, background: '#eee', marginBottom: 24 }} />
-      <div style={{ width: '100%', height: 48, borderRadius: 8, background: '#eee', marginBottom: 16 }} />
-      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
-      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
-      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
-      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
-      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
-      <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+// Skeleton para la página de configuración
+const ConfigSkeleton = (
+  <div style={{ maxWidth: 700, margin: '40px auto', padding: 24 }}>
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eee', marginRight: 12 }} />
+      <div style={{ width: 180, height: 28, borderRadius: 6, background: '#eee' }} />
     </div>
-  );
+    <div style={{ width: 140, height: 36, borderRadius: 6, background: '#eee', marginBottom: 24 }} />
+    <div style={{ width: '100%', height: 48, borderRadius: 8, background: '#eee', marginBottom: 16 }} />
+    <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+    <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+    <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+    <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+    <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+    <div style={{ width: '100%', height: 32, borderRadius: 8, background: '#eee', marginBottom: 8 }} />
+  </div>
+);
+
+function AppRoutes() {
+  const { usuario, isAdmin, isOwner, handleLogout } = useAuth();
+
+  // El Dashboard es la página principal: se precarga apenas hay sesión para que
+  // entrar a ella no espere la descarga de su chunk.
+  useEffect(() => {
+    if (usuario) cargarDashboard();
+  }, [usuario]);
+
   return (
     <BrowserRouter>
+      <Suspense fallback={CargandoPagina}>
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/dashboard" element={
@@ -93,6 +116,7 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
       </Routes>
+      </Suspense>
       {/* Componente de notas flotantes global */}
       <NotasFlotantes />
     </BrowserRouter>

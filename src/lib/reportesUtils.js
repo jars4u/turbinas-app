@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import { esMetodoBs } from "./metodosPago";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -535,8 +534,10 @@ function formatCurrencyBs(value) {
   return Number(value || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function exportReportToExcel(reportData, fileName = null) {
+export async function exportReportToExcel(reportData, fileName = null) {
   if (!reportData) return;
+  // xlsx se carga solo al exportar para no inflar el bundle inicial
+  const XLSX = await import("xlsx");
 
   const workbook = XLSX.utils.book_new();
   const safeName = fileName || `reporte-${reportData.range?.fechaInicio || "inicio"}-${reportData.range?.fechaFin || "fin"}.xlsx`;

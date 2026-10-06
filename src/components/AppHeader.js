@@ -128,7 +128,7 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
       >
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "center", sm: "flex-start" }, gap: 1, width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 } }}>
           <img
-            src="/logo.png"
+            src="/logo-header.png"
             alt="Logo"
             style={{ height: 40, marginRight: 8, cursor: 'pointer' }}
             onClick={() => navigate && navigate('/dashboard')}

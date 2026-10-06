@@ -31,10 +31,18 @@ import { FormGroup, FormControlLabel, Checkbox } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { LinearProgress } from "@mui/material";
 import { obtenerCargos } from "../lib/cargosFirebase";
-import * as XLSX from "xlsx";
 import { obtenerEmpleados } from "../lib/empleadosFirebase";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
+
+// Genera y descarga un .xlsx de una hoja. xlsx se carga solo al exportar.
+async function descargarExcel(data, nombreHoja, nombreArchivo) {
+  const XLSX = await import("xlsx");
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+  XLSX.writeFile(wb, nombreArchivo);
+}
 
 export default function CalculoNomina() {
   const [estadosServicio, setEstadosServicio] = useState([]);
@@ -574,10 +582,7 @@ export default function CalculoNomina() {
                     "Monto a pagar ($)": calcularMonto(empleado),
                   };
                 });
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Nomina");
-                XLSX.writeFile(wb, `nomina_${fechaInicio}_${fechaFin}.xlsx`);
+                descargarExcel(data, "Nomina", `nomina_${fechaInicio}_${fechaFin}.xlsx`);
               }}
               startIcon={<DownloadIcon />}
             >
@@ -730,10 +735,7 @@ export default function CalculoNomina() {
                     'Monto a pagar ($)': calcularMonto(empleado),
                   };
                 });
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Nomina');
-                XLSX.writeFile(wb, `nomina_${fechaInicio}_${fechaFin}.xlsx`);
+                descargarExcel(data, "Nomina", `nomina_${fechaInicio}_${fechaFin}.xlsx`);
               }}
               startIcon={<DownloadIcon />}
               fullWidth
@@ -975,13 +977,7 @@ export default function CalculoNomina() {
                           Observaciones: e.observaciones,
                           "Monto a pagar ($)": e.monto,
                         })) || [];
-                      const ws = XLSX.utils.json_to_sheet(data);
-                      const wb = XLSX.utils.book_new();
-                      XLSX.utils.book_append_sheet(wb, ws, "Nomina");
-                      XLSX.writeFile(
-                        wb,
-                        `nomina_${nominaDetalle.fechaInicio}_${nominaDetalle.fechaFin}.xlsx`
-                      );
+                      descargarExcel(data, "Nomina", `nomina_${nominaDetalle.fechaInicio}_${nominaDetalle.fechaFin}.xlsx`);
                     }}
                     startIcon={<DownloadIcon />}
                   >

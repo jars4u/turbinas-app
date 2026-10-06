@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
   Dialog,
@@ -24,11 +24,8 @@ import VehicleCard from "../components/VehicleCard";
 import Layout from "../components/Layout";
 import useFactorConversion from "../hooks/useFactorConversion";
 import {
-  obtenerVehiculos,
   escucharVehiculos,
-  crearVehiculo,
   actualizarVehiculo,
-  eliminarVehiculo,
 } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import { formatTiempoRelativo, obtenerColorAging } from "../lib/dateUtils";
@@ -38,30 +35,9 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
 import ReporteDia from "../components/ReporteDia";
-import PaymentModal from "../components/PaymentModal";
 import { obtenerInicioSnapshot, crearInicioSnapshotSiNoExiste } from "../lib/reporteDiaSnapshotFirebase";
-import ServicioEditorDialog from "../components/dashboard/ServicioEditorDialog";
-import EstadoChangeDialog from "../components/dashboard/EstadoChangeDialog";
+import ServicioEditor from "../components/dashboard/ServicioEditor";
 import { normalizeClientes } from "../lib/clientesFirebase";
-
-// Sanitiza cualquier undefined en null, recursivamente
-function sanitizeDeep(obj) {
-  if (Array.isArray(obj)) {
-    return obj.map(sanitizeDeep);
-  } else if (obj && typeof obj === "object") {
-    const newObj = {};
-    Object.keys(obj).forEach((k) => {
-      const val = obj[k];
-      if (val === undefined) {
-        newObj[k] = null;
-      } else {
-        newObj[k] = sanitizeDeep(val);
-      }
-    });
-    return newObj;
-  }
-  return obj;
-}
 
 // Log condicional para depuración del Reporte del Día
 const debugReporte = (...args) => {
@@ -75,7 +51,7 @@ const debugReporte = (...args) => {
 export default function Dashboard() {
   const isXs = useMediaQuery('(max-width:600px)');
   // Factor de conversión vigente (manual, BCV dólar o BCV euro según configuración)
-  const { factor: factorConversion } = useFactorConversion();
+  const { factor: factorConversion, detalle: detalleFactor } = useFactorConversion();
   const [openReporteDia, setOpenReporteDia] = useState(false);
   // Modal para fijar manualmente "servicios al inicio" al comenzar el día
   const [openInicioModal, setOpenInicioModal] = useState(false);
@@ -96,27 +72,8 @@ export default function Dashboard() {
   }, []);
   // Estado para el modal de confirmación de ocultar servicio (migrado al componente EstadoChangeDialog)
   const { usuario, isObserver } = useAuth();
-  // Estado para modal de cambio de estado
-  const [openEstadoModal, setOpenEstadoModal] = useState(false);
-  const [vehiculoEstadoModal, setVehiculoEstadoModal] = useState(null);
-  // Clientes base: extraer de vehículos
-  const [clientes, setClientes] = useState([]);
-  useEffect(() => {
-    const unsubscribe = escucharVehiculos((data) => {
-      const clientesNormalizados = normalizeClientes(
-        data.map((vehiculo) => ({
-          nombre: vehiculo.customerName,
-          telefono: vehiculo.customerPhone,
-        }))
-      );
-      setClientes(clientesNormalizados);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
-  const [facturaOpen, setFacturaOpen] = useState(false);
   const [estadosServicio, setEstadosServicio] = useState([]);
   const [ordenEstado, setOrdenEstado] = useState("");
   const [ordenAsc, setOrdenAsc] = useState(true);
@@ -132,14 +89,19 @@ export default function Dashboard() {
   // const navigate = useNavigate(); // no usado directamente tras Layout
   // usuario.email está disponible desde el contexto
   const usuarioActivo = usuario?.email || "";
+  // Mensaje en el snackbar (estable, para pasarlo al editor memoizado)
+  const notificar = useCallback((msg) => {
+    setSnackbarMsg(msg);
+    setSnackbarOpen(true);
+  }, []);
   const handleStatusChange = async (id, newStatus) => {
     if (isObserver) {
       setSnackbarMsg("Rol observador: no puedes cambiar estados.");
       setSnackbarOpen(true);
-      return;
+      return false;
     }
     const vehiculo = vehiculos.find((v) => v.id === id);
-    if (!vehiculo) return;
+    if (!vehiculo) return false;
     // Verificar si el estado destino es "dejar de mostrar"
     const estadoObj = estadosServicio.find(e => e.nombre === newStatus);
     const esOcultar = !!estadoObj?.dejarDeMostrar;
@@ -153,15 +115,13 @@ export default function Dashboard() {
     Object.keys(payload).forEach((k) => {
       if (payload[k] === undefined) payload[k] = null;
     });
+    // El listener de vehículos refleja el cambio; no hace falta recargar la colección
     await actualizarVehiculo(id, payload);
-    const actualizados = await obtenerVehiculos();
-    setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
+    return true;
   };
   const [vehiculosRaw, setVehiculosRaw] = useState([]);
-  const [vehiculos, setVehiculos] = useState([]);
   const [loadingVehiculos, setLoadingVehiculos] = useState(true);
   const [loadingEstados, setLoadingEstados] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
   const [creatingSkeleton, setCreatingSkeleton] = useState(false);
   // Estado local para UI temporal (no usado actualmente)
   // Cargar vehículos y estados desde la API al montar
@@ -177,6 +137,18 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
+  // Clientes base para el autocompletado, derivados de los vehículos ya escuchados
+  const clientes = useMemo(
+    () =>
+      normalizeClientes(
+        vehiculosRaw.map((vehiculo) => ({
+          nombre: vehiculo.customerName,
+          telefono: vehiculo.customerPhone,
+        }))
+      ),
+    [vehiculosRaw]
+  );
+
   // Helper: normaliza status a código en minúsculas con underscores
   const normalizeStatus = (v) => (v == null ? '' : String(v)).trim().toLowerCase().replace(/\s+/g, '_');
   // Calcula "inicio" según criterio: status distinto de 'entregado' y 'por_cobrar'
@@ -191,51 +163,67 @@ export default function Dashboard() {
   // Normalizador y coincidencia para el buscador (acentos-insensible, minúsculas)
   const normalizarTexto = (s) =>
     s ? String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
-  const coincideBusqueda = (v, q) => {
-    const t = normalizarTexto(q);
-    if (!t) return true;
-    const blob = [
-      v.vehiculo,
-      v.placa,
-      v.servicio,
-      v.customerName,
-      v.customerPhone,
-      v.observaciones,
-      v.status || v.estado,
-    ]
-      .map(normalizarTexto)
-      .join(' ');
-    return blob.includes(t);
-  };
+  // Texto de búsqueda normalizado por vehículo: se calcula solo cuando cambian los datos,
+  // no en cada render ni por cada contador de estado.
+  const textoBusquedaPorId = useMemo(() => {
+    const mapa = new Map();
+    vehiculosRaw.forEach((v) => {
+      mapa.set(
+        v.id,
+        [
+          v.vehiculo,
+          v.placa,
+          v.servicio,
+          v.customerName,
+          v.customerPhone,
+          v.observaciones,
+          v.status || v.estado,
+        ]
+          .map(normalizarTexto)
+          .join(' ')
+      );
+    });
+    return mapa;
+  }, [vehiculosRaw]);
+  const busquedaNormalizada = normalizarTexto(busqueda);
+  const coincideBusqueda = (v) =>
+    !busquedaNormalizada || (textoBusquedaPorId.get(v.id) || '').includes(busquedaNormalizada);
 
-  // Si el snapshot de HOY no existe al cargar los vehículos, abrir modal para fijarlo manualmente
+  // Si el snapshot de HOY no existe al cargar los vehículos, abrir modal para fijarlo manualmente.
+  // Se verifica una vez por día (al cargar y si cambia la fecha con la app abierta),
+  // no con cada cambio de un vehículo.
+  const vehiculosRawRef = useRef(vehiculosRaw);
+  vehiculosRawRef.current = vehiculosRaw;
+  const fechaHoy = (() => {
+    const d = new Date(now);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
   useEffect(() => {
+    if (loadingVehiculos) return;
+    let cancelado = false;
     async function checkTodayInicio() {
       try {
-        const d = new Date();
-        const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        debugReporte('inicio-manual: checking snapshot', { todayStr });
-  const snap = await obtenerInicioSnapshot(todayStr);
+        debugReporte('inicio-manual: checking snapshot', { todayStr: fechaHoy });
+        const snap = await obtenerInicioSnapshot(fechaHoy);
+        if (cancelado) return;
         if (!snap) {
-          // Calcular un valor sugerido (no se fija automáticamente)
-          const arr = await obtenerVehiculos();
-          const valor = calcularInicioHoy(Array.isArray(arr) ? arr : vehiculosRaw);
+          // Calcular un valor sugerido (no se fija automáticamente) con los datos del listener
+          const valor = calcularInicioHoy(vehiculosRawRef.current);
           setInicioSugerido(valor);
           setInicioManual(String(valor));
           setOpenInicioModal(true);
-          debugReporte('inicio-manual: abrir modal', { sugerido: valor, totalVehiculosFetched: Array.isArray(arr) ? arr.length : 'n/a', totalVehiculosLocal: vehiculosRaw?.length ?? 'n/a' });
+          debugReporte('inicio-manual: abrir modal', { sugerido: valor, totalVehiculosLocal: vehiculosRawRef.current?.length ?? 'n/a' });
         } else {
-          debugReporte('inicio-manual: snapshot ya existe', { fecha: todayStr, inicio: snap?.inicio });
+          debugReporte('inicio-manual: snapshot ya existe', { fecha: fechaHoy, inicio: snap?.inicio });
         }
       } catch (e) {
         debugReporte('inicio-manual: error', e?.message || e);
         console.warn('No se pudo verificar snapshot de hoy', e);
       }
     }
-    if (!loadingVehiculos) {
-      checkTodayInicio();
-    }
-  }, [loadingVehiculos, calcularInicioHoy, vehiculosRaw]);
+    checkTodayInicio();
+    return () => { cancelado = true; };
+  }, [loadingVehiculos, calcularInicioHoy, fechaHoy]);
 
   const confirmarInicioDia = async () => {
     if (isObserver) {
@@ -269,341 +257,31 @@ export default function Dashboard() {
 
   // Función abrirInicioManual eliminada (no utilizada)
 
-  // Filtrar vehículos solo cuando ambos estados estén listos
-  useEffect(() => {
-    if (!loadingVehiculos && !loadingEstados) {
-      const estadoOcultar = estadosServicio.find((e) => e.dejarDeMostrar);
-      const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
-      const filtrados = vehiculosRaw.filter(
-        (v) =>
-          (v.status || v.estado) !== nombreOcultar &&
-          (v.status !== 'por_cobrar') &&
-          (!ordenEstado || (v.status || v.estado) === ordenEstado)
-      );
-      setVehiculos(filtrados);
-    }
-  }, [
-    vehiculosRaw,
-    estadosServicio,
-    ordenEstado,
-    loadingVehiculos,
-    loadingEstados,
-  ]);
-  const [open, setOpen] = useState(false);
-  // Estado para el modal de confirmación de eliminación
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [form, setForm] = useState({
-    vehiculo: "",
-    placa: "",
-    servicio: "",
-    precio: "",
-    precioBs: "",
-    customerName: "",
-    customerPhone: "+58",
-    observaciones: "",
-  });
-  const [formOriginal, setFormOriginal] = useState(null);
-  const [editSection, setEditSection] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editId, setEditId] = useState(null);
-
-  // Si hay precio en $, recalcular Bs cuando cambie el factor vigente.
-  // Solo con el formulario cerrado, para no pisar lo que se esté escribiendo.
-  useEffect(() => {
-    if (!(factorConversion > 0) || open) return;
-    setForm((prev) => {
-      const p = parseFloat(prev?.precio);
-      if (isNaN(p)) return prev;
-      const bs = (p * factorConversion).toFixed(2);
-      return prev?.precioBs === bs ? prev : { ...prev, precioBs: bs };
-    });
-  }, [factorConversion, open]);
-  // Estado para controlar edición de todas las secciones al registrar
-  const isRegistering = editId === null;
-
-  const handleOpen = (vehiculo) => {
-    if (isObserver) {
-      setSnackbarMsg("Rol observador: no puedes registrar ni editar servicios.");
-      setSnackbarOpen(true);
-      return;
-    }
-    if (vehiculo) {
-      const nuevoForm = {
-        vehiculo: vehiculo.vehiculo || "",
-        placa: vehiculo.placa || "",
-        servicio: vehiculo.servicio || "",
-        precio: vehiculo.precio || "",
-        precioBs: vehiculo.precioBs || "",
-        customerName: vehiculo.customerName || "",
-        customerPhone: vehiculo.customerPhone || "+58",
-        observaciones: vehiculo.observaciones || "",
-      };
-      setForm(nuevoForm);
-      setFormOriginal(nuevoForm); // Guardar original
-      setEditId(vehiculo.id);
-      setEditSection(null);
-      setIsEditing(false);
-    } else {
-      const nuevoForm = {
-        vehiculo: "",
-        placa: "",
-        servicio: "",
-        precio: "",
-        precioBs: "",
-        customerName: "",
-        customerPhone: "+58",
-        observaciones: "",
-      };
-      setForm(nuevoForm);
-      setFormOriginal(nuevoForm);
-      setEditId(null);
-      setEditSection("vehiculo"); // Abrir directamente en modo edición
-      setIsEditing(true);
-    }
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-    setForm({
-      vehiculo: "",
-      placa: "",
-      servicio: "",
-      precio: "",
-      precioBs: "",
-      customerName: "",
-      customerPhone: "+58",
-      observaciones: "",
-    });
-    setFormOriginal(null);
-    setEditId(null);
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    const f = parseFloat(factorConversion);
-    if (name === "precio") {
-      const p = parseFloat(value);
-      let nuevoPrecioBs = "";
-      if (!isNaN(p) && !isNaN(f) && f > 0) {
-        nuevoPrecioBs = (p * f).toFixed(2);
-      }
-      setForm({ ...form, precio: value, precioBs: nuevoPrecioBs });
-    } else if (name === "precioBs") {
-      const bs = parseFloat(value);
-      let nuevoPrecio = "";
-      if (!isNaN(bs) && !isNaN(f) && f > 0) {
-        nuevoPrecio = (bs / f).toFixed(2);
-      }
-      setForm({ ...form, precioBs: value, precio: nuevoPrecio });
-    } else {
-      setForm({ ...form, [name]: value });
-    }
-    setIsEditing(true);
-  };
-
-  const getDefaultStatus = () => {
-    const def = estadosServicio.find((e) => e.defaultEstado);
-    return def ? def.nombre : "servicio";
-  };
-
-  const handleSave = async () => {
-    if (isObserver) {
-      setSnackbarMsg("Rol observador: no puedes guardar cambios.");
-      setSnackbarOpen(true);
-      return;
-    }
-
-    // Bloquear edición si el servicio está cerrado (estado defaultFacturar)
-    if (editId) {
-      const estadoFacturar = estadosServicio.find((e) => e.defaultFacturar)?.nombre;
-      const vehiculoActual = vehiculos.find((v) => v.id === editId);
-      const estadoActual = vehiculoActual?.status || vehiculoActual?.estado;
-      if (estadoFacturar && estadoActual === estadoFacturar) {
-        const labelFacturar = estadosServicio.find((e) => e.defaultFacturar)?.label || estadoFacturar;
-        setSnackbarMsg(`Este servicio está cerrado (${labelFacturar}) y no puede editarse.`);
-        setSnackbarOpen(true);
-        return;
-      }
-    }
-
-    // Validación y normalización del teléfono: formato +58 seguido de 10 dígitos, sin ceros iniciales
-    let telefono = (form.customerPhone || "").trim();
-    telefono = telefono.replace(/[-\s]/g, "");
-    if (telefono) {
-      // Si no empieza con +58, intentar normalizar de formatos comunes (0412..., 412..., etc)
-      if (!telefono.startsWith("+58")) {
-        if (telefono.startsWith("58")) {
-          telefono = "+" + telefono;
-        } else if (telefono.startsWith("0") && telefono.length >= 11) {
-          telefono = "+58" + telefono.slice(1); // quita el 0 inicial
-        } else if (/^\d{10}$/.test(telefono)) {
-          telefono = "+58" + telefono;
-        }
-      }
-      // Asegurar que no haya ceros iniciales en la parte local después de +58
-      if (telefono.startsWith("+58")) {
-        const local = telefono.slice(3).replace(/[^\d]/g, "");
-        telefono = "+58" + local.replace(/^0+/, "");
-      }
-      // Validar finalmente el patrón requerido
-      if (!/^\+58\d{10}$/.test(telefono)) {
-        setSnackbarMsg("Teléfono inválido: use +58 y 10 dígitos sin ceros iniciales.");
-        setSnackbarOpen(true);
-        return;
-      }
-    }
-    const vehiculoData = {
-      vehiculo: form.vehiculo ? form.vehiculo.toUpperCase() : "",
-      placa: form.placa ? form.placa.toUpperCase() : "",
-      servicio: form.servicio ? form.servicio.toUpperCase() : "",
-      arrivalTime: editId
-        ? vehiculos.find((v) => v.id === editId)?.arrivalTime
-        : Date.now(),
-      customerName: form.customerName ? form.customerName.toUpperCase() : "",
-      customerPhone: telefono || "",
-      observaciones: form.observaciones ? form.observaciones.toUpperCase() : "",
-      status: editId
-        ? vehiculos.find((v) => v.id === editId)?.status || getDefaultStatus()
-        : getDefaultStatus(),
-      precio: form.precio === "" ? null : Number(form.precio),
-      precioBs: form.precioBs === "" ? null : Number(form.precioBs),
-      monto2:
-        form.precio !== undefined && form.precio !== "" && form.precio !== null
-          ? Number(form.precio)
-          : null,
-      usuario: usuarioActivo,
-      registradoPor: usuarioActivo,
-      entregadoPor: editId
-        ? vehiculos.find((v) => v.id === editId)?.entregadoPor
-        : null,
-      fechaEntrega: editId
-        ? vehiculos.find((v) => v.id === editId)?.fechaEntrega
-        : null,
-    };
-  setActionLoading(true);
-  if (!editId) setCreatingSkeleton(true);
-    // Limpiar campos undefined
-    Object.keys(vehiculoData).forEach((k) => {
-      if (vehiculoData[k] === undefined) vehiculoData[k] = null;
-    });
-    // Guardar cliente en la colección 'clientes' si no existe
-    try {
-      const nombreCliente = vehiculoData.customerName?.trim().toUpperCase();
-      const telefonoCliente = vehiculoData.customerPhone?.trim();
-      if (nombreCliente && telefonoCliente) {
-        const { getFirestore, collection, getDocs, query, where, addDoc, updateDoc, doc } = await import("firebase/firestore");
-        const db = getFirestore();
-        const clientesRef = collection(db, "clientes");
-        const q = query(clientesRef, where("nombre", "==", nombreCliente), where("telefono", "==", telefonoCliente));
-        const snapshot = await getDocs(q);
-        // Nuevo registro de modelo/servicio
-        const nuevoModeloServicio = {
-          fecha: Date.now(),
-          modelo: vehiculoData.vehiculo,
-          servicio: vehiculoData.servicio,
-          nombre: nombreCliente,
-          telefono: telefonoCliente
-        };
-        if (snapshot.empty) {
-          await addDoc(clientesRef, {
-            nombre: nombreCliente,
-            telefono: telefonoCliente,
-            modelosServicios: [nuevoModeloServicio]
-          });
-        } else {
-          // Actualizar el historial del cliente existente
-          const clienteDoc = snapshot.docs[0];
-          const modelosServiciosPrevios = clienteDoc.data().modelosServicios || [];
-          await updateDoc(doc(db, "clientes", clienteDoc.id), {
-            modelosServicios: [...modelosServiciosPrevios, nuevoModeloServicio]
-          });
-        }
-      }
-    } catch (e) {
-      // No bloquear el registro si falla el guardado del cliente
-    }
-    if (editId) {
-      await actualizarVehiculo(editId, vehiculoData);
-      // Actualización normal: ocultar loading y refrescar
-      setActionLoading(false);
-      const actualizados = await obtenerVehiculos();
-      setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
-    } else {
-      // CREACIÓN NUEVA: ocultamos inmediatamente el skeleton de la lista y mantenemos el overlay del modal
-      setCreatingSkeleton(false); // oculta skeleton ANTES de que aparezca el nuevo card
-      await crearVehiculo(vehiculoData);
-      // Refrescar lista
-      const actualizados = await obtenerVehiculos();
-      setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
-      setActionLoading(false);
-    }
-    setOpen(false);
-    setEditSection(null);
-    setIsEditing(false);
-  };
-
-  const handleDelete = async () => {
-    if (isObserver) {
-      setSnackbarMsg("Rol observador: no puedes eliminar servicios.");
-      setSnackbarOpen(true);
-      return;
-    }
-    if (!editId) {
-      setSnackbarMsg("No se pudo eliminar: servicio no válido.");
-      setSnackbarOpen(true);
-      return;
-    }
-
-    // Bloquear eliminación si el servicio está cerrado (estado defaultFacturar)
-    {
-      const estadoFacturar = estadosServicio.find((e) => e.defaultFacturar)?.nombre;
-      const vehiculoActual = vehiculos.find((v) => v.id === editId);
-      const estadoActual = vehiculoActual?.status || vehiculoActual?.estado;
-      if (estadoFacturar && estadoActual === estadoFacturar) {
-        const labelFacturar = estadosServicio.find((e) => e.defaultFacturar)?.label || estadoFacturar;
-        setSnackbarMsg(`Este servicio está cerrado (${labelFacturar}) y no puede eliminarse.`);
-        setSnackbarOpen(true);
-        return;
-      }
-    }
-
-    setActionLoading(true);
-    try {
-      await eliminarVehiculo(editId);
-      const actualizados = await obtenerVehiculos();
-      setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
-      setActionLoading(false);
-      handleClose();
-      setConfirmDeleteOpen(false);
-    } catch (e) {
-      setActionLoading(false);
-      setSnackbarMsg("Error al eliminar el servicio. Intente nuevamente.");
-      setSnackbarOpen(true);
-    }
-  };
-
-  // Abrir modal de confirmación
-  const handleDeleteClick = () => {
-    setConfirmDeleteOpen(true);
-  };
-
-  // Cancelar eliminación
-  const handleCancelDelete = () => {
-    setConfirmDeleteOpen(false);
-  };
-
+  // Vehículos visibles, derivados del listener (filtrados solo cuando ambos datos están listos).
+  // Al ser derivados, cualquier guardado se refleja solo, sin recargar la colección.
+  const vehiculos = useMemo(() => {
+    if (loadingVehiculos || loadingEstados) return [];
+    const estadoOcultar = estadosServicio.find((e) => e.dejarDeMostrar);
+    const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
+    return vehiculosRaw.filter(
+      (v) =>
+        (v.status || v.estado) !== nombreOcultar &&
+        (v.status !== 'por_cobrar') &&
+        (!ordenEstado || (v.status || v.estado) === ordenEstado)
+    );
+  }, [vehiculosRaw, estadosServicio, ordenEstado, loadingVehiculos, loadingEstados]);
   const estadoOcultar = estadosServicio.find((e) => e.dejarDeMostrar);
   const nombreOcultar = estadoOcultar ? estadoOcultar.nombre : null;
 
   // Lista única de servicios filtrados (estado + búsqueda) y ordenados, reutilizada
   // por el contador del título, la vista móvil y la vista desktop.
-  const serviciosFiltrados = [...vehiculos]
+  // Memoizada: no se recalcula al escribir en el formulario ni al abrir/cerrar modales
+  const serviciosFiltrados = useMemo(() => [...vehiculos]
     .filter(
       (v) =>
         (v.status || v.estado) !== nombreOcultar &&
         (!ordenEstado || (v.status || v.estado) === ordenEstado) &&
-        coincideBusqueda(v, busqueda)
+        coincideBusqueda(v)
     )
     .sort((a, b) => {
       if (!ordenEstado)
@@ -619,7 +297,33 @@ export default function Dashboard() {
         (b.status || b.estado).localeCompare(a.status || a.estado) ||
         b.arrivalTime - a.arrivalTime
       );
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vehiculos, nombreOcultar, ordenEstado, ordenAsc, busquedaNormalizada, textoBusquedaPorId]
+  );
+
+  // Contadores de los chips de estado en una sola pasada sobre los vehículos
+  const conteoPorEstado = useMemo(() => {
+    const conteo = { todos: 0, porEstado: {} };
+    vehiculosRaw.forEach((v) => {
+      if (v.status === "por_cobrar" || !coincideBusqueda(v)) return;
+      const est = v.status || v.estado;
+      conteo.porEstado[est] = (conteo.porEstado[est] || 0) + 1;
+      if (est !== nombreOcultar) conteo.todos += 1;
     });
+    return conteo;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehiculosRaw, nombreOcultar, busquedaNormalizada, textoBusquedaPorId]);
+
+  // Callbacks estables para las tarjetas (React.memo): siempre llaman a la versión más reciente
+  const editorRef = useRef(null);
+  const handleStatusChangeRef = useRef(null);
+  handleStatusChangeRef.current = handleStatusChange;
+  const onCardEdit = useCallback((v) => editorRef.current?.abrir(v), []);
+  const onCardStatusChange = useCallback(
+    (id, newStatus) => handleStatusChangeRef.current(id, newStatus),
+    []
+  );
 
   const hayFiltrosActivos = Boolean(ordenEstado) || Boolean(busqueda);
 
@@ -739,7 +443,7 @@ export default function Dashboard() {
             color="primary"
             size="small"
             startIcon={<AddIcon />}
-            onClick={() => handleOpen()}
+            onClick={() => editorRef.current?.abrir()}
             disabled={isObserver}
             sx={{
               boxShadow: "none",
@@ -806,14 +510,7 @@ export default function Dashboard() {
         }}
       >
         <Chip
-          label={`Todos (${
-            vehiculosRaw.filter(
-              (v) =>
-                (v.status || v.estado) !== nombreOcultar &&
-                v.status !== "por_cobrar" &&
-                coincideBusqueda(v, busqueda)
-            ).length
-          })`}
+          label={`Todos (${conteoPorEstado.todos})`}
           size="small"
           onClick={() => setOrdenEstado("")}
           color={!ordenEstado ? "primary" : "default"}
@@ -835,12 +532,7 @@ export default function Dashboard() {
             const chipColor = validColors.includes(estado.color)
               ? estado.color
               : "default";
-            const count = vehiculosRaw.filter(
-              (v) =>
-                (v.status || v.estado) === estado.nombre &&
-                v.status !== "por_cobrar" &&
-                coincideBusqueda(v, busqueda)
-            ).length;
+            const count = conteoPorEstado.porEstado[estado.nombre] || 0;
             const active = ordenEstado === estado.nombre;
             return (
               <Chip
@@ -1009,7 +701,7 @@ export default function Dashboard() {
                 return (
                   <Box
                     key={v.id}
-                    onClick={() => handleOpen(v)}
+                    onClick={() => onCardEdit(v)}
                     sx={{
                       mb: 1.5,
                       p: 1,
@@ -1069,7 +761,7 @@ export default function Dashboard() {
               })
             )}
             {/* Skeleton de creación mientras se registra un nuevo servicio (al final, con fade) */}
-            <Fade in={creatingSkeleton && isRegistering} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
+            <Fade in={creatingSkeleton} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
               <Box
                     sx={{
                   mb: 1.5,
@@ -1133,10 +825,10 @@ export default function Dashboard() {
                   <Box key={v.id}>
                     <VehicleCard
                       vehiculo={v}
-                      onEdit={() => handleOpen(v)}
-                      onStatusChange={(newStatus) =>
-                        handleStatusChange(v.id, newStatus)
-                      }
+                      estadosServicio={estadosServicio}
+                      now={now}
+                      onEdit={onCardEdit}
+                      onStatusChange={onCardStatusChange}
                       usuarioActivo={usuarioActivo}
                       height={maxHeight}
                     />
@@ -1144,7 +836,7 @@ export default function Dashboard() {
                 ));
             })()}
             {/* Skeleton de creación en escritorio mientras se registra (al final, con fade) */}
-            <Fade in={creatingSkeleton && isRegistering} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
+            <Fade in={creatingSkeleton} timeout={{ enter: 120, exit: 0 }} unmountOnExit>
               <Box>
                 <Box
                   sx={{
@@ -1185,332 +877,21 @@ export default function Dashboard() {
           </Box>
         </>
       )}
-      <ServicioEditorDialog
-        open={open}
-        isXs={isXs}
-        onDialogClose={(event, reason) => {
-          if (reason === "backdropClick" || reason === "escapeKeyDown") return;
-          handleClose();
-        }}
-        actionLoading={actionLoading}
-        editId={editId}
-        onDeleteClick={handleDeleteClick}
-        onClose={handleClose}
-        estadoActual={(() => {
-          const v = vehiculos.find((x) => x.id === editId);
-          return estadosServicio.find(
-            (e) => e.nombre === (v?.status || v?.estado)
-          );
-        })()}
-        vehiculoActual={vehiculos.find((v) => v.id === editId)}
-        chipColor={(() => {
-          const v = vehiculos.find((x) => x.id === editId);
-          const est = estadosServicio.find(
-            (e) => e.nombre === (v?.status || v?.estado)
-          );
-          const validColors = [
-            "default",
-            "primary",
-            "secondary",
-            "error",
-            "info",
-            "success",
-            "warning",
-          ];
-          return validColors.includes(est?.color) ? est?.color : "default";
-        })()}
-        onOpenEstadoModal={() => {
-          const v = vehiculos.find((x) => x.id === editId);
-          setVehiculoEstadoModal(v);
-          setOpenEstadoModal(true);
-        }}
-        confirmDeleteOpen={confirmDeleteOpen}
-        onCancelDelete={handleCancelDelete}
-        onConfirmDelete={handleDelete}
-        form={form}
-        onChange={handleChange}
-        editSection={editSection}
-        setEditSection={setEditSection}
-        isRegistering={isRegistering}
+      {/* Editor (formulario + pago + cambio de estado): su estado vive aparte para
+          que escribir en el modal no re-renderice la lista */}
+      <ServicioEditor
+        ref={editorRef}
+        vehiculos={vehiculos}
+        estadosServicio={estadosServicio}
         clientes={clientes}
-        onClienteInputChange={(e, newInputValue, reason) => {
-          if (reason === "input") {
-            setForm((prev) => ({ ...prev, customerName: newInputValue }));
-            setIsEditing(true);
-          }
-        }}
-        onClienteChange={(e, value) => {
-          if (value && value.nombre) {
-            setForm((prev) => ({
-              ...prev,
-              customerName: value.nombre,
-              customerPhone: value.telefono,
-            }));
-            setIsEditing(true);
-          }
-        }}
-        onCustomerPhoneChange={(e) => {
-          let value = e.target.value;
-          if (!value.startsWith("+58")) {
-            value = "+58" + value.replace(/^0+/, "");
-          }
-          value = value.replace(/^\+58/, "+58");
-          const soloNumeros = value.slice(3).replace(/[^\d]/g, "");
-          value = "+58" + soloNumeros;
-          setForm((prev) => ({ ...prev, customerPhone: value }));
-          setIsEditing(true);
-        }}
-        isEditing={isEditing}
-        onSave={handleSave}
-        onCancelEditSection={() => {
-          if (formOriginal) {
-            setForm(formOriginal);
-          }
-          setEditSection(null);
-          setIsEditing(false);
-        }}
-        onRegisterSave={() => {
-          handleSave();
-          setOpen(false);
-          setEditSection(null);
-          setIsEditing(false);
-        }}
-        onWhatsAppSend={() => {
-          if (form.customerPhone) {
-            let phone = form.customerPhone.trim();
-            phone = phone.replace(/[-\s]/g, "");
-            phone = phone.replace(/^\+/, "");
-            if (phone.startsWith("58")) {
-            } else if (phone.startsWith("0")) {
-              phone = "58" + phone.slice(1);
-            }
-            window.open(`https://wa.me/${phone}`, "_blank");
-          }
-        }}
-        onPorCobrar={async () => {
-          const { crearCuentaPorCobrar } = await import('../lib/cuentasPorCobrarFirebase');
-          // La fecha del servicio (creación original) debe preservarse tal
-          // cual: no se sustituye por el momento en que se envía a cuentas
-          // por cobrar, para no perder la antigüedad real de la deuda.
-          const fechaServicioOriginal = editId
-            ? vehiculos.find((v) => v.id === editId)?.arrivalTime || Date.now()
-            : Date.now();
-          await crearCuentaPorCobrar({
-            vehiculoId: editId || null,
-            vehiculo: form.vehiculo,
-            placa: form.placa,
-            servicio: form.servicio,
-            precio: form.precio,
-            precioBs: form.precioBs,
-            observaciones: form.observaciones,
-            customerName: form.customerName,
-            customerPhone: form.customerPhone,
-            fechaRegistro: fechaServicioOriginal,
-            arrivalTime: fechaServicioOriginal,
-          });
-          try {
-            if (editId) {
-              const vehiculoActual = vehiculos.find(v => v.id === editId);
-              if (vehiculoActual) {
-                const data = sanitizeDeep({ ...vehiculoActual, status: 'por_cobrar' });
-                await actualizarVehiculo(editId, data);
-              } else {
-                await actualizarVehiculo(editId, { status: 'por_cobrar' });
-              }
-            }
-          } catch (e) {
-            console.error('Error actualizando estado a por_cobrar:', e);
-          }
-          if (editId) {
-            setVehiculos(prev => prev.filter(v => v.id !== editId));
-          }
-          setSnackbarMsg('Servicio enviado a cuentas por cobrar');
-          setSnackbarOpen(true);
-          setOpen(false);
-        }}
-        porCobrarDisabled={(() => {
-          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.nombre;
-          const vehiculoActual = vehiculos.find(v => v.id === editId);
-          const actual = vehiculoActual?.status || vehiculoActual?.estado;
-          if (!actual) return false;
-          return (estadoFact && actual === estadoFact) || actual === 'por_cobrar';
-        })()}
-        porCobrarTitle={(() => {
-          const estadoFactObj = estadosServicio.find(e => e.defaultFacturar);
-          const estadoFact = estadoFactObj?.nombre;
-          const vehiculoActual = vehiculos.find(v => v.id === editId);
-          const actual = vehiculoActual?.status || vehiculoActual?.estado;
-          if (!actual) return undefined;
-          if (estadoFact && actual === estadoFact) {
-            return `Este servicio ya está en estado "${estadoFactObj?.label || estadoFact}" y no puede ir a Por Cobrar`;
-          }
-          if (actual === 'por_cobrar') {
-            return 'Este servicio ya está en Por Cobrar';
-          }
-          return undefined;
-        })()}
-        onOpenFactura={() => setFacturaOpen(true)}
-        facturarDisabled={(() => {
-          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.nombre;
-          if (!estadoFact) return false;
-          const vehiculoActual = vehiculos.find(v => v.id === editId);
-          const actual = vehiculoActual?.status || vehiculoActual?.estado;
-          return actual === estadoFact;
-        })()}
-        facturarTitle={(() => {
-          const estadoFact = estadosServicio.find(e => e.defaultFacturar)?.label || estadosServicio.find(e => e.defaultFacturar)?.nombre;
-          const vehiculoActual = vehiculos.find(v => v.id === editId);
-          const actual = vehiculoActual?.status || vehiculoActual?.estado;
-          return actual && estadoFact && actual === (estadosServicio.find(e => e.defaultFacturar)?.nombre)
-            ? 'Este servicio ya está en el estado final de facturación'
-            : undefined;
-        })()}
+        usuarioActivo={usuarioActivo}
+        isObserver={isObserver}
+        isXs={isXs}
+        factorConversion={factorConversion}
+        detalleFactor={detalleFactor}
+        notificar={notificar}
+        onCreatingChange={setCreatingSkeleton}
       />
-      <PaymentModal
-        open={facturaOpen}
-        onClose={() => setFacturaOpen(false)}
-        form={form}
-        onRegister={async (facturaData) => {
-          if (isObserver) {
-            setSnackbarMsg("Rol observador: no puedes registrar pagos.");
-            setSnackbarOpen(true);
-            return;
-          }
-          // Validar que exista al menos un precio
-          if (
-            (form.precio === "" || form.precio === null) &&
-            (form.precioBs === "" || form.precioBs === null)
-          ) {
-            setSnackbarMsg(
-              "No se ha definido un precio para este servicio. No se puede registrar el pago."
-            );
-            setSnackbarOpen(true);
-            return;
-          }
-          let nuevoIngreso = {
-            descripcion: `${form.vehiculo} - ${form.servicio}`,
-            factura: facturaData.numeroFactura,
-            fecha: new Date().toLocaleDateString("es-VE"),
-            vehiculoId: editId || null,
-            customerName: form.customerName ? String(form.customerName).toUpperCase() : undefined,
-            customerPhone: form.customerPhone || undefined,
-            montoBs:
-              form.precioBs !== undefined &&
-                form.precioBs !== "" &&
-                form.precioBs !== null
-                ? Number(form.precioBs)
-                : null,
-            monto2:
-              form.precio !== undefined &&
-                form.precio !== "" &&
-                form.precio !== null
-                ? Number(form.precio)
-                : null,
-          };
-          nuevoIngreso.monto2 =
-            form.precio !== undefined &&
-              form.precio !== "" &&
-              form.precio !== null
-              ? Number(form.precio)
-              : null;
-          if (
-            Array.isArray(facturaData.formasPago) &&
-            facturaData.formasPago.length > 0
-          ) {
-            nuevoIngreso.formasPago = facturaData.formasPago;
-          } else {
-            let monto =
-              facturaData.monto !== undefined &&
-                facturaData.monto !== null &&
-                facturaData.monto !== ""
-                ? Number(facturaData.monto)
-                : facturaData.formaPago &&
-                  /pago[ _-]?movil/i.test(facturaData.formaPago)
-                  ? Number(form.precioBs) || 0
-                  : facturaData.formaPago &&
-                    (/zelle/i.test(facturaData.formaPago) || /efectivo/i.test(facturaData.formaPago) || /binance/i.test(facturaData.formaPago))
-                    ? Number(form.precio) || 0
-                    : Number(form.precio) || Number(form.precioBs) || 0;
-            nuevoIngreso.monto = monto;
-            nuevoIngreso.formaPago = facturaData.formaPago;
-            nuevoIngreso.referencia = facturaData.referencia;
-          }
-          try {
-            const { guardarIngreso } = await import("../lib/ingresosFirebase");
-            await guardarIngreso(nuevoIngreso);
-          } catch (e) {
-            setSnackbarMsg("Error al registrar el ingreso");
-            setSnackbarOpen(true);
-            return;
-          }
-          if (editId) {
-            const estadoFacturar = estadosServicio.find((e) => e.defaultFacturar);
-            const statusFacturar = estadoFacturar ? estadoFacturar.nombre : "entregado";
-            const vehiculoUpdate = {
-              ...form,
-              status: statusFacturar,
-              entregadoPor: (usuarioActivo ? String(usuarioActivo).split('@')[0] : null),
-              fechaEntrega: Date.now(),
-              registradoPor:
-                vehiculos.find((v) => v.id === editId)?.registradoPor ||
-                vehiculos.find((v) => v.id === editId)?.usuario ||
-                null,
-              precioBs: Number(form.precioBs) || null,
-            };
-            Object.keys(vehiculoUpdate).forEach((k) => {
-              if (vehiculoUpdate[k] === undefined) vehiculoUpdate[k] = null;
-            });
-            await actualizarVehiculo(editId, vehiculoUpdate);
-            const actualizados = await obtenerVehiculos();
-            setVehiculos(actualizados.filter(v => (v.status || v.estado) !== 'por_cobrar'));
-          }
-          setSnackbarMsg("Pago registrado exitosamente");
-          setSnackbarOpen(true);
-          setOpen(false);
-        }}
-      />
-        {/* Modal para cambiar estado extraído */}
-        <EstadoChangeDialog
-          open={openEstadoModal}
-          onClose={() => setOpenEstadoModal(false)}
-          estados={estadosServicio}
-          vehiculo={vehiculoEstadoModal}
-          onApplyEstado={async (estado, { ocultar }) => {
-            if (isObserver) {
-              setSnackbarMsg("Rol observador: no puedes cambiar estados.");
-              setSnackbarOpen(true);
-              return;
-            }
-            if (!vehiculoEstadoModal) return;
-
-            const data = sanitizeDeep({
-              ...vehiculoEstadoModal,
-              status: estado.nombre,
-              ...(ocultar
-                ? {
-                    fechaEntrega: Date.now(),
-                    entregadoPor: usuarioActivo
-                      ? String(usuarioActivo).split("@")[0]
-                      : null,
-                  }
-                : {}),
-            });
-            await actualizarVehiculo(vehiculoEstadoModal.id, data);
-            const actualizados = await obtenerVehiculos();
-            setVehiculos(
-              actualizados.filter(
-                (v) => (v.status || v.estado) !== "por_cobrar"
-              )
-            );
-
-            // Si se confirmó un estado que oculta el servicio, cerrar también el dialogo
-            // de información/edición del servicio (ya no tiene sentido mantenerlo abierto).
-            if (ocultar) {
-              setOpenEstadoModal(false);
-              handleClose();
-            }
-          }}
-        />
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3500}

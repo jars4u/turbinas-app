@@ -8,6 +8,7 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
+import { leerCompartido, invalidarLectura } from "./lecturasCompartidas";
 
 function normalizarFechaEgreso(fecha) {
   // Ajustar la fecha a la zona horaria de Venezuela (GMT-4)
@@ -41,6 +42,7 @@ export async function guardarEgreso(egreso) {
     ...egreso,
     fecha: normalizarFechaEgreso(egreso?.fecha),
   });
+  invalidarLectura("egresos");
 }
 
 export async function guardarGastoDia(gasto) {
@@ -56,15 +58,22 @@ export async function actualizarEgreso(id, egreso) {
     ...egreso,
     ...(egreso && "fecha" in egreso ? { fecha: normalizarFechaEgreso(egreso.fecha) } : {}),
   });
+  invalidarLectura("egresos");
 }
 
 export async function eliminarEgreso(id) {
   const db = getFirestore();
   if (!id) return;
   await deleteDoc(doc(db, "egresos", id));
+  invalidarLectura("egresos");
 }
 
-export async function obtenerEgresos() {
+// Peticiones simultáneas (p. ej. resumen + gráficos) comparten una sola consulta
+export function obtenerEgresos() {
+  return leerCompartido("egresos", consultarEgresos);
+}
+
+async function consultarEgresos() {
   const db = getFirestore();
   const snapshot = await getDocs(collection(db, "egresos"));
   return snapshot.docs.map((doc) => {

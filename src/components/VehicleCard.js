@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from "react";
-import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import { actualizarVehiculo } from "../lib/vehiculosFirebase";
 import { formatTiempoRelativo, obtenerColorAging } from "../lib/dateUtils";
 
@@ -41,7 +40,11 @@ function sanitizeDeep(obj) {
 
 
 
-const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }) => {
+const SIN_ESTADOS = [];
+
+// Los estados y la hora actual llegan por props desde el Dashboard: así no se
+// consulta Firestore ni se crea un temporizador por cada tarjeta.
+const VehicleCard = ({ vehiculo, estadosServicio = SIN_ESTADOS, now = Date.now(), onEdit, onStatusChange, height, usuarioActivo }) => {
   const {
     // id,
     arrivalTime = Date.now(),
@@ -54,15 +57,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   const arrivalTimeNum = typeof arrivalTime === "string" ? Number(arrivalTime) : arrivalTime;
   const [anchorEl, setAnchorEl] = useState(null);
   const [currentStatus, setCurrentStatus] = useState(vehiculo.status || "servicio");
-  const [estadosServicio, setEstadosServicio] = useState([]);
   const [popoverConfirm, setPopoverConfirm] = useState({ open: false, anchorEl: null, estado: null, newStatus: null });
-  const [now, setNow] = useState(Date.now());
-
-  // Actualizar el tiempo transcurrido cada minuto (para el indicador de aging)
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(id);
-  }, []);
 
   const elapsedMinutes = Math.max(0, Math.floor((now - arrivalTimeNum) / 60000));
   // Indicador de aging: verde (<2h), ámbar (2-6h), rojo (>6h) desde el registro del servicio
@@ -72,15 +67,6 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   // defaultFacturar es un estado normal (p.ej. facturado) y debe permitir abrir el menú
   // para cambiar a otro estado si fuese necesario.
   const estadosCambiables = Array.isArray(estadosServicio) ? estadosServicio : [];
-
-  // Cargar estados dinámicos desde Firestore
-  useEffect(() => {
-    async function cargarEstados() {
-      const estados = await obtenerEstadosServicio();
-      setEstadosServicio(estados);
-    }
-    cargarEstados();
-  }, []);
 
   // Sincronizar el estado local con el prop vehiculo.status al recibir nuevos datos
   useEffect(() => {
@@ -118,14 +104,14 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
     }
     setCurrentStatus(newStatus);
     setAnchorEl(null);
-    // Actualizar en Firestore
-    if (vehiculo.id) {
+    // El padre guarda el cambio (y valida permisos); solo sin padre se escribe aquí
+    if (typeof onStatusChange === "function") {
+      const aplicado = await onStatusChange(vehiculo.id, newStatus);
+      if (aplicado === false) setCurrentStatus(vehiculo.status || "servicio");
+    } else if (vehiculo.id) {
       // Sanitización profunda para evitar undefined en cualquier campo
       const data = sanitizeDeep({ ...vehiculo, status: newStatus });
       await actualizarVehiculo(vehiculo.id, data);
-    }
-    if (typeof onStatusChange === "function") {
-      onStatusChange(newStatus);
     }
   };
 
@@ -166,7 +152,7 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
         ) {
           return;
         }
-        onEdit();
+        onEdit(vehiculo);
       }}
     >
       {/* ...contenido de la tarjeta... */}
@@ -204,7 +190,10 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
                 setPopoverConfirm({ open: false, anchorEl: null, estado: null, newStatus: null });
                 setCurrentStatus(popoverConfirm.newStatus);
                 setAnchorEl(null);
-                if (vehiculo.id) {
+                if (typeof onStatusChange === "function") {
+                  const aplicado = await onStatusChange(vehiculo.id, popoverConfirm.newStatus);
+                  if (aplicado === false) setCurrentStatus(vehiculo.status || "servicio");
+                } else if (vehiculo.id) {
                   const estadoObj = estadosServicio.find(es => es.nombre === popoverConfirm.newStatus);
                   const esOcultar = !!estadoObj?.dejarDeMostrar;
                   const localUser = usuarioActivo ? String(usuarioActivo).split('@')[0] : null;
@@ -215,9 +204,6 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
                     ...(esOcultar ? { fechaEntrega: Date.now(), entregadoPor: (localUser || (fallbackUser ? String(fallbackUser).split('@')[0] : null)) } : {})
                   });
                   await actualizarVehiculo(vehiculo.id, data);
-                }
-                if (typeof onStatusChange === "function") {
-                  onStatusChange(popoverConfirm.newStatus);
                 }
               }}
             >
@@ -361,4 +347,4 @@ const VehicleCard = ({ vehiculo, onEdit, onStatusChange, height, usuarioActivo }
   );
 }
 
-export default VehicleCard;
+export default React.memo(VehicleCard);

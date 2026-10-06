@@ -1,6 +1,7 @@
 
 import { db } from "../firebase";
 import { collection, addDoc, updateDoc, doc, deleteDoc, onSnapshot, getDocs, getDoc } from "firebase/firestore";
+import { leerCompartido, invalidarLectura } from "./lecturasCompartidas";
 
 // Sanitiza cualquier undefined en null, recursivamente
 function sanitizeDeep(obj) {
@@ -21,42 +22,20 @@ function sanitizeDeep(obj) {
   return obj;
 }
 
-// Crear vehículo
-
-// ...existing code...
-
+// Crear vehículo. El historial del cliente (modelosServicios) lo registra quien
+// llama (Dashboard), con una consulta filtrada en lugar de leer toda la colección.
 export async function crearVehiculo(data) {
   const res = await addDoc(collection(db, "vehiculos"), data);
-  // Actualizar modelosServicios en el cliente correspondiente
-  const nombreMayus = (data.customerName || "").toUpperCase();
-  if (nombreMayus) {
-    const { collection: collClientes, doc: docCliente } = await import("firebase/firestore");
-    const clientesSnap = await getDocs(collClientes(db, "clientes"));
-    let clienteDoc = null;
-    clientesSnap.forEach(doc => {
-      const nombreCliente = (doc.data().nombre || "").toUpperCase();
-      if (nombreCliente === nombreMayus) {
-        clienteDoc = doc;
-      }
-    });
-    if (clienteDoc) {
-      const prev = clienteDoc.data().modelosServicios || [];
-      const nuevo = {
-        modelo: data.vehiculo || "",
-        servicio: data.servicio || "",
-        fecha: data.arrivalTime || ""
-      };
-      const actualizados = [...prev, nuevo].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-      await updateDoc(docCliente(db, "clientes", clienteDoc.id), { modelosServicios: actualizados });
-    }
-  }
+  invalidarLectura("vehiculos");
   return res;
 }
 
-// Leer vehículos
-export async function obtenerVehiculos() {
-  const snapshot = await getDocs(collection(db, "vehiculos"));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+// Leer vehículos (peticiones simultáneas comparten una sola consulta)
+export function obtenerVehiculos() {
+  return leerCompartido("vehiculos", async () => {
+    const snapshot = await getDocs(collection(db, "vehiculos"));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  });
 }
 
 // Escuchar vehículos en tiempo real
@@ -103,10 +82,14 @@ export async function actualizarVehiculo(id, data, usuario = "") {
   }
   // Actualizar el documento con los nuevos datos y el historial
   const sanitized = sanitizeDeep({ ...data, historial: nuevoHistorial });
-  return await updateDoc(ref, sanitized);
+  const res = await updateDoc(ref, sanitized);
+  invalidarLectura("vehiculos");
+  return res;
 }
 
 // Eliminar vehículo
 export async function eliminarVehiculo(id) {
-  return await deleteDoc(doc(db, "vehiculos", id));
+  const res = await deleteDoc(doc(db, "vehiculos", id));
+  invalidarLectura("vehiculos");
+  return res;
 }

@@ -48,7 +48,7 @@ const Login = () => {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5" }}>
       <Paper elevation={3} sx={{ p: 4, minWidth: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', m: 3 }}>
-        <img src="/logo.png" alt="Logo" style={{ height: 48, marginBottom: 16 }} />
+        <img src="/logo-header.png" alt="Logo" style={{ height: 48, marginBottom: 16 }} />
         <Typography variant="h5" fontWeight={600} mb={2} align="center">
           Iniciar sesión
         </Typography>

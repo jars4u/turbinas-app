@@ -1,12 +1,16 @@
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { obtenerFactorConversion } from "./factorConversionFirebase";
 import { esMetodoBs } from "./metodosPago";
+import { leerCompartido, invalidarLectura } from "./lecturasCompartidas";
 
 const db = getFirestore();
 const INGRESOS_COLLECTION = "ingresosMovimientos";
 
-export async function guardarIngreso(ingreso) {
-  const factor = await obtenerFactorConversion();
+// `opciones.factor`: factor ya resuelto por quien llama (p. ej. useFactorConversion).
+// Evita consultar la configuración y la API del BCV en medio del guardado.
+export async function guardarIngreso(ingreso, opciones = {}) {
+  const factorDado = Number(opciones.factor);
+  const factor = factorDado > 0 ? factorDado : await obtenerFactorConversion();
   const fechaStr = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   // Filtra todos los campos undefined o null
   let mov = Object.fromEntries(
@@ -76,9 +80,15 @@ export async function guardarIngreso(ingreso) {
   // Filtra nuevamente el objeto final antes de guardar
   mov = Object.fromEntries(Object.entries(mov).filter(([_, v]) => v !== undefined && v !== null));
   await addDoc(collection(db, INGRESOS_COLLECTION), mov);
+  invalidarLectura(INGRESOS_COLLECTION);
 }
 
-export async function obtenerIngresos() {
+// Peticiones simultáneas (p. ej. resumen + gráficos) comparten una sola consulta
+export function obtenerIngresos() {
+  return leerCompartido(INGRESOS_COLLECTION, consultarIngresos);
+}
+
+async function consultarIngresos() {
   const snapshot = await getDocs(collection(db, INGRESOS_COLLECTION));
   return snapshot.docs
     .map(doc => {
@@ -130,4 +140,5 @@ export async function eliminarIngreso(id) {
   if (!id) throw new Error("ID de ingreso requerido");
   const db = getFirestore();
   await deleteDoc(doc(db, INGRESOS_COLLECTION, id));
+  invalidarLectura(INGRESOS_COLLECTION);
 }

@@ -24,8 +24,6 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import PrintOutlinedIcon from "@mui/icons-material/PrintOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import { useNavigate } from "react-router-dom";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
 import {
   Bar,
   CartesianGrid,
@@ -481,6 +479,11 @@ export default function Reportes({ isAdmin = false, isOwner = false }) {
       await waitForImages(container);
       await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
 
+      // Librerías de PDF cargadas solo al exportar (no forman parte del bundle inicial)
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
       const canvas = await html2canvas(container.firstElementChild, {
         backgroundColor: "#f6f1e8",
         scale: 2,

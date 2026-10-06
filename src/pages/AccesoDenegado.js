@@ -7,10 +7,15 @@ export default function AccesoDenegado() {
   return (
     <Container maxWidth="sm">
       <Box mt={8} textAlign="center">
-        <img
-          src="/Access Denied.gif"
-          alt="Access Denied"
-          style={{ maxWidth: "220px", marginBottom: 24 }}
+        {/* Video en bucle en lugar del GIF original (~95 KB vs ~4 MB) */}
+        <video
+          src="/acceso-denegado.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          aria-label="Access Denied"
+          style={{ maxWidth: "220px", width: "100%", marginBottom: 24 }}
         />
         <Typography variant="h4" color="error" gutterBottom>
           Acceso Denegado

@@ -1,6 +1,6 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 
@@ -23,15 +23,7 @@ import TasaBCV from "../components/TasaBCV";
 
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import CajaChica from "../components/CajaChica";
-import Ingresos from "../components/Ingresos";
-import Egresos from "../components/Egresos";
-import GastosDia from "../components/GastosDia";
-import CuentasPorPagar from "../components/CuentasPorPagar";
-import CuentasPorCobrar from "../components/CuentasPorCobrar";
-import CierreDiaMonthlyCharts from "../components/CierreDiaMonthlyCharts";
 
-import ResumenContable from "../components/ResumenContable";
 import ServicioEditorDialog from "../components/dashboard/ServicioEditorDialog";
 import { obtenerClientes } from "../lib/clientesFirebase";
 import { guardarIngreso } from "../lib/ingresosFirebase";
@@ -42,6 +34,24 @@ import { guardarCierreDiario } from "../lib/cierresDiariosFirebase";
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import AccesoDenegado from "./AccesoDenegado";
+
+// Solo se muestra una pestaña a la vez: cada una se descarga al abrirla.
+// Los gráficos (recharts) también van en su propio chunk.
+const CajaChica = lazy(() => import("../components/CajaChica"));
+const Ingresos = lazy(() => import("../components/Ingresos"));
+const Egresos = lazy(() => import("../components/Egresos"));
+const GastosDia = lazy(() => import("../components/GastosDia"));
+const CuentasPorPagar = lazy(() => import("../components/CuentasPorPagar"));
+const CuentasPorCobrar = lazy(() => import("../components/CuentasPorCobrar"));
+const CierreDiaMonthlyCharts = lazy(() => import("../components/CierreDiaMonthlyCharts"));
+const ResumenContable = lazy(() => import("../components/ResumenContable"));
+
+const SkeletonSeccion = (
+  <Box>
+    <Skeleton variant="text" width={200} height={20} sx={{ mb: 1 }} />
+    <Skeleton variant="rounded" width="100%" height={180} />
+  </Box>
+);
 
 export default function CierreDia() {
   const { isAdmin, isOwner } = useAuth();
@@ -95,7 +105,9 @@ export default function CierreDia() {
         guardarTasaBCV={guardarTasaBCV}
         guardarTasaEURBCV={guardarTasaEURBCV}
       />
-      <CierreDiaMonthlyCharts tasaBCV={tasaBCV} />
+      <Suspense fallback={SkeletonSeccion}>
+        <CierreDiaMonthlyCharts tasaBCV={tasaBCV} />
+      </Suspense>
     </>
   );
 
@@ -245,7 +257,7 @@ export default function CierreDia() {
           }}
         >
           {isXs ? (
-            <Accordion sx={{ my: 1 }}>
+            <Accordion sx={{ my: 1 }} TransitionProps={{ unmountOnExit: true }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle1" fontWeight={600}>Monitoreo de datos</Typography>
               </AccordionSummary>
@@ -287,6 +299,7 @@ export default function CierreDia() {
               <Tab label="Por Pagar" />
               <Tab label="Por Cobrar" />
             </Tabs>
+            <Suspense fallback={<Box sx={{ p: 2 }}>{SkeletonSeccion}</Box>}>
             {tabIndex === 0 && (
               <Box sx={{ p: 2 }}>
                 {loadingTasa ? (
@@ -365,6 +378,7 @@ export default function CierreDia() {
                 <CuentasPorPagar cuentas={[]} />
               </Box>
             )}
+            </Suspense>
           </Box>
         </Box>
       </Box>

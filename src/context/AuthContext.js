@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { observarUsuario, logoutUsuario } from "../lib/usuariosFirebase";
 import { db } from "../firebase";
-import { doc, onSnapshot, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 const AuthContext = createContext();
 
@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     setLoadingAuth(true);
     let userDocUnsub = null;
-    const unsubscribe = observarUsuario(async (user) => {
+    const unsubscribe = observarUsuario((user) => {
       // Cancelar suscripción previa al cambiar de usuario
       if (userDocUnsub) {
         userDocUnsub();
@@ -29,20 +29,9 @@ export function AuthProvider({ children }) {
 
         const userDocRef = doc(db, "usuarios", user.uid);
 
-        // Intentar lectura inicial por si aún no existe el doc
-        try {
-          const snap = await getDoc(userDocRef);
-          const data = snap.data() || {};
-          setIsAdmin(!!data.admin);
-          setIsOwner(!!data.owner);
-          setIsObserver(!!data.observer);
-        } catch (e) {
-          setIsAdmin(false);
-          setIsOwner(false);
-          setIsObserver(false);
-        }
-
-        // Suscribirse a cambios en tiempo real del documento de roles
+        // Suscribirse a cambios en tiempo real del documento de roles.
+        // La primera emisión cubre la lectura inicial (también si el doc no existe),
+        // así que no hace falta un getDoc previo que retrase la suscripción.
         userDocUnsub = onSnapshot(
           userDocRef,
           (snapshot) => {
@@ -74,17 +63,23 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logoutUsuario();
     setUsuario(null);
     setIsAdmin(false);
     setIsOwner(false);
     setIsObserver(false);
     localStorage.removeItem("usuario");
-  };
+  }, []);
+
+  // Valor memoizado: los consumidores solo se re-renderizan cuando algo cambia de verdad
+  const value = useMemo(
+    () => ({ usuario, isAdmin, isOwner, isObserver, loadingAuth, handleLogout }),
+    [usuario, isAdmin, isOwner, isObserver, loadingAuth, handleLogout]
+  );
 
   return (
-    <AuthContext.Provider value={{ usuario, isAdmin, isOwner, isObserver, loadingAuth, handleLogout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

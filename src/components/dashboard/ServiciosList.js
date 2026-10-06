@@ -133,8 +133,9 @@ export default function ServiciosList({
         <Grid key={v.id} sx={{ mb: 3 }}>
           <VehicleCard
             vehiculo={v}
-            onEdit={() => onOpen?.(v)}
-            onStatusChange={(newStatus) => onStatusChange?.(v.id, newStatus)}
+            estadosServicio={estadosServicio}
+            onEdit={onOpen}
+            onStatusChange={onStatusChange}
             usuarioActivo={usuarioActivo}
             height={maxHeight}
           />
