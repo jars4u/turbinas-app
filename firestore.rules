@@ -1,12 +1,17 @@
 rules_version = '2';
 
-// ATENCIÓN: este archivo está incompleto frente a lo que usa la app. Solo cubre
-// usuarios, configuracion, egresos, proveedores, metodosPago e ingresosMovimientos.
-// Faltan, entre otras: vehiculos, clientes, estadosServicio, cierresDiarios,
-// cuentasPorCobrar, cajaChicaMovimientos, movimientos, inventario, empleados,
-// cargos, nominas, notas, plantillasMensajes y columnasUsuario. Como al final hay
-// un "denegar todo", desplegarlo tal cual dejaría la app sin acceso a esas
-// colecciones: completar primero con las reglas que ya están en producción.
+// Reglas de seguridad de Firestore.
+//
+// Principio: solo los MIEMBROS del negocio acceden a los datos. Un miembro es un
+// usuario autenticado que además tiene su documento en /usuarios/{uid}.
+//
+// No basta con "estar autenticado": la API key de Firebase es pública (viaja en
+// el JS de la app) y el alta de cuentas por email está habilitada, así que
+// cualquiera podría crearse una cuenta. El documento en /usuarios solo lo puede
+// crear un owner (desde Configuración > Usuarios), y eso es lo que da acceso.
+//
+// ANTES DE PUBLICAR: verificar que cada usuario de Authentication tenga su
+// documento en /usuarios con el mismo UID; quien no lo tenga perderá el acceso.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -15,80 +20,44 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function userDoc() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.uid);
+    }
+
+    function isMember() {
+      return isSignedIn() && exists(userDoc());
+    }
+
     function isOwner() {
-      // El campo customClaims.owner no se usa aquí; usamos el doc de usuarios
-      return isSignedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.owner == true;
+      return isMember() && get(userDoc()).data.get('owner', false) == true;
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-             (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.admin == true
-              || isOwner());
+      return isMember() && (get(userDoc()).data.get('admin', false) == true || isOwner());
     }
 
-    // Colección de usuarios
+    // Usuarios y roles
     match /usuarios/{uid} {
-      allow read: if isAdmin(); // Solo admin/owner pueden listar/leer otros usuarios
-
-      // Un usuario puede leer su propio doc
+      // Cada usuario lee su propio documento (roles); admin/owner leen la lista
       allow get: if isSignedIn() && uid == request.auth.uid;
+      allow read: if isAdmin();
 
-      // Crear usuario: solo Owner
-      allow create: if isOwner();
+      // Alta y baja de usuarios: solo owner
+      allow create, delete: if isOwner();
 
-      // Actualizar: el usuario puede actualizar su propio perfil excepto admin/owner
-      allow update: if isSignedIn() && uid == request.auth.uid &&
-                       !("admin" in request.resource.data.diff(resource.data).changedKeys() ||
-                         "owner" in request.resource.data.diff(resource.data).changedKeys());
-
-      // Actualizar roles admin/owner: solo Owner
+      // El owner cambia cualquier dato (incluidos roles)
       allow update: if isOwner();
-
-      // Eliminar usuario: solo Owner
-      allow delete: if isOwner();
+      // Cada usuario puede editar su propio perfil, pero nunca sus roles
+      allow update: if isSignedIn() && uid == request.auth.uid &&
+                       !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['admin', 'owner', 'observer']);
     }
 
-    // Configuración general: factor de conversión, tasa BCV, caja chica, etc.
-    // (la colección se llama "configuracion", en singular, como la usa la app)
-    match /configuracion/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Egresos (facturas y legacy)
-    match /egresos/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Proveedores (catálogo autogenerado desde egresos)
-    match /proveedores/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Cuentas por pagar
-    match /cuentasPorPagar/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Formas de pago configurables
-    match /metodosPago/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Ingresos (movimientos manuales)
-    match /ingresosMovimientos/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Por defecto, denegar todo
-    match /{document=**} {
-      allow read, write: if false;
+    // Resto de colecciones del negocio (vehículos, ingresos, egresos, clientes,
+    // caja chica, nómina, inventario, configuración, notas, etc.) y sus
+    // subcolecciones: acceso completo para miembros.
+    match /{coleccion}/{documento=**} {
+      allow read, write: if coleccion != 'usuarios' && isMember();
     }
   }
 }

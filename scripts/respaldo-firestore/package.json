@@ -1,0 +1,12 @@
+{
+  "name": "respaldo-firestore",
+  "private": true,
+  "description": "Respaldo y restauración de Firestore a JSON (plan gratuito, sin export administrado)",
+  "scripts": {
+    "respaldar": "node respaldar.js",
+    "restaurar": "node restaurar.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

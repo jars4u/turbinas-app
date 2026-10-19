@@ -1,15 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { TextField, Button, Paper, Typography, Box, Autocomplete } from "@mui/material";
-import { loginUsuario, logoutUsuario, observarUsuario, obtenerUsuarios } from "../lib/usuariosFirebase";
+import { loginUsuario, logoutUsuario, observarUsuario } from "../lib/usuariosFirebase";
 
+// Usuarios que ya iniciaron sesión en este dispositivo (para el autocompletado).
+// Antes se leía la colección "usuarios" sin sesión, lo que exponía todos los
+// correos a cualquiera; las reglas de Firestore ya no lo permiten.
+const USUARIOS_RECIENTES_KEY = "loginUsuariosRecientes";
+
+function leerUsuariosRecientes() {
+  try {
+    const lista = JSON.parse(localStorage.getItem(USUARIOS_RECIENTES_KEY) || "[]");
+    return Array.isArray(lista) ? lista : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function recordarUsuario(email) {
+  try {
+    const lista = [email, ...leerUsuariosRecientes().filter((e) => e !== email)].slice(0, 10);
+    localStorage.setItem(USUARIOS_RECIENTES_KEY, JSON.stringify(lista));
+  } catch (_) { /* noop */ }
+}
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [usuarioActual, setUsuarioActual] = useState(null);
-  const [usuarios, setUsuarios] = useState([]);
+  const [usuarios] = useState(leerUsuariosRecientes);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,11 +44,6 @@ const Login = () => {
     }
   }, [usuarioActual, navigate]);
 
-  useEffect(() => {
-    // Cargar usuarios registrados para el autocomplete
-    obtenerUsuarios().then(us => setUsuarios(us.map(u => u.email)));
-  }, []);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username || !password) {
@@ -37,6 +52,7 @@ const Login = () => {
     }
     try {
       await loginUsuario(username, password);
+      recordarUsuario(username);
       setError("");
       navigate("/dashboard");
     } catch (err) {
