@@ -32,6 +32,13 @@ import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { esMetodoBs, nombreMetodo, normalizarMetodo } from "../lib/metodosPago";
+import {
+  CATEGORIA_EGRESO,
+  clasificarEgreso,
+  convertirEgreso,
+  convertirPagoIngreso,
+  factorParaEstimacion,
+} from "../lib/finanzas";
 
 function agruparPorDia(arr, tipo) {
   return arr.reduce((acc, item) => {
@@ -97,7 +104,11 @@ export default function ResumenContable({ tasaBCV }) {
       setMovimientosCajaChica(movs);
     });
   }, []);
-  const { factor: factorConversion } = useFactorConversion();
+  const { factor: factorConversion, detalle: detalleFactor } = useFactorConversion();
+  // Factor manual actual: solo para estimar pagos en Bs sin conversión registrada
+  const factorActual = factorParaEstimacion(detalleFactor);
+  // Equivalente en USD de un pago en Bs con las reglas compartidas (0 si no se puede convertir)
+  const usdDePagoBs = (fp) => convertirPagoIngreso(fp, { factorActual }).usd || 0;
   const [datosPorDia, setDatosPorDia] = useState({});
   const [cierresPorDia, setCierresPorDia] = useState({});
   const [loading, setLoading] = useState(true);
@@ -370,9 +381,9 @@ export default function ResumenContable({ tasaBCV }) {
               }
             });
             const ingresosOrdenados = [...ingresos].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
-            const egresosOperativos = egresos.filter((e) => (e.tipo || "") !== "gastoDia");
+            const egresosOperativos = egresos.filter((e) => clasificarEgreso(e) !== CATEGORIA_EGRESO.GASTO_DIA);
             const egresosOperativosOrdenados = [...egresosOperativos].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
-            const gastosDelDiaFiltrados = egresos.filter((e) => (e.tipo || "") === "gastoDia");
+            const gastosDelDiaFiltrados = egresos.filter((e) => clasificarEgreso(e) === CATEGORIA_EGRESO.GASTO_DIA);
             const gastosSemanaOrdenados = [...gastosDelDiaFiltrados].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
             // Usar la tasa histórica del último cierre del rango, si existe
             const cierre =
@@ -380,14 +391,13 @@ export default function ResumenContable({ tasaBCV }) {
             // (Nota) tasaHistorica y totales globales no se usan más en este bloque; se mantienen los cálculos específicos más abajo
             // DEBUG: Mostrar montos en efectivo (USD) en consola
             // Calcular total de "gastos del día" dentro del rango (usaremos para restar del efectivo)
-            const tasaParaConvGlobal = tasaBCV || factorConversion || 1;
+            // Conversión compartida: solo con la tasa registrada (tasaFactura o tasa).
+            // Los gastos en Bs sin tasa y los ambiguos no suman en USD: se cuentan aparte.
             const gastosDelDiaArrayGlobal = gastosDelDiaFiltrados;
-            const gastosSemanaUSD = gastosDelDiaArrayGlobal.reduce((acc, g) => {
-              if (typeof g.montoUSD === "number" && !isNaN(g.montoUSD)) return acc + g.montoUSD;
-              if (typeof g.montoBs === "number" && !isNaN(g.montoBs)) return acc + g.montoBs / tasaParaConvGlobal;
-              if (typeof g.monto === "number" && !isNaN(g.monto)) return acc + g.monto;
-              return acc;
-            }, 0);
+            const conversionesGastos = gastosDelDiaArrayGlobal.map((g) => convertirEgreso(g));
+            const gastosSemanaUSD = conversionesGastos.reduce((acc, c) => acc + (c.usd || 0), 0);
+            const gastosSinTasa = conversionesGastos.filter((c) => c.pendienteConversion).length;
+            const gastosAmbiguos = conversionesGastos.filter((c) => c.ambiguo).length;
             const gastosSemanaBs = gastosDelDiaArrayGlobal.reduce((acc, g) => {
               if (typeof g.montoBs === "number" && !isNaN(g.montoBs)) return acc + g.montoBs;
               return acc;
@@ -423,16 +433,8 @@ export default function ResumenContable({ tasaBCV }) {
               });
               const totalEfectivoUSD = pagosEfectivo.reduce((acc, p) => acc + p.monto, 0);
 
-              // Calcular gastos del día (tipo === 'gastoDia') dentro del rango
-              const tasaParaConv = tasaBCV || factorConversion || 1;
-              const gastosDelDiaArray = egresos.filter((e) => (e.tipo || "") === "gastoDia");
-              const totalGastosDelDiaUSD = gastosDelDiaArray.reduce((acc, g) => {
-                if (typeof g.montoUSD === "number" && !isNaN(g.montoUSD)) return acc + g.montoUSD;
-                if (typeof g.montoBs === "number" && !isNaN(g.montoBs)) return acc + g.montoBs / tasaParaConv;
-                // Intentar otros campos compatibles
-                if (typeof g.monto === "number" && !isNaN(g.monto)) return acc + g.monto;
-                return acc;
-              }, 0);
+              // Gastos del día dentro del rango (misma regla que gastosSemanaUSD)
+              const totalGastosDelDiaUSD = gastosSemanaUSD;
 
               const efectivoNetoUSD = totalEfectivoUSD - totalGastosDelDiaUSD;
 
@@ -606,15 +608,7 @@ export default function ResumenContable({ tasaBCV }) {
                         if (Array.isArray(i.formasPago) && i.formasPago.length > 0) {
                           return acc + i.formasPago
                             .filter(fp => esMetodoBs(fp.formaPago))
-                            .reduce((sum, fp) => {
-                              const montoBs = (fp.montoBs !== undefined && fp.montoBs !== null && !isNaN(Number(fp.montoBs)))
-                                ? Number(fp.montoBs)
-                                : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
-                              const usdEq = (fp.usdEquiv !== undefined && fp.usdEquiv !== null && !isNaN(Number(fp.usdEquiv)))
-                                ? Number(fp.usdEquiv)
-                                : (factorConversion ? (montoBs / factorConversion) : 0);
-                              return sum + usdEq;
-                            }, 0);
+                            .reduce((sum, fp) => sum + usdDePagoBs(fp), 0);
                         }
                         return acc;
                       }, 0);
@@ -780,10 +774,7 @@ export default function ResumenContable({ tasaBCV }) {
                                 ? Number(fp.montoBs)
                                 : (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto)) ? Number(fp.monto) : 0);
                               desglose[formaNorm].bs += montoBs;
-                              const usdEquiv = (fp.usdEquiv !== undefined && fp.usdEquiv !== null && !isNaN(Number(fp.usdEquiv)))
-                                ? Number(fp.usdEquiv)
-                                : (factorConversion ? (montoBs / factorConversion) : 0);
-                              desglose[formaNorm].usdEquivBs += usdEquiv;
+                              desglose[formaNorm].usdEquivBs += usdDePagoBs(fp);
                             } else if (fp.monto !== undefined && fp.monto !== null && !isNaN(Number(fp.monto))) {
                               desglose[formaNorm].usd += Number(fp.monto);
                             }
@@ -841,7 +832,7 @@ export default function ResumenContable({ tasaBCV }) {
                       })}`;
                     })()}
                   </Typography>
-                  <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
+                  <Typography sx={{ mb: (gastosSinTasa || gastosAmbiguos) ? 0 : 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Gastos semana:</b>
                     {` $ ${gastosSemanaUSD.toLocaleString("en-US", {
                       minimumFractionDigits: 2,
@@ -849,6 +840,14 @@ export default function ResumenContable({ tasaBCV }) {
                       minimumFractionDigits: 2,
                     })}`}
                   </Typography>
+                  {(gastosSinTasa > 0 || gastosAmbiguos > 0) && (
+                    <Typography variant="caption" color="warning.main" sx={{ display: "block", mb: 1, pl: 2 }}>
+                      Total en $ parcial: {[
+                        gastosSinTasa > 0 ? `${gastosSinTasa} gasto(s) en Bs sin tasa registrada` : null,
+                        gastosAmbiguos > 0 ? `${gastosAmbiguos} gasto(s) con USD y Bs a la vez` : null,
+                      ].filter(Boolean).join(" y ")} no suman en $.
+                    </Typography>
+                  )}
                   <Typography sx={{ mb: 1, fontSize: { xs: 13, sm: 16 }, lineHeight: { xs: 1.2, sm: "inherit" }, whiteSpace: { xs: "nowrap", sm: "normal" }, overflow: { xs: "hidden", sm: "visible" }, textOverflow: { xs: "ellipsis", sm: "clip" } }}>
                     <b>• Efectivo neto:</b>
                     {` $ ${efectivoNetoResumenUSD.toLocaleString("en-US", {

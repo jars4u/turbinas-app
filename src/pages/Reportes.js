@@ -41,6 +41,10 @@ import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { obtenerEgresos } from "../lib/egresosFirebase";
 import { obtenerNominas } from "../lib/obtenerNominasFirebase";
 import { obtenerVehiculos } from "../lib/vehiculosFirebase";
+import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
+import useFactorConversion from "../hooks/useFactorConversion";
+import { factorParaEstimacion } from "../lib/finanzas";
+import AvisoCompletitud, { lineasCompletitud, textoEstimaciones } from "../components/AvisoCompletitud";
 import {
   buildReportData,
   exportReportToExcel,
@@ -82,6 +86,21 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+// Aviso de totales parciales en el PDF: mismos textos que en pantalla
+function buildPdfCompletitud(completitud) {
+  const lineas = lineasCompletitud(completitud);
+  const estimaciones = textoEstimaciones(completitud);
+  if (!completitud || (completitud.completo && !estimaciones)) return "";
+  const items = lineas
+    .map((l) => `<li style="margin-bottom:4px;"><strong>${escapeHtml(l.titulo)}:</strong> ${escapeHtml(l.texto)}</li>`)
+    .join("");
+  return `
+      <div style="background:#fff8e1;border:1px solid #f0c36d;border-radius:18px;padding:14px 18px;margin-top:18px;font-size:13px;color:#5d4200;line-height:1.5;">
+        ${completitud.completo ? "" : `<div style="font-weight:700;margin-bottom:6px;">Totales parciales: no reconciliados. Incluyen solo los registros contabilizables. Queda fuera:</div><ul style="margin:0;padding-left:20px;">${items}</ul>`}
+        ${estimaciones ? `<div style="margin-top:6px;">${escapeHtml(estimaciones)}</div>` : ""}
+      </div>`;
 }
 
 function getGranularityLabel(granularity) {
@@ -249,11 +268,16 @@ async function waitForImages(container) {
   );
 }
 
-function SummaryCard({ title, value, subtitle }) {
+function SummaryCard({ title, value, subtitle, parcial = false }) {
   return (
     <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, minHeight: 126 }}>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         {title}
+        {parcial && (
+          <Typography component="span" variant="caption" color="warning.main" sx={{ ml: 1, fontWeight: 600 }}>
+            · parcial
+          </Typography>
+        )}
       </Typography>
       <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1, mb: 1 }}>
         {value}
@@ -326,7 +350,7 @@ function buildPdfMarkup({ reportData, fontFamily, generatedAt }) {
         <div style="background:#fff;border:1px solid #e3ddd2;border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(15,43,70,0.06);">
           <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6b77;margin-bottom:10px;">Nómina</div>
           <div style="font-size:26px;font-weight:700;color:#17324a;line-height:1.1;">${formatUsd(reportData?.summary?.nominaUSD)}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">Total pagado en el rango</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">Nóminas dentro del rango</div>
         </div>
         <div style="background:#fff;border:1px solid #e3ddd2;border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(15,43,70,0.06);">
           <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6b77;margin-bottom:10px;">Neto</div>
@@ -334,6 +358,8 @@ function buildPdfMarkup({ reportData, fontFamily, generatedAt }) {
           <div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5;">${netoBreakdown}</div>
         </div>
       </div>
+
+      ${buildPdfCompletitud(reportData?.summary?.completitud)}
 
       ${chartSection}
 
@@ -376,6 +402,10 @@ export default function Reportes({ isAdmin = false, isOwner = false }) {
   const [egresos, setEgresos] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
   const [nominas, setNominas] = useState([]);
+  const [estadosServicio, setEstadosServicio] = useState([]);
+  // Factor manual actual: solo para estimar pagos en Bs sin conversión registrada
+  const { detalle: detalleFactor } = useFactorConversion();
+  const factorActual = factorParaEstimacion(detalleFactor);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -387,11 +417,12 @@ export default function Reportes({ isAdmin = false, isOwner = false }) {
       setLoading(true);
       setError("");
       try {
-        const [ingresosData, egresosData, vehiculosData, nominasData] = await Promise.all([
+        const [ingresosData, egresosData, vehiculosData, nominasData, estadosData] = await Promise.all([
           obtenerIngresos(),
           obtenerEgresos(),
           obtenerVehiculos(),
           obtenerNominas(),
+          obtenerEstadosServicio(),
         ]);
 
         if (!mounted) return;
@@ -399,6 +430,7 @@ export default function Reportes({ isAdmin = false, isOwner = false }) {
         setEgresos(Array.isArray(egresosData) ? egresosData : []);
         setVehiculos(Array.isArray(vehiculosData) ? vehiculosData : []);
         setNominas(Array.isArray(nominasData) ? nominasData : []);
+        setEstadosServicio(Array.isArray(estadosData) ? estadosData : []);
       } catch (loadError) {
         if (!mounted) return;
         setError(loadError?.message || "No se pudo cargar la información del reporte.");
@@ -420,11 +452,13 @@ export default function Reportes({ isAdmin = false, isOwner = false }) {
         egresos,
         vehiculos,
         nominas,
+        estadosServicio,
+        factorActual,
         fechaInicio,
         fechaFin,
         presetKey,
       }),
-    [egresos, fechaFin, fechaInicio, ingresos, nominas, presetKey, vehiculos]
+    [egresos, estadosServicio, factorActual, fechaFin, fechaInicio, ingresos, nominas, presetKey, vehiculos]
   );
 
   const ingresosSubtitle = formatUsdBsBreakdown(
@@ -662,28 +696,35 @@ export default function Reportes({ isAdmin = false, isOwner = false }) {
                 title="Ingresos"
                 value={formatUsd(reportData.summary.ingresosUSD)}
                 subtitle={ingresosSubtitle}
+                parcial={!reportData.summary.completitud.areas.ingresos}
               />
               <SummaryCard
                 title="Egresos"
                 value={formatUsd(reportData.summary.egresosUSD)}
                 subtitle={egresosSubtitle}
+                parcial={!reportData.summary.completitud.areas.egresos}
               />
               <SummaryCard
                 title="Nómina"
                 value={formatUsd(reportData.summary.nominaUSD)}
-                subtitle="Total pagado en el rango"
+                subtitle="Nóminas dentro del rango"
+                parcial={!reportData.summary.completitud.areas.nomina}
               />
               <SummaryCard
                 title="Servicios entregados"
                 value={String(reportData.summary.serviciosEntregados)}
                 subtitle="Vehículos entregados en el periodo"
+                parcial={!reportData.summary.completitud.areas.servicios}
               />
               <SummaryCard
                 title="Neto"
                 value={formatUsd(reportData.summary.netoUSD)}
-                subtitle={netoSubtitle}
+                subtitle={reportData.summary.completitud.completo ? netoSubtitle : `${netoSubtitle} · no reconciliado`}
+                parcial={!reportData.summary.completitud.completo}
               />
             </Box>
+
+            <AvisoCompletitud completitud={reportData.summary.completitud} sx={{ mb: 3 }} />
 
             <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, mb: 3 }}>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>

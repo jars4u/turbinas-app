@@ -2,6 +2,7 @@ import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc } from "fireb
 import { obtenerFactorConversion } from "./factorConversionFirebase";
 import { esMetodoBs } from "./metodosPago";
 import { leerCompartido, invalidarLectura } from "./lecturasCompartidas";
+import { leerFecha, formatearFechaDMY } from "./finanzas";
 
 const db = getFirestore();
 const INGRESOS_COLLECTION = "ingresosMovimientos";
@@ -93,31 +94,13 @@ async function consultarIngresos() {
   return snapshot.docs
     .map(doc => {
       const data = doc.data();
-      let fechaStr = '';
-      let fechaRaw = null;
-      if (data.fecha && typeof data.fecha === 'string') {
-        // Si es string, normalizar a dd/mm/yyyy
-        const parts = data.fecha.split(/[/-]/);
-        if (parts.length === 3) {
-          fechaStr = `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
-          // Para ordenar/filtrar, crear Date en horario local.
-          // IMPORTANTE: evitar `new Date('YYYY-MM-DD')` porque se interpreta como UTC
-          // y en GMT-4 se corre al día anterior.
-          const y = Number(parts[2]);
-          const m = Number(parts[1]);
-          const d = Number(parts[0]);
-          fechaRaw = Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)
-            ? new Date(y, m - 1, d, 12, 0, 0)
-            : null;
-        } else {
-          fechaStr = data.fecha;
-          fechaRaw = Date.parse(data.fecha) ? new Date(data.fecha) : null;
-        }
-      } else if (data.fecha && data.fecha.toDate) {
-        // Si es Timestamp
-        fechaRaw = data.fecha.toDate();
-        fechaStr = fechaRaw.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      }
+      // Regla única de fechas: dd/mm/aaaa, aaaa-mm-dd y Timestamp, a mediodía local.
+      // Si la fecha no es interpretable, fechaRaw queda en null (no se imputa a ningún
+      // período) y se conserva el texto original para mostrarlo.
+      const { fecha: fechaRaw } = leerFecha(data.fecha);
+      const fechaStr = fechaRaw
+        ? formatearFechaDMY(fechaRaw)
+        : (typeof data.fecha === 'string' ? data.fecha : '');
       // Compatibilidad: exponer montos de formas de pago si existen
       let formasPago = data.formasPago || [];
       // Si no existe formasPago pero sí formaPago y monto, adaptarlo

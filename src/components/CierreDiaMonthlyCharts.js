@@ -33,7 +33,15 @@ import {
 import { obtenerIngresos } from "../lib/ingresosFirebase";
 import { obtenerEgresos } from "../lib/egresosFirebase";
 import useFactorConversion from "../hooks/useFactorConversion";
-import { esMetodoBs, nombreMetodo, normalizarMetodo } from "../lib/metodosPago";
+import { nombreMetodo, normalizarMetodo } from "../lib/metodosPago";
+import {
+  convertirEgreso,
+  factorParaEstimacion,
+  fechaEgreso,
+  resumirCompletitud,
+  totalizarIngreso,
+} from "../lib/finanzas";
+import AvisoCompletitud from "./AvisoCompletitud";
 
 dayjs.locale("es");
 
@@ -53,14 +61,6 @@ function isValidNumber(value) {
 function toNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
-}
-
-function pickPositive(...candidates) {
-  for (const c of candidates) {
-    const n = Number(c);
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-  return null;
 }
 
 function usdFormatter(value) {
@@ -111,101 +111,32 @@ function getMetodoColor(name, theme) {
   return colorPorHash(key);
 }
 
-function getIngresoUSD(mov, { factorConversionGlobal, tasaBCV }) {
-  const formasPago = Array.isArray(mov?.formasPago) ? mov.formasPago : [];
-  let totalUSD = 0;
-  let bsSinTasa = 0;
-
-  if (formasPago.length === 0) {
-    const fallback = pickPositive(mov?.precio, mov?.montoUSD, mov?.monto, mov?.total, mov?.usdEquiv);
-    return {
-      totalUSD: fallback ? Number(fallback) : 0,
-      bsSinTasa: 0,
-      byMetodo: {},
-    };
-  }
-
+// Conversión con las reglas compartidas (src/lib/finanzas.js): histórica si existe,
+// estimación con el factor manual si no; lo que no se puede convertir va a bsSinTasa.
+function getIngresoUSD(mov, { factorActual }) {
+  const t = totalizarIngreso(mov, { factorActual });
   const byMetodo = {};
-
-  for (const fp of formasPago) {
-    const metodo = normalizeMetodo(fp?.formaPago);
-
-    // Métodos en divisa: el monto ya viene en USD
-    if (!esMetodoBs(fp?.formaPago)) {
-      const usd = pickPositive(fp?.monto, fp?.montoUSD, fp?.usdEquiv) || 0;
-      totalUSD += usd;
-      byMetodo[metodo] = (byMetodo[metodo] || 0) + usd;
-      continue;
-    }
-
-    // Métodos en bolívares: convertir a USD
-    const usdEquiv = pickPositive(fp?.usdEquiv);
-    if (usdEquiv) {
-      totalUSD += usdEquiv;
-      byMetodo[metodo] = (byMetodo[metodo] || 0) + usdEquiv;
-      continue;
-    }
-
-    const montoBs = pickPositive(fp?.montoBs, fp?.monto) || 0;
-    const factor = pickPositive(fp?.factorConversion, factorConversionGlobal, tasaBCV);
-
-    if (montoBs > 0 && factor) {
-      const usd = montoBs / factor;
-      totalUSD += usd;
-      byMetodo[metodo] = (byMetodo[metodo] || 0) + usd;
-    } else if (montoBs > 0) {
-      bsSinTasa += montoBs;
-    }
+  for (const p of t.pagos) {
+    if (p.usd === null) continue;
+    const metodo = normalizeMetodo(p.metodo);
+    byMetodo[metodo] = (byMetodo[metodo] || 0) + p.usd;
   }
-
-  return { totalUSD, bsSinTasa, byMetodo };
+  return { totalUSD: t.usd, usdEstimado: t.usdEstimado, bsSinTasa: t.bsSinConversion, byMetodo };
 }
 
-function getEgresoUSD(egreso, { tasaBCV }) {
-  const montoUSD = pickPositive(egreso?.montoUSD) || 0;
-  const montoBs = pickPositive(egreso?.montoBs) || 0;
-
-  let totalUSD = montoUSD;
-  let bsSinTasa = 0;
-
-  if (montoBs > 0) {
-    const tasa = pickPositive(egreso?.tasaFactura, tasaBCV);
-    if (tasa) totalUSD += montoBs / tasa;
-    else bsSinTasa += montoBs;
-  }
-
-  // Fallback: factura con items
-  if (!montoUSD && !montoBs && Array.isArray(egreso?.items) && egreso.items.length > 0) {
-    const totalItems = egreso.items.reduce((acc, it) => {
-      const totalItem = isValidNumber(it?.totalItem)
-        ? it.totalItem
-        : isValidNumber(it?.cantidad) && isValidNumber(it?.precioUnitario)
-          ? it.cantidad * it.precioUnitario
-          : 0;
-      return acc + (Number.isFinite(totalItem) ? totalItem : 0);
-    }, 0);
-
-    if ((egreso?.monedaFactura || "USD") === "Bs") {
-      const tasa = pickPositive(egreso?.tasaFactura, tasaBCV);
-      if (tasa) totalUSD += totalItems / tasa;
-      else bsSinTasa += totalItems;
-    } else {
-      totalUSD += totalItems;
-    }
-  }
-
-  return { totalUSD, bsSinTasa };
+// Egresos: solo tasa registrada. Los ambiguos (USD y Bs a la vez) y los que no
+// tienen tasa no suman: se informan en el aviso de completitud.
+function getEgresoUSD(egreso) {
+  const c = convertirEgreso(egreso);
+  return {
+    totalUSD: c.usd || 0,
+    pendienteConversion: c.pendienteConversion,
+    bsPendiente: c.pendienteConversion ? c.bs : 0,
+    ambiguo: c.ambiguo ? { importeUSDOriginal: c.importeUSDOriginal, importeBsOriginal: c.importeBsOriginal } : null,
+  };
 }
 
-function getDateFromFirestore(fecha) {
-  if (!fecha) return null;
-  if (fecha instanceof Date) return fecha;
-  if (typeof fecha?.toDate === "function") return fecha.toDate();
-  if (typeof fecha?.seconds === "number") return new Date(fecha.seconds * 1000);
-  return null;
-}
-
-export default function CierreDiaMonthlyCharts({ tasaBCV }) {
+export default function CierreDiaMonthlyCharts() {
   const theme = useTheme();
 
   const [mesSeleccionado, setMesSeleccionado] = useState(dayjs());
@@ -213,8 +144,9 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
 
   const [ingresosAll, setIngresosAll] = useState([]);
   const [egresosAll, setEgresosAll] = useState([]);
-  // Factor vigente según la configuración (manual, BCV dólar o BCV euro)
-  const { factor: factorConversion } = useFactorConversion();
+  // Factor manual actual: solo para estimar pagos en Bs sin conversión registrada
+  const { detalle: detalleFactor } = useFactorConversion();
+  const factorActual = factorParaEstimacion(detalleFactor);
 
   useEffect(() => {
     let mounted = true;
@@ -255,12 +187,16 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
     totalIngresosUSD,
     totalEgresosUSD,
     totalNetoUSD,
-    bsSinTasaTotal,
+    completitud,
     pieMetodos,
     topServicios,
   } = useMemo(() => {
     const start = monthRange.start;
     const end = monthRange.end;
+
+    // Registros sin fecha verificable: no se pueden asignar a este ni a ningún mes
+    const ingresosSinFecha = ingresosAll.filter((i) => !(i?.fechaRaw instanceof Date)).length;
+    const egresosSinFecha = egresosAll.filter((e) => !fechaEgreso(e).fecha).length;
 
     const ingresosMes = ingresosAll.filter((i) => {
       const d = i?.fechaRaw instanceof Date ? i.fechaRaw : null;
@@ -269,8 +205,9 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
       return ms >= start.valueOf() && ms <= end.valueOf();
     });
 
+    // Timestamp o, en egresos antiguos, fecha en texto (fechaEgreso)
     const egresosMes = egresosAll.filter((e) => {
-      const d = getDateFromFirestore(e?.fecha);
+      const d = fechaEgreso(e).fecha;
       if (!d) return false;
       const ms = d.getTime();
       return ms >= start.valueOf() && ms <= end.valueOf();
@@ -283,7 +220,10 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
 
     let ingresosTotal = 0;
     let egresosTotal = 0;
-    let bsSinTasa = 0;
+    let usdEstimado = 0;
+    const ingresosPendientes = { cantidad: 0, bs: 0 };
+    const egresosPendientes = { cantidad: 0, bs: 0 };
+    const ambiguos = [];
 
     const metodos = {};
     const servicios = {};
@@ -293,13 +233,14 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
       const day = d instanceof Date ? d.getDate() : null;
       if (!day) continue;
 
-      const { totalUSD, bsSinTasa: bsNo, byMetodo } = getIngresoUSD(mov, {
-        factorConversionGlobal: factorConversion,
-        tasaBCV,
-      });
+      const { totalUSD, usdEstimado: estimado, bsSinTasa: bsNo, byMetodo } = getIngresoUSD(mov, { factorActual });
 
       ingresosTotal += totalUSD;
-      bsSinTasa += bsNo;
+      usdEstimado += estimado;
+      if (bsNo !== 0) {
+        ingresosPendientes.cantidad += 1;
+        ingresosPendientes.bs += bsNo;
+      }
 
       ingresosByDay.set(day, (ingresosByDay.get(day) || 0) + totalUSD);
 
@@ -312,13 +253,17 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
     }
 
     for (const eg of egresosMes) {
-      const d = getDateFromFirestore(eg?.fecha);
+      const d = fechaEgreso(eg).fecha;
       const day = d instanceof Date ? d.getDate() : null;
       if (!day) continue;
 
-      const { totalUSD, bsSinTasa: bsNo } = getEgresoUSD(eg, { tasaBCV });
+      const { totalUSD, pendienteConversion, bsPendiente, ambiguo } = getEgresoUSD(eg);
       egresosTotal += totalUSD;
-      bsSinTasa += bsNo;
+      if (pendienteConversion) {
+        egresosPendientes.cantidad += 1;
+        egresosPendientes.bs += bsPendiente;
+      }
+      if (ambiguo) ambiguos.push(ambiguo);
 
       egresosByDay.set(day, (egresosByDay.get(day) || 0) + totalUSD);
     }
@@ -357,11 +302,17 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
       totalIngresosUSD: ingresosTotal,
       totalEgresosUSD: egresosTotal,
       totalNetoUSD: ingresosTotal - egresosTotal,
-      bsSinTasaTotal: bsSinTasa,
+      completitud: resumirCompletitud({
+        egresosAmbiguos: ambiguos,
+        ingresosPendientesConversion: ingresosPendientes,
+        egresosPendientesConversion: egresosPendientes,
+        sinPeriodo: { ingresos: ingresosSinFecha, egresos: egresosSinFecha },
+        usdEstimado,
+      }),
       pieMetodos: pie,
       topServicios: top,
     };
-  }, [egresosAll, factorConversion, ingresosAll, monthRange, tasaBCV]);
+  }, [egresosAll, factorActual, ingresosAll, monthRange]);
 
   const palette = useMemo(() => {
     return [
@@ -432,14 +383,11 @@ export default function CierreDiaMonthlyCharts({ tasaBCV }) {
             }}
           >
             Neto: {usdFormatter(totalNetoUSD)}
+            {!completitud.completo && " (parcial, no reconciliado)"}
           </Typography>
         )}
 
-        {bsSinTasaTotal > 0 && !tasaBCV && (
-          <Typography variant="caption" color="warning.main" sx={{ display: "block", mt: 0.5 }}>
-            Hay montos en Bs sin tasa para convertir: {bsSinTasaTotal.toLocaleString("de-DE")} Bs.
-          </Typography>
-        )}
+        {!loading && <AvisoCompletitud completitud={completitud} compacto sx={{ mt: 0.5 }} />}
 
         <Divider sx={{ my: 1.5 }} />
 

@@ -1,4 +1,17 @@
-import { esMetodoBs } from "./metodosPago";
+import {
+  CATEGORIA_EGRESO,
+  ORIGEN,
+  atribuirNomina,
+  convertirEgreso,
+  crearCriterioEntrega,
+  deduplicarPorId,
+  fechaEgreso,
+  fechaEntrega,
+  fechaIngreso,
+  leerFecha,
+  resumirCompletitud,
+  totalizarIngreso,
+} from "./finanzas";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -15,23 +28,6 @@ export const REPORT_PRESETS = [
 
 function isValidDate(value) {
   return value instanceof Date && !Number.isNaN(value.getTime());
-}
-
-function normalizeNumber(value) {
-  if (value === null || value === undefined || value === "") return 0;
-  const normalized = typeof value === "string" ? value.replace(/\s/g, "").replace(",", ".") : value;
-  const numeric = Number(normalized);
-  return Number.isFinite(numeric) ? numeric : 0;
-}
-
-function pickPositive(...candidates) {
-  for (const candidate of candidates) {
-    const numeric = Number(candidate);
-    if (Number.isFinite(numeric) && numeric > 0) {
-      return numeric;
-    }
-  }
-  return 0;
 }
 
 export function toStartOfDay(date) {
@@ -68,56 +64,9 @@ export function parseLocalYMDNoon(value) {
   return new Date(year, month - 1, day, 12, 0, 0, 0);
 }
 
+// Delegado en la regla única de fechas: una fecha imposible o desconocida es null
 export function parseMixedDate(value) {
-  if (!value) return null;
-
-  if (isValidDate(value)) {
-    return new Date(value.getTime());
-  }
-
-  if (typeof value?.toDate === "function") {
-    const converted = value.toDate();
-    return isValidDate(converted) ? converted : null;
-  }
-
-  if (typeof value?.seconds === "number") {
-    const converted = new Date(value.seconds * 1000);
-    return isValidDate(converted) ? converted : null;
-  }
-
-  if (typeof value === "number") {
-    const converted = new Date(value);
-    return isValidDate(converted) ? converted : null;
-  }
-
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  const ymdMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (ymdMatch) {
-    return new Date(Number(ymdMatch[1]), Number(ymdMatch[2]) - 1, Number(ymdMatch[3]), 12, 0, 0, 0);
-  }
-
-  const dmyMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (dmyMatch) {
-    return new Date(Number(dmyMatch[3]), Number(dmyMatch[2]) - 1, Number(dmyMatch[1]), 12, 0, 0, 0);
-  }
-
-  const slashOrDashParts = trimmed.split(/[/-]/);
-  if (slashOrDashParts.length === 3) {
-    const [first, second, third] = slashOrDashParts.map(Number);
-    if (String(slashOrDashParts[0]).length === 4) {
-      return new Date(first, second - 1, third, 12, 0, 0, 0);
-    }
-    return new Date(third, second - 1, first, 12, 0, 0, 0);
-  }
-
-  const converted = new Date(trimmed);
-  return isValidDate(converted) ? converted : null;
+  return leerFecha(value).fecha;
 }
 
 export function getDateRangeFromPreset(presetKey, now = new Date()) {
@@ -267,129 +216,6 @@ function createEmptyBucket({ key, label, sortTime }) {
   };
 }
 
-function getIngresoTotals(ingreso) {
-  const formasPago = Array.isArray(ingreso?.formasPago) ? ingreso.formasPago : [];
-  if (formasPago.length === 0) {
-    const totalUSDDirect = normalizeNumber(ingreso?.montoUSD || ingreso?.monto);
-    const totalBs = normalizeNumber(ingreso?.montoBs);
-    const totalUSDFromBs = pickPositive(
-      ingreso?.usdEquiv,
-      totalBs > 0 ? totalBs / pickPositive(ingreso?.factorConversion) : 0
-    );
-    return {
-      totalUSD: totalUSDDirect + totalUSDFromBs,
-      totalUSDDirect,
-      totalUSDFromBs,
-      totalBs,
-    };
-  }
-
-  return formasPago.reduce(
-    (acc, formaPago) => {
-      if (esMetodoBs(formaPago?.formaPago)) {
-        const montoBs = normalizeNumber(formaPago?.montoBs || formaPago?.monto);
-        const usdEquiv = pickPositive(formaPago?.usdEquiv);
-        const factorConversion = pickPositive(formaPago?.factorConversion);
-
-        acc.totalBs += montoBs;
-        if (usdEquiv > 0) {
-          acc.totalUSDFromBs += usdEquiv;
-          acc.totalUSD += usdEquiv;
-        } else if (montoBs > 0 && factorConversion > 0) {
-          const convertedUsd = montoBs / factorConversion;
-          acc.totalUSDFromBs += convertedUsd;
-          acc.totalUSD += convertedUsd;
-        }
-        return acc;
-      }
-
-      const directUsd = normalizeNumber(formaPago?.monto || formaPago?.montoUSD || formaPago?.usdEquiv);
-      acc.totalUSDDirect += directUsd;
-      acc.totalUSD += directUsd;
-      return acc;
-    },
-    { totalUSD: 0, totalUSDDirect: 0, totalUSDFromBs: 0, totalBs: 0 }
-  );
-}
-
-function getEgresoTotals(egreso) {
-  const montoUSD = normalizeNumber(egreso?.montoUSD);
-  const montoBs = normalizeNumber(egreso?.montoBs);
-  const tasaFactura = pickPositive(egreso?.tasaFactura);
-
-  if (montoUSD > 0 || montoBs > 0) {
-    const totalUSDFromBs = montoBs > 0 && tasaFactura > 0 ? montoBs / tasaFactura : 0;
-    return {
-      totalUSD: montoUSD + totalUSDFromBs,
-      totalUSDDirect: montoUSD,
-      totalUSDFromBs,
-      totalBs: montoBs,
-    };
-  }
-
-  const items = Array.isArray(egreso?.items) ? egreso.items : [];
-  const totalItems = items.reduce((acc, item) => {
-    const totalItem = normalizeNumber(item?.totalItem);
-    if (totalItem > 0) return acc + totalItem;
-    const cantidad = normalizeNumber(item?.cantidad);
-    const precioUnitario = normalizeNumber(item?.precioUnitario);
-    return acc + cantidad * precioUnitario;
-  }, 0);
-
-  const moneda = String(egreso?.monedaFactura || "USD").trim().toUpperCase();
-  if (moneda === "BS") {
-    const totalUSDFromBs = totalItems > 0 && tasaFactura > 0 ? totalItems / tasaFactura : 0;
-    return {
-      totalUSD: totalUSDFromBs,
-      totalUSDDirect: 0,
-      totalUSDFromBs,
-      totalBs: totalItems,
-    };
-  }
-
-  return {
-    totalUSD: totalItems,
-    totalUSDDirect: totalItems,
-    totalUSDFromBs: 0,
-    totalBs: 0,
-  };
-}
-
-function getVehiculoDeliveryDate(vehiculo) {
-  return (
-    parseMixedDate(vehiculo?.fechaEntrega) ||
-    parseMixedDate(vehiculo?.deliveredAt) ||
-    parseMixedDate(vehiculo?.updatedAt) ||
-    null
-  );
-}
-
-function isVehiculoDelivered(vehiculo) {
-  const estado = String(vehiculo?.status || vehiculo?.estado || "").trim().toLowerCase();
-  return estado.includes("entreg") || estado.includes("reparad") || estado.includes("complet");
-}
-
-function getNominaPeriod(nomina) {
-  const start = parseMixedDate(nomina?.fechaInicio);
-  const end = parseMixedDate(nomina?.fechaFin) || parseMixedDate(nomina?.fechaGuardado);
-  return {
-    start: start || end,
-    end: end || start,
-  };
-}
-
-function getNominaTotal(nomina) {
-  const empleados = Array.isArray(nomina?.empleados) ? nomina.empleados : [];
-  const totalEmpleados = empleados.reduce((acc, empleado) => acc + normalizeNumber(empleado?.monto), 0);
-  if (totalEmpleados > 0) return totalEmpleados;
-  return normalizeNumber(nomina?.total || nomina?.totalNomina || nomina?.montoTotal);
-}
-
-function overlapsRange(startA, endA, startB, endB) {
-  if (!startA || !endA || !startB || !endB) return false;
-  return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
-}
-
 function buildBuckets(records, granularity, extractor) {
   const bucketMap = new Map();
 
@@ -410,60 +236,175 @@ function buildBuckets(records, granularity, extractor) {
   return Array.from(bucketMap.values()).sort((a, b) => a.sortTime - b.sortTime);
 }
 
+function sumBy(list, campo) {
+  return list.reduce((acc, item) => acc + (item[campo] || 0), 0);
+}
+
+/**
+ * Datos del reporte con las reglas de src/lib/finanzas.js.
+ * - Ingresos: USD directo + conversión histórica + estimación reconstruida (aparte
+ *   en ingresosUSDEstimado). Sin fecha válida no se imputan a ningún período.
+ * - Egresos: todas las categorías (facturas, gastos del día, caja chica, otros).
+ *   Los Bs solo se convierten con la tasa registrada; sin ella quedan pendientes
+ *   de conversión. Los ambiguos (USD y Bs a la vez) quedan fuera del total.
+ * - summary.completitud indica si el total es parcial y qué quedó fuera.
+ * - Nómina: solo las que caen enteras en el rango y en un mes; el resto queda
+ *   "pendiente de criterio" (ver CRITERIO_NOMINA_ENTRE_PERIODOS).
+ * - Servicios: criterio de entrega único; sin fecha de entrega no se imputan.
+ */
 export function buildReportData({
   ingresos = [],
   egresos = [],
   vehiculos = [],
   nominas = [],
+  estadosServicio = [],
+  factorActual = null,
   fechaInicio,
   fechaFin,
   presetKey = "month",
 }) {
   const { start, end } = resolveDateRange({ fechaInicio, fechaFin, presetKey });
   const granularity = inferGranularity(start, end);
+  const enRango = (date) => date >= start && date <= end;
 
-  const ingresosFiltrados = ingresos
-    .map((ingreso) => ({
+  const calidad = {
+    ingresosSinFecha: 0,
+    egresosSinFecha: 0,
+    nominasSinPeriodo: 0,
+    serviciosEntregadosSinFecha: 0,
+    ingresosConEstimacion: 0,
+    ingresosConBsSinConversion: 0,
+    ingresosBsSinConversion: 0,
+    egresosPendientesConversion: 0,
+    egresosBsPendienteConversion: 0,
+    egresosImporteInvalido: 0,
+    incidencias: {},
+  };
+  const registrar = (codigos) => {
+    codigos.forEach((c) => {
+      calidad.incidencias[c] = (calidad.incidencias[c] || 0) + 1;
+    });
+  };
+
+  const ingresosFiltrados = [];
+  ingresos.forEach((ingreso) => {
+    const { fecha, incidencia } = fechaIngreso(ingreso);
+    if (!fecha) {
+      calidad.ingresosSinFecha += 1;
+      registrar([incidencia]);
+      return;
+    }
+    if (!enRango(fecha)) return;
+    const t = totalizarIngreso(ingreso, { factorActual });
+    registrar(t.incidencias);
+    if (t.usdEstimado !== 0) calidad.ingresosConEstimacion += 1;
+    if (t.bsSinConversion !== 0) {
+      calidad.ingresosConBsSinConversion += 1;
+      calidad.ingresosBsSinConversion += t.bsSinConversion;
+    }
+    ingresosFiltrados.push({
       raw: ingreso,
-      date: parseMixedDate(ingreso?.fechaRaw || ingreso?.fecha),
-      ...getIngresoTotals(ingreso),
-    }))
-    .filter((ingreso) => ingreso.date && ingreso.date >= start && ingreso.date <= end);
+      date: fecha,
+      totalUSD: t.usd,
+      totalUSDDirect: t.usdDirecto,
+      totalUSDFromBs: t.usdHistorico + t.usdEstimado,
+      totalUSDEstimado: t.usdEstimado,
+      totalBs: t.bs,
+      incidencias: t.incidencias,
+    });
+  });
 
-  const egresosFiltrados = egresos
-    .map((egreso) => ({
+  const egresosFiltrados = [];
+  const egresosAmbiguos = [];
+  deduplicarPorId(egresos).forEach((egreso) => {
+    const { fecha, incidencia } = fechaEgreso(egreso);
+    if (!fecha) {
+      calidad.egresosSinFecha += 1;
+      registrar([incidencia]);
+      return;
+    }
+    if (!enRango(fecha)) return;
+    // Egresos: solo tasa registrada; sin ella quedan pendientes de conversión
+    const c = convertirEgreso(egreso);
+    registrar(c.incidencias);
+    if (c.ambiguo) {
+      egresosAmbiguos.push({
+        raw: egreso,
+        date: fecha,
+        categoria: c.categoria,
+        importeUSDOriginal: c.importeUSDOriginal,
+        importeBsOriginal: c.importeBsOriginal,
+        candidatos: c.candidatos,
+      });
+      return;
+    }
+    if (c.pendienteConversion) {
+      calidad.egresosPendientesConversion += 1;
+      calidad.egresosBsPendienteConversion += c.bs;
+    } else if (c.usd === null) {
+      calidad.egresosImporteInvalido += 1;
+    }
+    const usd = c.usd || 0;
+    egresosFiltrados.push({
       raw: egreso,
-      date: parseMixedDate(egreso?.fechaStr || egreso?.fecha),
-      ...getEgresoTotals(egreso),
-    }))
-    .filter((egreso) => egreso.date && egreso.date >= start && egreso.date <= end);
+      date: fecha,
+      categoria: c.categoria,
+      totalUSD: usd,
+      totalUSDDirect: c.origen === ORIGEN.DIRECTO_USD ? usd : 0,
+      totalUSDFromBs: c.origen === ORIGEN.HISTORICA ? usd : 0,
+      pendienteConversion: c.pendienteConversion,
+      totalBs: c.bs,
+      incidencias: c.incidencias,
+    });
+  });
 
-  const serviciosFiltrados = vehiculos
-    .map((vehiculo) => ({
-      raw: vehiculo,
-      date: getVehiculoDeliveryDate(vehiculo),
-      isDelivered: isVehiculoDelivered(vehiculo),
-    }))
-    .filter((vehiculo) => vehiculo.isDelivered && vehiculo.date && vehiculo.date >= start && vehiculo.date <= end);
+  const criterioEntrega = crearCriterioEntrega(estadosServicio);
+  const serviciosFiltrados = [];
+  vehiculos.forEach((vehiculo) => {
+    if (!criterioEntrega.esEntregado(vehiculo)) return;
+    const { fecha, incidencia } = fechaEntrega(vehiculo);
+    if (!fecha) {
+      calidad.serviciosEntregadosSinFecha += 1;
+      registrar([incidencia]);
+      return;
+    }
+    if (enRango(fecha)) serviciosFiltrados.push({ raw: vehiculo, date: fecha, isDelivered: true });
+  });
 
-  const nominasFiltradas = nominas
-    .map((nomina) => {
-      const period = getNominaPeriod(nomina);
-      return {
-        raw: nomina,
-        date: period.end || period.start,
-        rangeStart: period.start,
-        rangeEnd: period.end,
-        totalUSD: getNominaTotal(nomina),
-      };
-    })
-    .filter((nomina) => nomina.rangeStart && nomina.rangeEnd && overlapsRange(nomina.rangeStart, nomina.rangeEnd, start, end));
+  const nominasFiltradas = [];
+  const nominasPendientes = [];
+  let nominaNoDesglosadaUSD = 0;
+  nominas.forEach((nomina) => {
+    const a = atribuirNomina(nomina, { inicio: start, fin: end });
+    if (a.estado === "sin_periodo") {
+      calidad.nominasSinPeriodo += 1;
+      registrar(a.incidencias);
+      return;
+    }
+    if (a.estado === "fuera") return;
+    registrar(a.incidencias);
+    if (a.estado === "pendiente_criterio") {
+      nominasPendientes.push({ raw: nomina, motivo: a.motivo, rangeStart: a.periodo.inicio, rangeEnd: a.periodo.fin, totalUSD: a.usd });
+      return;
+    }
+    // En la serie solo se ubica si el período entero cae en un mismo intervalo
+    const mismoIntervalo = getBucketInfo(a.periodo.inicio, granularity).key === getBucketInfo(a.periodo.fin, granularity).key;
+    if (!mismoIntervalo) nominaNoDesglosadaUSD += a.usd || 0;
+    nominasFiltradas.push({
+      raw: nomina,
+      date: a.periodo.fin,
+      rangeStart: a.periodo.inicio,
+      rangeEnd: a.periodo.fin,
+      totalUSD: a.usd || 0,
+      enSerie: mismoIntervalo,
+    });
+  });
 
   const bucketRecords = [
     ...ingresosFiltrados.map((item) => ({ type: "ingreso", ...item })),
     ...egresosFiltrados.map((item) => ({ type: "egreso", ...item })),
     ...serviciosFiltrados.map((item) => ({ type: "servicio", ...item })),
-    ...nominasFiltradas.map((item) => ({ type: "nomina", ...item })),
+    ...nominasFiltradas.filter((item) => item.enSerie).map((item) => ({ type: "nomina", ...item })),
   ];
 
   const series = buildBuckets(bucketRecords, granularity, (bucket, record) => {
@@ -488,18 +429,52 @@ export function buildReportData({
     bucket.nominaUSD += record.totalUSD;
   });
 
+  const egresosPorCategoria = {};
+  [CATEGORIA_EGRESO.FACTURA, CATEGORIA_EGRESO.GASTO_DIA, CATEGORIA_EGRESO.CAJA_CHICA, CATEGORIA_EGRESO.OTRO].forEach((categoria) => {
+    const lista = egresosFiltrados.filter((e) => e.categoria === categoria);
+    egresosPorCategoria[categoria] = { usd: sumBy(lista, "totalUSD"), bs: sumBy(lista, "totalBs"), cantidad: lista.length };
+  });
+  const nominaUSD = sumBy(nominasFiltradas, "totalUSD");
+  egresosPorCategoria[CATEGORIA_EGRESO.NOMINA] = { usd: nominaUSD, bs: 0, cantidad: nominasFiltradas.length };
+
   const summary = {
-    ingresosUSD: ingresosFiltrados.reduce((acc, item) => acc + item.totalUSD, 0),
-    ingresosUSDDirect: ingresosFiltrados.reduce((acc, item) => acc + item.totalUSDDirect, 0),
-    ingresosUSDFromBs: ingresosFiltrados.reduce((acc, item) => acc + item.totalUSDFromBs, 0),
-    ingresosBs: ingresosFiltrados.reduce((acc, item) => acc + item.totalBs, 0),
-    egresosUSD: egresosFiltrados.reduce((acc, item) => acc + item.totalUSD, 0),
-    egresosUSDDirect: egresosFiltrados.reduce((acc, item) => acc + item.totalUSDDirect, 0),
-    egresosUSDFromBs: egresosFiltrados.reduce((acc, item) => acc + item.totalUSDFromBs, 0),
-    egresosBs: egresosFiltrados.reduce((acc, item) => acc + item.totalBs, 0),
+    ingresosUSD: sumBy(ingresosFiltrados, "totalUSD"),
+    ingresosUSDDirect: sumBy(ingresosFiltrados, "totalUSDDirect"),
+    ingresosUSDFromBs: sumBy(ingresosFiltrados, "totalUSDFromBs"),
+    ingresosUSDEstimado: sumBy(ingresosFiltrados, "totalUSDEstimado"),
+    ingresosBs: sumBy(ingresosFiltrados, "totalBs"),
+    egresosUSD: sumBy(egresosFiltrados, "totalUSD"),
+    egresosUSDDirect: sumBy(egresosFiltrados, "totalUSDDirect"),
+    egresosUSDFromBs: sumBy(egresosFiltrados, "totalUSDFromBs"),
+    egresosBs: sumBy(egresosFiltrados, "totalBs"),
+    egresosPorCategoria,
+    // Solo lo que no depende de la interpretación (ver resumirCompletitud)
+    egresosAmbiguos: {
+      cantidad: egresosAmbiguos.length,
+      minimoUSD: sumBy(egresosAmbiguos, "importeUSDOriginal"),
+      bsSinClasificar: sumBy(egresosAmbiguos, "importeBsOriginal"),
+    },
     serviciosEntregados: serviciosFiltrados.length,
-    nominaUSD: nominasFiltradas.reduce((acc, item) => acc + item.totalUSD, 0),
+    nominaUSD,
+    nominaNoDesglosadaUSD,
+    nominaPendienteUSD: nominasPendientes.reduce((acc, n) => acc + (n.totalUSD || 0), 0),
+    nominasPendientes: nominasPendientes.length,
+    calidad,
   };
+  summary.totalEgresosConsolidadoUSD = summary.egresosUSD + summary.nominaUSD;
+  summary.completitud = resumirCompletitud({
+    egresosAmbiguos,
+    nominasPendientes: nominasPendientes.map((n) => ({ usd: n.totalUSD })),
+    ingresosPendientesConversion: { cantidad: calidad.ingresosConBsSinConversion, bs: calidad.ingresosBsSinConversion },
+    egresosPendientesConversion: { cantidad: calidad.egresosPendientesConversion, bs: calidad.egresosBsPendienteConversion },
+    sinPeriodo: {
+      ingresos: calidad.ingresosSinFecha,
+      egresos: calidad.egresosSinFecha,
+      nominas: calidad.nominasSinPeriodo,
+      servicios: calidad.serviciosEntregadosSinFecha,
+    },
+    usdEstimado: summary.ingresosUSDEstimado,
+  });
   summary.netoUSD = summary.ingresosUSD - summary.egresosUSD - summary.nominaUSD;
   summary.netoUSDDirect = summary.ingresosUSDDirect - summary.egresosUSDDirect - summary.nominaUSD;
   summary.netoUSDFromBs = summary.ingresosUSDFromBs - summary.egresosUSDFromBs;
@@ -520,8 +495,10 @@ export function buildReportData({
     detail: {
       ingresos: ingresosFiltrados,
       egresos: egresosFiltrados,
+      egresosAmbiguos,
       servicios: serviciosFiltrados,
       nominas: nominasFiltradas,
+      nominasPendientes,
     },
   };
 }
@@ -549,13 +526,22 @@ export async function exportReportToExcel(reportData, fileName = null) {
       "Ingresos USD": formatCurrencyUSD(reportData.summary?.ingresosUSD),
       "Ingresos USD directos": formatCurrencyUSD(reportData.summary?.ingresosUSDDirect),
       "Ingresos USD desde Bs": formatCurrencyUSD(reportData.summary?.ingresosUSDFromBs),
+      "Ingresos USD estimados (factor manual actual)": formatCurrencyUSD(reportData.summary?.ingresosUSDEstimado),
       "Ingresos Bs": formatCurrencyBs(reportData.summary?.ingresosBs),
       "Egresos USD": formatCurrencyUSD(reportData.summary?.egresosUSD),
       "Egresos USD directos": formatCurrencyUSD(reportData.summary?.egresosUSDDirect),
       "Egresos USD desde Bs": formatCurrencyUSD(reportData.summary?.egresosUSDFromBs),
       "Egresos Bs": formatCurrencyBs(reportData.summary?.egresosBs),
+      "Estado del total": reportData.summary?.completitud?.completo ? "Completo" : "Parcial (no reconciliado)",
+      "Egresos ambiguos excluidos": reportData.summary?.egresosAmbiguos?.cantidad || 0,
+      "Ambiguos: mínimo USD registrado": formatCurrencyUSD(reportData.summary?.egresosAmbiguos?.minimoUSD),
+      "Ambiguos: Bs sin clasificar": formatCurrencyBs(reportData.summary?.egresosAmbiguos?.bsSinClasificar),
+      "Registros pendientes de conversión": reportData.summary?.completitud?.pendientesConversion?.cantidad || 0,
+      "Bs pendientes de conversión": formatCurrencyBs(reportData.summary?.completitud?.pendientesConversion?.bs),
+      "Registros sin período": reportData.summary?.completitud?.sinPeriodo?.total || 0,
       "Servicios entregados": reportData.summary?.serviciosEntregados || 0,
       "Nómina USD": formatCurrencyUSD(reportData.summary?.nominaUSD),
+      "Nómina pendiente de criterio USD": formatCurrencyUSD(reportData.summary?.nominaPendienteUSD),
       "Neto USD": formatCurrencyUSD(reportData.summary?.netoUSD),
       "Neto USD directo": formatCurrencyUSD(reportData.summary?.netoUSDDirect),
       "Neto USD desde Bs": formatCurrencyUSD(reportData.summary?.netoUSDFromBs),
@@ -591,6 +577,7 @@ export async function exportReportToExcel(reportData, fileName = null) {
       "Total USD": formatCurrencyUSD(item.totalUSD),
       "USD directos": formatCurrencyUSD(item.totalUSDDirect),
       "USD desde Bs": formatCurrencyUSD(item.totalUSDFromBs),
+      "USD estimados": formatCurrencyUSD(item.totalUSDEstimado),
       "Total Bs": formatCurrencyBs(item.totalBs),
     }))
   );
@@ -598,6 +585,7 @@ export async function exportReportToExcel(reportData, fileName = null) {
   const egresosSheet = XLSX.utils.json_to_sheet(
     (reportData.detail?.egresos || []).map((item) => ({
       Fecha: formatDisplayDate(item.date),
+      Categoría: item.categoria,
       Proveedor: item.raw?.proveedor || "-",
       Documento: item.raw?.numeroDocumento || item.raw?.descripcion || "-",
       "Total USD": formatCurrencyUSD(item.totalUSD),
@@ -617,14 +605,22 @@ export async function exportReportToExcel(reportData, fileName = null) {
     }))
   );
 
-  const nominasSheet = XLSX.utils.json_to_sheet(
-    (reportData.detail?.nominas || []).map((item) => ({
+  const nominasSheet = XLSX.utils.json_to_sheet([
+    ...(reportData.detail?.nominas || []).map((item) => ({
       Inicio: formatDisplayDate(item.rangeStart),
       Fin: formatDisplayDate(item.rangeEnd),
       Empleados: Array.isArray(item.raw?.empleados) ? item.raw.empleados.length : 0,
       "Total USD": formatCurrencyUSD(item.totalUSD),
-    }))
-  );
+      Estado: "Incluida",
+    })),
+    ...(reportData.detail?.nominasPendientes || []).map((item) => ({
+      Inicio: formatDisplayDate(item.rangeStart),
+      Fin: formatDisplayDate(item.rangeEnd),
+      Empleados: Array.isArray(item.raw?.empleados) ? item.raw.empleados.length : 0,
+      "Total USD": formatCurrencyUSD(item.totalUSD),
+      Estado: "Pendiente de criterio (no sumada)",
+    })),
+  ]);
 
   XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumen");
   XLSX.utils.book_append_sheet(workbook, seriesSheet, "Serie");
