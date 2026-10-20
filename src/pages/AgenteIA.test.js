@@ -1,0 +1,105 @@
+/* Página del agente: acceso por rol, conversación, datos de la app y errores del backend */
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import AgenteIA from "./AgenteIA";
+import { useAuth } from "../context/AuthContext";
+import { enviarConversacion, urlAgente, ErrorAgente } from "../lib/agenteCliente";
+
+// El Jest de CRA no resuelve los "exports" de react-router-dom v7: solo se usa useNavigate
+jest.mock("react-router-dom", () => ({ useNavigate: () => jest.fn() }), { virtual: true });
+jest.mock("../context/AuthContext", () => ({ useAuth: jest.fn() }));
+jest.mock("../components/Layout", () => ({ children }) => <div>{children}</div>);
+jest.mock("../lib/agenteCliente", () => {
+  const real = jest.requireActual("../lib/agenteCliente");
+  return { ...real, enviarConversacion: jest.fn(), urlAgente: jest.fn() };
+});
+
+const roles = (r) => ({ isAdmin: false, isOwner: false, loadingAuth: false, ...r });
+const pintar = () => render(<AgenteIA />);
+
+const escribirYEnviar = (texto) => {
+  fireEvent.change(screen.getByLabelText("Mensaje para el agente"), { target: { value: texto } });
+  fireEvent.click(screen.getByLabelText("Enviar mensaje"));
+};
+
+beforeEach(() => {
+  enviarConversacion.mockReset();
+  urlAgente.mockReturnValue("https://agente.ejemplo.test/agente");
+});
+
+test("un usuario sin rol owner/admin ve Acceso Denegado y no se invoca el backend", () => {
+  useAuth.mockReturnValue(roles({}));
+  pintar();
+  expect(screen.getByText("Acceso Denegado")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Mensaje para el agente")).not.toBeInTheDocument();
+  expect(enviarConversacion).not.toHaveBeenCalled();
+});
+
+test.each([["owner", { isOwner: true }], ["admin", { isAdmin: true }]])("%s accede al chat", (_, r) => {
+  useAuth.mockReturnValue(roles(r));
+  pintar();
+  expect(screen.getByText("Agente de IA")).toBeInTheDocument();
+  expect(screen.getByLabelText("Mensaje para el agente")).toBeEnabled();
+});
+
+test("muestra la respuesta y los datos de la app separados del texto del modelo", async () => {
+  useAuth.mockReturnValue(roles({ isAdmin: true }));
+  enviarConversacion.mockResolvedValue({
+    texto: "Según los datos, la mayoría están entregados.",
+    consultas: [{
+      herramienta: "resumen_servicios_por_estado",
+      resultado: {
+        consultadoEn: "2026-10-20T15:00:00.000Z",
+        totalServicios: 10,
+        conEstadoFueraDelCatalogo: 1,
+        porEstado: [
+          { nombre: "entregado", etiqueta: "Entregado", cantidad: 6, esEstadoFacturacion: false, dejaDeMostrarse: true },
+          { nombre: "pagado", etiqueta: "Pagado", cantidad: 3, esEstadoFacturacion: true, dejaDeMostrarse: false },
+        ],
+        notas: [],
+      },
+    }],
+  });
+  pintar();
+  escribirYEnviar("¿Cuántos servicios hay en cada estado?");
+
+  expect(await screen.findByText("Según los datos, la mayoría están entregados.")).toBeInTheDocument();
+  expect(screen.getByText("¿Cuántos servicios hay en cada estado?")).toBeInTheDocument();
+  expect(screen.getByText("Datos de Turbinas App")).toBeInTheDocument();
+  expect(screen.getByRole("table", { name: "Servicios por estado" })).toBeInTheDocument();
+  expect(screen.getByText("Estado fuera del catálogo")).toBeInTheDocument();
+  expect(screen.getByText("10")).toBeInTheDocument();
+  expect(enviarConversacion).toHaveBeenCalledWith([{ rol: "usuario", texto: "¿Cuántos servicios hay en cada estado?" }]);
+});
+
+test("respuesta general: se indica que no consultó datos", async () => {
+  useAuth.mockReturnValue(roles({ isOwner: true }));
+  enviarConversacion.mockResolvedValue({ texto: "Una turbina es…", consultas: [] });
+  pintar();
+  escribirYEnviar("¿Qué es una turbina?");
+  expect(await screen.findByText("Respuesta general: no consultó datos de Turbinas App.")).toBeInTheDocument();
+});
+
+test("error del backend: mensaje legible y reintento", async () => {
+  useAuth.mockReturnValue(roles({ isAdmin: true }));
+  enviarConversacion
+    .mockRejectedValueOnce(new ErrorAgente("modelo_no_configurado"))
+    .mockResolvedValueOnce({ texto: "Ahora sí.", consultas: [] });
+  pintar();
+  escribirYEnviar("Hola");
+
+  expect(await screen.findByText("El agente todavía no tiene un modelo de IA configurado en el servidor.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+  expect(await screen.findByText("Ahora sí.")).toBeInTheDocument();
+  await waitFor(() => expect(screen.queryByText(/modelo de IA configurado/)).not.toBeInTheDocument());
+  expect(enviarConversacion).toHaveBeenCalledTimes(2);
+});
+
+test("sin servidor configurado: aviso y envío deshabilitado", () => {
+  useAuth.mockReturnValue(roles({ isAdmin: true }));
+  urlAgente.mockReturnValue("");
+  pintar();
+  expect(screen.getByText("El agente aún no está conectado a un servidor en este entorno.")).toBeInTheDocument();
+  expect(screen.getByLabelText("Mensaje para el agente")).toBeDisabled();
+  expect(screen.getByLabelText("Enviar mensaje")).toBeDisabled();
+});

@@ -18,6 +18,7 @@ const CierreDia = lazy(() => import("./pages/CierreDia"));
 const Reportes = lazy(() => import("./pages/Reportes"));
 const Inventario = lazy(() => import("./pages/Inventario"));
 const CalculoNominaPage = lazy(() => import("./pages/CalculoNomina"));
+const AgenteIA = lazy(() => import("./pages/AgenteIA"));
 
 // Indicador mientras llega el chunk de una página
 const CargandoPagina = (
@@ -45,6 +46,15 @@ function ProtectedRoute({ children, skeleton }) {
   if (!usuario) {
     return <AccesoDenegado />;
   }
+  return children;
+}
+
+// Ruta solo para owner/admin: además de la sesión exige el rol en la ruta (el
+// backend del agente lo vuelve a verificar en el servidor)
+function RutaSoloAdmin({ children }) {
+  const { usuario, isAdmin, isOwner, loadingAuth } = useAuth();
+  if (loadingAuth) return null;
+  if (!usuario || (!isAdmin && !isOwner)) return <AccesoDenegado />;
   return children;
 }
 
@@ -114,6 +124,11 @@ function AppRoutes() {
           <ProtectedRoute>
             <CalculoNominaPage />
           </ProtectedRoute>
+        } />
+        <Route path="/agente" element={
+          <RutaSoloAdmin>
+            <AgenteIA />
+          </RutaSoloAdmin>
         } />
       </Routes>
       </Suspense>

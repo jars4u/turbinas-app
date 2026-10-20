@@ -1,0 +1,9 @@
+{
+  "functions": [
+    {
+      "source": "servidor-agente",
+      "codebase": "agente",
+      "ignore": ["node_modules", ".git", "test", "README.md", "*.log", ".env.local"]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "turbinas-servidor-agente",
+  "private": true,
+  "description": "Backend del Agente de IA de Turbinas App: autenticación, autorización owner/admin y herramientas de solo lectura",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^7.4.0",
+    "openai": "^6.49.0"
+  }
+}

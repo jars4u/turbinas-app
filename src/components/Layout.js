@@ -11,7 +11,7 @@ export default function Layout({
   searchPlaceholder = "Buscar cliente, modelo, servicio...",
   headerMaxWidth = "xl",
 }) {
-  const { usuario, isObserver, handleLogout } = useAuth();
+  const { usuario, isObserver, isAdmin, isOwner, handleLogout } = useAuth();
   const navigate = useNavigate();
   const usuarioActivo = usuario?.email || "";
 
@@ -22,6 +22,7 @@ export default function Layout({
         onLogout={handleLogout}
         navigate={navigate}
         isObserver={isObserver}
+        mostrarAgente={isAdmin || isOwner}
         searchValue={searchValue}
         onSearchChange={onSearchChange}
         searchPlaceholder={searchPlaceholder}

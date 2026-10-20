@@ -14,8 +14,9 @@ import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
+import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 
-export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserver = false, searchValue = "", onSearchChange, searchPlaceholder = "Buscar cliente, modelo, servicio...", maxWidth = "xl" }) {
+export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserver = false, mostrarAgente = false, searchValue = "", onSearchChange, searchPlaceholder = "Buscar cliente, modelo, servicio...", maxWidth = "xl" }) {
   const location = useLocation();
   const pathname = location?.pathname || "";
   const isActive = (path) => pathname.startsWith(path);
@@ -397,6 +398,25 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                   </IconButton>
                 </span>
               </Tooltip>
+              {mostrarAgente && (
+                <Tooltip title="Agente de IA" arrow>
+                  <span>
+                    <IconButton
+                      color="default"
+                      size="small"
+                      sx={(theme) => ({
+                        color: isActive('/agente') ? theme.palette.primary.main : "#757575",
+                        borderBottom: isActive('/agente') ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
+                        borderRadius: 0
+                      })}
+                      onClick={() => navigate("/agente")}
+                      aria-label="Ir al agente de IA"
+                    >
+                      <SmartToyOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              )}
               <Tooltip title={isObserver ? "Sin acceso" : "Configuración"} arrow>
                 <span>
                   <IconButton
@@ -455,6 +475,12 @@ export default function AppHeader({ usuarioActivo, onLogout, navigate, isObserve
                 <ListItemIcon><PointOfSaleIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Cierre del día" />
               </MenuItem>
+              {mostrarAgente && (
+                <MenuItem onClick={() => { handleCloseActions(); navigate('/agente'); }}>
+                  <ListItemIcon><SmartToyOutlinedIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Agente de IA" />
+                </MenuItem>
+              )}
               <MenuItem disabled={isObserver} onClick={() => { handleCloseActions(); if (!isObserver) navigate('/configuracion'); }}>
                 <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Configuración" />

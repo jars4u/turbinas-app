@@ -24,6 +24,7 @@ yarn-error.log*
 
 # Respaldos de Firestore y credenciales: contienen datos del negocio / acceso total
 /scripts/respaldo-firestore/node_modules
+/servidor-agente/node_modules
 /scripts/respaldo-firestore/respaldos
 /respaldos
 *serviceAccount*.json
