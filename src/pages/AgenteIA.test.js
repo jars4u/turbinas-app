@@ -1,6 +1,6 @@
 /* Página del agente: acceso por rol, conversación, datos de la app y errores del backend */
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import AgenteIA from "./AgenteIA";
 import { useAuth } from "../context/AuthContext";
 import { enviarConversacion, urlAgente, ErrorAgente } from "../lib/agenteCliente";
@@ -22,7 +22,20 @@ const escribirYEnviar = (texto) => {
   fireEvent.click(screen.getByLabelText("Enviar mensaje"));
 };
 
+// Preferencia del sistema "reducir movimiento": la respuesta aparece sin animación
+function preferenciaMovimiento(reducir) {
+  window.matchMedia = jest.fn().mockImplementation((consulta) => ({
+    matches: reducir && consulta.includes("reduce"),
+    media: consulta,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+  }));
+}
+
 beforeEach(() => {
+  preferenciaMovimiento(true);
   enviarConversacion.mockReset();
   urlAgente.mockReturnValue("https://agente.ejemplo.test/agente");
 });
@@ -134,4 +147,36 @@ test("resumen financiero: cifras clave, periodo, aviso de totales parciales y no
   expect(screen.getByText("estimados con factor actual")).toBeInTheDocument();
   expect(screen.getByText("Totales parciales: revisa las notas.")).toBeInTheDocument();
   expect(screen.getByText(/se estimaron 120 USD con el factor actual/)).toBeInTheDocument();
+});
+
+test("la respuesta se escribe palabra a palabra y los datos aparecen al terminar", async () => {
+  jest.useFakeTimers();
+  try {
+    preferenciaMovimiento(false);
+    useAuth.mockReturnValue(roles({ isAdmin: true }));
+    const respuesta = "Hay diez servicios en total y la mayoría ya fueron entregados a sus clientes.";
+    enviarConversacion.mockResolvedValue({
+      texto: respuesta,
+      consultas: [{ herramienta: "x", resultado: { consultadoEn: "2026-10-20T15:00:00.000Z" } }],
+    });
+    pintar();
+    escribirYEnviar("¿Cuántos servicios hay?");
+
+    const cursor = await screen.findByTestId("cursor-escritura");
+    // Mientras escribe: texto visible parcial, oculto a lectores de pantalla, que reciben el texto completo
+    const visible = cursor.parentElement;
+    expect(visible).toHaveAttribute("aria-hidden", "true");
+    expect(visible.textContent.length).toBeLessThan(respuesta.length);
+    expect(screen.getByText(respuesta)).toBeInTheDocument();
+    expect(screen.queryByText("Datos de Turbinas App")).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(screen.queryByTestId("cursor-escritura")).not.toBeInTheDocument();
+    expect(screen.getByText(respuesta)).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByText("Datos de Turbinas App")).toBeInTheDocument();
+  } finally {
+    jest.useRealTimers();
+  }
 });

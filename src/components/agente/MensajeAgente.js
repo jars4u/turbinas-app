@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Chip, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 
@@ -84,6 +84,7 @@ const TITULOS = {
   cuentas_por_cobrar: "Cuentas por cobrar",
   cuentas_por_pagar: "Cuentas por pagar",
   servicios_del_periodo: "Servicios del periodo",
+  nomina_por_empleado: "Nómina por empleado",
 };
 
 function formatearValor({ valor, tipo }) {
@@ -143,9 +144,103 @@ function ResumenConsulta({ consulta }) {
   );
 }
 
-export default function MensajeAgente({ mensaje }) {
+// Animación de escritura: tiempo entre pasos y duración máxima (los textos largos
+// avanzan varias palabras por paso para no hacer esperar).
+const INTERVALO_MS = 30;
+const DURACION_MAX_MS = 4000;
+
+function prefiereMenosMovimiento() {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * Muestra el texto palabra a palabra, como los chats de IA, con un cursor.
+ * Es una animación de la respuesta ya recibida. Los lectores de pantalla reciben
+ * el texto completo de una vez (no palabra a palabra). Si el sistema pide reducir
+ * el movimiento, el texto aparece directamente.
+ */
+function TextoAnimado({ texto, animar, alAvanzar, alTerminar }) {
+  const partes = useMemo(() => texto.match(/\S+\s*|\s+/g) || [], [texto]);
+  const instantaneo = !animar || prefiereMenosMovimiento();
+  const [visibles, setVisibles] = useState(instantaneo ? partes.length : 0);
+  const avanzarRef = useRef(alAvanzar);
+  const terminarRef = useRef(alTerminar);
+  avanzarRef.current = alAvanzar;
+  terminarRef.current = alTerminar;
+
+  useEffect(() => {
+    if (instantaneo) {
+      setVisibles(partes.length);
+      return undefined;
+    }
+    const porPaso = Math.max(1, Math.ceil(partes.length / Math.ceil(DURACION_MAX_MS / INTERVALO_MS)));
+    let mostradas = 0;
+    const id = setInterval(() => {
+      mostradas = Math.min(partes.length, mostradas + porPaso);
+      setVisibles(mostradas);
+      if (mostradas >= partes.length) clearInterval(id);
+    }, INTERVALO_MS);
+    return () => clearInterval(id);
+  }, [instantaneo, partes]);
+
+  const completo = visibles >= partes.length;
+  useEffect(() => {
+    if (avanzarRef.current) avanzarRef.current();
+    if (completo && terminarRef.current) terminarRef.current();
+  }, [visibles, completo]);
+
+  return (
+    <>
+      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }} aria-hidden={completo ? undefined : true}>
+        {partes.slice(0, visibles).join("")}
+        {!completo && (
+          <Box
+            component="span"
+            data-testid="cursor-escritura"
+            sx={{
+              display: "inline-block",
+              width: "0.5em",
+              height: "1em",
+              ml: 0.25,
+              verticalAlign: "text-bottom",
+              bgcolor: "text.secondary",
+              animation: "parpadeo 1s steps(1) infinite",
+              "@keyframes parpadeo": { "50%": { opacity: 0 } },
+            }}
+          />
+        )}
+      </Typography>
+      {!completo && <Box component="span" sx={visualmenteOculto}>{texto}</Box>}
+    </>
+  );
+}
+
+const visualmenteOculto = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  p: 0,
+  m: -1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
+/**
+ * animar: escribe la respuesta palabra a palabra (solo el último mensaje recibido).
+ * Los datos de la app se muestran al terminar de escribir el texto.
+ */
+export default function MensajeAgente({ mensaje, animar = false, alAvanzar, alTerminarAnimacion }) {
   const esUsuario = mensaje.rol === "usuario";
   const consultas = mensaje.consultas || [];
+  const [textoListo, setTextoListo] = useState(!animar);
+  const terminar = useCallback(() => {
+    setTextoListo(true);
+    if (alTerminarAnimacion) alTerminarAnimacion();
+  }, [alTerminarAnimacion]);
+  const mostrarDetalles = esUsuario || textoListo || !animar;
   return (
     <Box sx={{ display: "flex", justifyContent: esUsuario ? "flex-end" : "flex-start", mb: 1.5 }}>
       <Box
@@ -159,11 +254,15 @@ export default function MensajeAgente({ mensaje }) {
           minWidth: 0,
         }}
       >
-        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-          {mensaje.texto}
-        </Typography>
-        {!esUsuario && consultas.map((c, i) => <ResultadoConsulta key={`${c.herramienta}-${i}`} consulta={c} />)}
-        {!esUsuario && consultas.length === 0 && (
+        {esUsuario ? (
+          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {mensaje.texto}
+          </Typography>
+        ) : (
+          <TextoAnimado texto={mensaje.texto} animar={animar} alAvanzar={alAvanzar} alTerminar={terminar} />
+        )}
+        {!esUsuario && mostrarDetalles && consultas.map((c, i) => <ResultadoConsulta key={`${c.herramienta}-${i}`} consulta={c} />)}
+        {!esUsuario && mostrarDetalles && consultas.length === 0 && (
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
             Respuesta general: no consultó datos de Turbinas App.
           </Typography>

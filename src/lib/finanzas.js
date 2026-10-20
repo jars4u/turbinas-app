@@ -33,7 +33,7 @@ export const INCIDENCIA = {
   FECHA_AUSENTE: "fecha_ausente",
   FECHA_INVALIDA: "fecha_invalida",
   NOMINA_SIN_PERIODO: "nomina_sin_periodo",
-  NOMINA_PENDIENTE_CRITERIO: "nomina_pendiente_criterio",
+  NOMINA_PRORRATEADA: "nomina_prorrateada",
   ENTREGADO_SIN_FECHA: "entregado_sin_fecha",
 };
 
@@ -413,13 +413,18 @@ export function deduplicarPorId(registros) {
 // ---------------------------------------------------------------------------
 
 /**
- * DECISIÓN PENDIENTE DEL NEGOCIO: cómo imputar una nómina cuyo período cruza un
- * cambio de mes o el límite del rango consultado (prorrateo por días, fecha de
- * fin, fecha de pago...). Hasta que se decida, esas nóminas NO se suman a
- * ningún período: se informan aparte como "pendiente de criterio". Cambiar esta
- * regla es la única modificación necesaria cuando haya decisión.
+ * DECISIÓN DEL NEGOCIO: una nómina cuyo período cruza un cambio de mes o el
+ * límite del rango consultado se PRORRATEA por días calendario: a cada rango le
+ * toca la parte de sus días que cae en él. Siempre se deja constancia de que el
+ * valor es prorrateado (estado "prorrateada").
  */
-export const CRITERIO_NOMINA_ENTRE_PERIODOS = "pendiente";
+export const CRITERIO_NOMINA_ENTRE_PERIODOS = "prorrateo_por_dias";
+
+const DIA_MS = 24 * 60 * 60 * 1000;
+/** Días calendario entre dos fechas, ambos incluidos. */
+function diasCalendario(desde, hasta) {
+  return Math.round((inicioDia(hasta).getTime() - inicioDia(desde).getTime()) / DIA_MS) + 1;
+}
 
 /** Total de una nómina (suma de empleados[].monto); los importes inválidos son incidencias. */
 export function totalNomina(nomina) {
@@ -444,9 +449,11 @@ export function totalNomina(nomina) {
 
 /**
  * Atribución de una nómina a un rango [inicio, fin]:
- * - "dentro": todo su período está en el rango y en un solo mes → se suma.
+ * - "dentro": todo su período está en el rango → se suma completa.
  * - "fuera": no toca el rango.
- * - "pendiente_criterio": cruza un cambio de mes o el límite del rango → no se suma.
+ * - "prorrateada": solo parte de sus días cae en el rango (cruza un cambio de mes
+ *   o el límite del rango) → se suma usd = usdTotal × diasEnRango / diasTotales.
+ *   `tramo` son los días que caen en el rango.
  * - "sin_periodo": falta fechaInicio o fechaFin válidas → no se atribuye.
  * No se usa fechaGuardado como sustituto del período: no es evidencia de él.
  */
@@ -459,18 +466,24 @@ export function atribuirNomina(nomina, { inicio, fin }) {
   }
   const periodo = { inicio: inicioDia(ini.fecha), fin: finDia(fn.fecha) };
   if (periodo.fin < inicio || periodo.inicio > fin) return { estado: "fuera", usd: total.usd, periodo, incidencias: total.incidencias };
-  const cruzaMes = periodo.inicio.getFullYear() !== periodo.fin.getFullYear() || periodo.inicio.getMonth() !== periodo.fin.getMonth();
-  const dentroDelRango = periodo.inicio >= inicio && periodo.fin <= fin;
-  if (cruzaMes || !dentroDelRango) {
-    return {
-      estado: "pendiente_criterio",
-      motivo: cruzaMes ? "cruza_cambio_de_mes" : "cruza_limite_del_rango",
-      usd: total.usd,
-      periodo,
-      incidencias: [...total.incidencias, INCIDENCIA.NOMINA_PENDIENTE_CRITERIO],
-    };
+  if (periodo.inicio >= inicio && periodo.fin <= fin) {
+    return { estado: "dentro", usd: total.usd, periodo, tramo: periodo, incidencias: total.incidencias };
   }
-  return { estado: "dentro", usd: total.usd, periodo, incidencias: total.incidencias };
+  const cruzaMes = periodo.inicio.getFullYear() !== periodo.fin.getFullYear() || periodo.inicio.getMonth() !== periodo.fin.getMonth();
+  const tramo = { inicio: periodo.inicio > inicio ? periodo.inicio : inicioDia(inicio), fin: periodo.fin < fin ? periodo.fin : finDia(fin) };
+  const diasTotales = diasCalendario(periodo.inicio, periodo.fin);
+  const diasEnRango = diasCalendario(tramo.inicio, tramo.fin);
+  return {
+    estado: "prorrateada",
+    motivo: cruzaMes ? "cruza_cambio_de_mes" : "cruza_limite_del_rango",
+    usd: total.usd === null ? null : (total.usd * diasEnRango) / diasTotales,
+    usdTotal: total.usd,
+    diasEnRango,
+    diasTotales,
+    periodo,
+    tramo,
+    incidencias: [...total.incidencias, INCIDENCIA.NOMINA_PRORRATEADA],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -531,14 +544,16 @@ const sumar = (lista, fn) => lista.reduce((acc, x) => acc + (fn(x) || 0), 0);
  * - ambiguos: egresos con USD y Bs a la vez. Solo se informa lo que no depende de
  *   la interpretación: el USD registrado (mínimo) y los Bs originales sin
  *   clasificar. Nunca se suman entre sí: podrían ser el mismo gasto.
- * - pendientesCriterio: nóminas que esperan la decisión de imputación.
+ * - prorrateos: nóminas que cruzan de mes o el límite del rango y suman solo la
+ *   parte de sus días que cae en él. Suman (no vuelven parcial el total), pero se
+ *   señalan aparte.
  * - pendientesConversion: registros en Bs que no se pudieron convertir.
  * - sinPeriodo: registros sin fecha verificable, no imputables a ningún período.
  * Las estimaciones con el factor manual sí suman, pero se señalan aparte.
  */
 export function resumirCompletitud({
   egresosAmbiguos = [],
-  nominasPendientes = [],
+  nominasProrrateadas = [],
   ingresosPendientesConversion = { cantidad: 0, bs: 0 },
   egresosPendientesConversion = { cantidad: 0, bs: 0 },
   sinPeriodo = {},
@@ -556,7 +571,11 @@ export function resumirCompletitud({
     minimoUSD: sumar(egresosAmbiguos, (e) => e.importeUSDOriginal),
     bsSinClasificar: sumar(egresosAmbiguos, (e) => e.importeBsOriginal),
   };
-  const pendientesCriterio = { cantidad: nominasPendientes.length, usd: sumar(nominasPendientes, (n) => n.usd) };
+  const prorrateos = {
+    cantidad: nominasProrrateadas.length,
+    usd: sumar(nominasProrrateadas, (n) => n.usd),
+    usdTotal: sumar(nominasProrrateadas, (n) => n.usdTotal),
+  };
   const pendientesConversion = {
     ingresos: ingresosPendientesConversion.cantidad || 0,
     egresos: egresosPendientesConversion.cantidad || 0,
@@ -566,17 +585,18 @@ export function resumirCompletitud({
   const areas = {
     ingresos: pendientesConversion.ingresos === 0 && sp.ingresos === 0,
     egresos: ambiguos.cantidad === 0 && pendientesConversion.egresos === 0 && sp.egresos === 0,
-    nomina: pendientesCriterio.cantidad === 0 && sp.nominas === 0,
+    nomina: sp.nominas === 0,
     servicios: sp.servicios === 0,
   };
   return {
     completo: Object.values(areas).every(Boolean),
     areas,
     ambiguos,
-    pendientesCriterio,
+    prorrateos,
     pendientesConversion,
     sinPeriodo: sp,
     usdEstimado,
     incluyeEstimaciones: usdEstimado !== 0,
+    incluyeProrrateos: prorrateos.cantidad > 0,
   };
 }

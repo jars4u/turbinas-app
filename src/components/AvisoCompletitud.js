@@ -13,20 +13,13 @@ const formatBs = (valor) =>
  */
 export function lineasCompletitud(completitud) {
   if (!completitud) return [];
-  const { ambiguos, pendientesCriterio, pendientesConversion, sinPeriodo } = completitud;
+  const { ambiguos, pendientesConversion, sinPeriodo } = completitud;
   const lineas = [];
   if (ambiguos && ambiguos.cantidad > 0) {
     lineas.push({
       clave: "ambiguos",
       titulo: "Excluido por ambigüedad",
       texto: `${ambiguos.cantidad} egreso(s) con importe en USD y en Bs a la vez: al menos ${formatUsd(ambiguos.minimoUSD)} registrados en USD y ${formatBs(ambiguos.bsSinClasificar)} sin clasificar. No se suman para no contar dos veces el mismo gasto.`,
-    });
-  }
-  if (pendientesCriterio && pendientesCriterio.cantidad > 0) {
-    lineas.push({
-      clave: "criterio",
-      titulo: "Pendiente de criterio",
-      texto: `${pendientesCriterio.cantidad} nómina(s) por ${formatUsd(pendientesCriterio.usd)} cruzan un cambio de mes o el límite del rango.`,
     });
   }
   if (pendientesConversion && pendientesConversion.cantidad > 0) {
@@ -54,6 +47,13 @@ export function textoEstimaciones(completitud) {
   return `Incluye ${formatUsd(completitud.usdEstimado)} estimados con el factor manual actual (ingresos en Bs sin conversión registrada).`;
 }
 
+/** Constancia de nóminas prorrateadas: suman, pero solo la parte de sus días en el rango. */
+export function textoProrrateos(completitud) {
+  const p = completitud && completitud.prorrateos;
+  if (!p || p.cantidad === 0) return null;
+  return `Nómina prorrateada: ${p.cantidad} nómina(s) quedaron entre dos meses o en el límite del rango. Se incluyen ${formatUsd(p.usd)} de ${formatUsd(p.usdTotal)}, en proporción a los días que caen en el rango.`;
+}
+
 /**
  * Aviso de totales parciales. `compacto` usa texto pequeño (paneles laterales).
  * No muestra nada si el total está completo y no incluye estimaciones.
@@ -62,7 +62,8 @@ export default function AvisoCompletitud({ completitud, compacto = false, sx }) 
   if (!completitud) return null;
   const lineas = lineasCompletitud(completitud);
   const estimaciones = textoEstimaciones(completitud);
-  if (completitud.completo && !estimaciones) return null;
+  const prorrateos = textoProrrateos(completitud);
+  if (completitud.completo && !estimaciones && !prorrateos) return null;
 
   if (compacto) {
     return (
@@ -77,11 +78,11 @@ export default function AvisoCompletitud({ completitud, compacto = false, sx }) 
             {l.titulo}: {l.texto}
           </Typography>
         ))}
-        {estimaciones && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-            {estimaciones}
+        {[estimaciones, prorrateos].filter(Boolean).map((t) => (
+          <Typography key={t} variant="caption" color="text.secondary" sx={{ display: "block" }}>
+            {t}
           </Typography>
-        )}
+        ))}
       </Box>
     );
   }
@@ -106,6 +107,7 @@ export default function AvisoCompletitud({ completitud, compacto = false, sx }) 
         </Alert>
       )}
       {estimaciones && <Alert severity="info">{estimaciones}</Alert>}
+      {prorrateos && <Alert severity="info">{prorrateos}</Alert>}
     </Box>
   );
 }

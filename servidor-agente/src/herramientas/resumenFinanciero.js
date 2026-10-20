@@ -10,7 +10,7 @@
  *     manual actual (decisión de negocio) y se informa aparte.
  *   - Egresos por categoría (facturas, gastos del día, caja chica, otros); los Bs
  *     sin tasa registrada quedan pendientes y los ambiguos se excluyen.
- *   - Nómina atribuible al periodo y neto.
+ *   - Nómina del periodo (prorrateada por días si cruza de mes) y neto.
  * Lee: ingresosMovimientos, egresos, nominas, metodosPago y configuracion/factorConversion.
  * No incluye anulaciones ni reembolsos: la app no los registra.
  */
@@ -25,9 +25,10 @@ const definicion = {
   descripcion:
     "Resumen financiero de Turbinas App para un periodo (por defecto, del día 1 del mes actual hasta hoy, hora de Venezuela), " +
     "calculado con las mismas reglas que la pantalla de Reportes: ingresos cobrados en USD (separando cobros en dólares, " +
-    "conversiones registradas desde bolívares y estimaciones con el factor actual), ingresos por método de pago, principales " +
-    "clientes, egresos por categoría, nómina y neto. Úsala para preguntas sobre dinero que entró o salió, ventas, gastos, " +
-    "utilidad o lo que pagó un cliente en un periodo.",
+    "conversiones desde bolívares con el factor registrado en cada cobro y estimaciones con el factor actual), ingresos por método " +
+    "de pago, principales clientes que pagaron (son clientes, no trabajadores), egresos por categoría, nómina total del periodo y neto. " +
+    "Úsala para preguntas sobre dinero que entró o salió, ventas, gastos, utilidad o lo que pagó un cliente en un periodo. " +
+    "No tiene datos por trabajador: para eso usa nomina_por_empleado.",
   esquema: { type: "object", properties: PROPIEDADES_PERIODO, additionalProperties: false },
   datos: ["ingresosMovimientos", "egresos", "nominas", "metodosPago", "configuracion/factorConversion"],
   roles: ["owner", "admin"],
@@ -111,8 +112,8 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
     notas.push(`${c.ambiguos.cantidad} egreso(s) tienen importe en USD y en Bs a la vez y no se suman: al menos ${r2(c.ambiguos.minimoUSD)} USD y ${r2(c.ambiguos.bsSinClasificar)} Bs sin clasificar.`);
   }
   if (c.pendientesConversion.egresos > 0) notas.push(`${c.pendientesConversion.egresos} egreso(s) en bolívares no tienen tasa registrada y no suman en USD.`);
-  if (c.pendientesCriterio.cantidad > 0) {
-    notas.push(`${c.pendientesCriterio.cantidad} nómina(s) por ${r2(c.pendientesCriterio.usd)} USD cruzan un cambio de mes o el límite del periodo y no se suman (criterio pendiente de decisión).`);
+  if (c.prorrateos.cantidad > 0) {
+    notas.push(`Nómina prorrateada: ${c.prorrateos.cantidad} nómina(s) quedan entre dos meses o en el límite del periodo; se incluyen ${r2(c.prorrateos.usd).toFixed(2)} de ${r2(c.prorrateos.usdTotal).toFixed(2)} USD, en proporción a los días que caen en el periodo.`);
   }
   if (c.sinPeriodo.ingresos + c.sinPeriodo.egresos + c.sinPeriodo.nominas > 0) {
     notas.push(`${c.sinPeriodo.ingresos + c.sinPeriodo.egresos + c.sinPeriodo.nominas} registro(s) sin fecha válida no se pueden asignar a ningún periodo.`);
@@ -149,10 +150,10 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
       resumen: [
         { etiqueta: "Ingresos", valor: r2(s.ingresosUSD), tipo: "usd" },
         { etiqueta: "· cobrados en dólares", valor: r2(s.ingresosUSDDirect), tipo: "usd" },
-        { etiqueta: "· desde bolívares (conversión registrada)", valor: r2(usdConversionRegistrada), tipo: "usd" },
+        { etiqueta: "· desde bolívares (factor registrado en el cobro)", valor: r2(usdConversionRegistrada), tipo: "usd" },
         { etiqueta: "· estimados con factor actual", valor: r2(s.ingresosUSDEstimado), tipo: "usd" },
         { etiqueta: "Egresos", valor: r2(s.egresosUSD), tipo: "usd" },
-        { etiqueta: "Nómina", valor: r2(s.nominaUSD), tipo: "usd" },
+        { etiqueta: "Nómina del periodo", valor: r2(s.nominaUSD), tipo: "usd" },
         { etiqueta: "Neto", valor: r2(s.netoUSD), tipo: "usd" },
       ],
       notas,

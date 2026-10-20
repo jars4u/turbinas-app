@@ -248,8 +248,9 @@ function sumBy(list, campo) {
  *   Los Bs solo se convierten con la tasa registrada; sin ella quedan pendientes
  *   de conversión. Los ambiguos (USD y Bs a la vez) quedan fuera del total.
  * - summary.completitud indica si el total es parcial y qué quedó fuera.
- * - Nómina: solo las que caen enteras en el rango y en un mes; el resto queda
- *   "pendiente de criterio" (ver CRITERIO_NOMINA_ENTRE_PERIODOS).
+ * - Nómina: las que caen enteras en el rango suman completas; las que cruzan un
+ *   cambio de mes o el límite del rango se prorratean por días y se marcan como
+ *   prorrateadas (ver CRITERIO_NOMINA_ENTRE_PERIODOS).
  * - Servicios: criterio de entrega único; sin fecha de entrega no se imputan.
  */
 export function buildReportData({
@@ -372,7 +373,6 @@ export function buildReportData({
   });
 
   const nominasFiltradas = [];
-  const nominasPendientes = [];
   let nominaNoDesglosadaUSD = 0;
   nominas.forEach((nomina) => {
     const a = atribuirNomina(nomina, { inicio: start, fin: end });
@@ -383,20 +383,19 @@ export function buildReportData({
     }
     if (a.estado === "fuera") return;
     registrar(a.incidencias);
-    if (a.estado === "pendiente_criterio") {
-      nominasPendientes.push({ raw: nomina, motivo: a.motivo, rangeStart: a.periodo.inicio, rangeEnd: a.periodo.fin, totalUSD: a.usd });
-      return;
-    }
-    // En la serie solo se ubica si el período entero cae en un mismo intervalo
-    const mismoIntervalo = getBucketInfo(a.periodo.inicio, granularity).key === getBucketInfo(a.periodo.fin, granularity).key;
+    // En la serie solo se ubica si los días atribuidos caen en un mismo intervalo
+    const mismoIntervalo = getBucketInfo(a.tramo.inicio, granularity).key === getBucketInfo(a.tramo.fin, granularity).key;
     if (!mismoIntervalo) nominaNoDesglosadaUSD += a.usd || 0;
+    const prorrateada = a.estado === "prorrateada";
     nominasFiltradas.push({
       raw: nomina,
-      date: a.periodo.fin,
+      date: a.tramo.fin,
       rangeStart: a.periodo.inicio,
       rangeEnd: a.periodo.fin,
       totalUSD: a.usd || 0,
       enSerie: mismoIntervalo,
+      prorrateada,
+      ...(prorrateada ? { motivo: a.motivo, totalNominaUSD: a.usdTotal || 0, diasEnRango: a.diasEnRango, diasTotales: a.diasTotales } : {}),
     });
   });
 
@@ -457,14 +456,14 @@ export function buildReportData({
     serviciosEntregados: serviciosFiltrados.length,
     nominaUSD,
     nominaNoDesglosadaUSD,
-    nominaPendienteUSD: nominasPendientes.reduce((acc, n) => acc + (n.totalUSD || 0), 0),
-    nominasPendientes: nominasPendientes.length,
+    nominaProrrateadaUSD: sumBy(nominasFiltradas.filter((n) => n.prorrateada), "totalUSD"),
+    nominasProrrateadas: nominasFiltradas.filter((n) => n.prorrateada).length,
     calidad,
   };
   summary.totalEgresosConsolidadoUSD = summary.egresosUSD + summary.nominaUSD;
   summary.completitud = resumirCompletitud({
     egresosAmbiguos,
-    nominasPendientes: nominasPendientes.map((n) => ({ usd: n.totalUSD })),
+    nominasProrrateadas: nominasFiltradas.filter((n) => n.prorrateada).map((n) => ({ usd: n.totalUSD, usdTotal: n.totalNominaUSD })),
     ingresosPendientesConversion: { cantidad: calidad.ingresosConBsSinConversion, bs: calidad.ingresosBsSinConversion },
     egresosPendientesConversion: { cantidad: calidad.egresosPendientesConversion, bs: calidad.egresosBsPendienteConversion },
     sinPeriodo: {
@@ -498,7 +497,6 @@ export function buildReportData({
       egresosAmbiguos,
       servicios: serviciosFiltrados,
       nominas: nominasFiltradas,
-      nominasPendientes,
     },
   };
 }
@@ -541,7 +539,7 @@ export async function exportReportToExcel(reportData, fileName = null) {
       "Registros sin período": reportData.summary?.completitud?.sinPeriodo?.total || 0,
       "Servicios entregados": reportData.summary?.serviciosEntregados || 0,
       "Nómina USD": formatCurrencyUSD(reportData.summary?.nominaUSD),
-      "Nómina pendiente de criterio USD": formatCurrencyUSD(reportData.summary?.nominaPendienteUSD),
+      "Nómina prorrateada USD (incluida)": formatCurrencyUSD(reportData.summary?.nominaProrrateadaUSD),
       "Neto USD": formatCurrencyUSD(reportData.summary?.netoUSD),
       "Neto USD directo": formatCurrencyUSD(reportData.summary?.netoUSDDirect),
       "Neto USD desde Bs": formatCurrencyUSD(reportData.summary?.netoUSDFromBs),
@@ -611,14 +609,9 @@ export async function exportReportToExcel(reportData, fileName = null) {
       Fin: formatDisplayDate(item.rangeEnd),
       Empleados: Array.isArray(item.raw?.empleados) ? item.raw.empleados.length : 0,
       "Total USD": formatCurrencyUSD(item.totalUSD),
-      Estado: "Incluida",
-    })),
-    ...(reportData.detail?.nominasPendientes || []).map((item) => ({
-      Inicio: formatDisplayDate(item.rangeStart),
-      Fin: formatDisplayDate(item.rangeEnd),
-      Empleados: Array.isArray(item.raw?.empleados) ? item.raw.empleados.length : 0,
-      "Total USD": formatCurrencyUSD(item.totalUSD),
-      Estado: "Pendiente de criterio (no sumada)",
+      Estado: item.prorrateada
+        ? `Prorrateada: ${item.diasEnRango} de ${item.diasTotales} días en el rango (total de la nómina ${formatCurrencyUSD(item.totalNominaUSD)})`
+        : "Incluida",
     })),
   ]);
 

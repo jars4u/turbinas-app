@@ -12,7 +12,7 @@ const AHORA = () => new Date("2026-10-20T15:00:00Z");
 const pregunta = (texto) => ({ mensajes: [{ rol: "usuario", texto }] });
 const llamadaResumen = (argumentos = {}) => ({ tipo: "herramientas", llamadas: [{ id: "c1", nombre: "resumen_servicios_por_estado", argumentos }] });
 
-const HERRAMIENTAS = ["resumen_servicios_por_estado", "resumen_financiero", "cuentas_por_cobrar", "cuentas_por_pagar", "servicios_del_periodo"];
+const HERRAMIENTAS = ["resumen_servicios_por_estado", "resumen_financiero", "cuentas_por_cobrar", "cuentas_por_pagar", "servicios_del_periodo", "nomina_por_empleado"];
 
 test("registro cerrado de herramientas, todas con esquema cerrado y descripción", () => {
   const defs = definicionesParaModelo();
@@ -109,6 +109,10 @@ test("pregunta general: el modelo responde sin consultar datos", async () => {
   assert.deepEqual(modelo.entradas[0].herramientas.map((h) => h.nombre), HERRAMIENTAS);
   // Lleva la fecha de hoy en Venezuela para interpretar "hoy" o "este mes"
   assert.match(modelo.entradas[0].sistema, /Hoy es 2026-10-20 \(hora de Venezuela/);
+  // Clientes y trabajadores no se mezclan; redacción de factor y nómina
+  assert.match(modelo.entradas[0].sistema, /Clientes y trabajadores son personas distintas/);
+  assert.match(modelo.entradas[0].sistema, /factor registrado en cada cobro/);
+  assert.match(modelo.entradas[0].sistema, /no digas que fue 'pagada'/);
   assert.match(modelo.entradas[0].sistema, /nunca inventes cifras/);
 });
 

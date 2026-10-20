@@ -110,13 +110,14 @@ test("resumen_financiero: egresos, nómina, neto y totales parciales explicados"
   assert.equal(resultado.egresos.totalUSD, 50);
   assert.equal(resultado.egresos.porCategoria.factura.usd, 50);
   assert.equal(resultado.egresos.porCategoria.gasto_dia.bs, 450);
-  assert.equal(resultado.nominaUSD, 200);
-  assert.equal(resultado.netoUSD, 70);
+  // 200 de la nómina de octubre + 120 prorrateados (2 de 5 días de la que cruza de mes)
+  assert.equal(resultado.nominaUSD, 320);
+  assert.equal(resultado.netoUSD, -50);
   assert.equal(resultado.totalesCompletos, false);
   const notas = resultado.notas.join(" ");
   assert.match(notas, /1 egreso\(s\) tienen importe en USD y en Bs/);
   assert.match(notas, /1 egreso\(s\) en bolívares no tienen tasa registrada/);
-  assert.match(notas, /1 nómina\(s\) por 300 USD cruzan/);
+  assert.match(notas, /Nómina prorrateada: 1 nómina\(s\) quedan entre dos meses.*se incluyen 120\.00 de 300\.00 USD/);
   assert.match(notas, /No incluye anulaciones ni reembolsos/);
   assert.deepEqual(resultado.resumen.map((r) => r.etiqueta)[0], "Ingresos");
 });
@@ -189,4 +190,59 @@ test("el agente usa resumen_financiero para la pregunta de ingresos del mes y de
   assert.equal(r.texto, "En lo que va de mes entraron 320 USD.");
   assert.equal(r.consultas[0].herramienta, "resumen_financiero");
   assert.equal(r.consultas[0].resultado.periodo.desde, "2026-10-01");
+});
+
+const NOMINAS_SINTETICAS = [
+  { id: "n1", fechaInicio: "2026-10-05", fechaFin: "2026-10-09", empleados: [
+    { id: "e1", nombre: "Pedro Sintetico", cedula: "V-SINTETICO-1", cargo: "Lavador", servicios: 10, bono: 20, monto: 220, observaciones: "OBS_SECRETA" },
+    { id: "e2", nombre: "Luis Sintetico", cedula: "V-SINTETICO-2", cargo: "Ayudante", servicios: 4, bono: 0, monto: 150 },
+  ] },
+  { id: "n3", fechaInicio: "2026-10-12", fechaFin: "2026-10-16", empleados: [{ id: "e1", nombre: "Pedro Sintetico", cargo: "Lavador", servicios: 8, bono: 0, monto: 200 }] },
+  { id: "n2", fechaInicio: "2026-09-28", fechaFin: "2026-10-02", empleados: [{ id: "e2", nombre: "Luis Sintetico", monto: 300 }] },
+];
+
+test("nomina_por_empleado: total por trabajador, orden, prorrateo entre meses con constancia y sin datos sensibles", async () => {
+  const fuente = fuenteDatos({ leerNominas: lectura(NOMINAS_SINTETICAS) });
+  const { resultado } = await ejecutar("nomina_por_empleado", {}, fuente);
+  // n2 (28/09 al 02/10, 300 USD): a octubre le tocan 2 de 5 días = 120 USD
+  assert.deepEqual(resultado.empleados, [
+    { empleado: "Pedro Sintetico", cargo: "Lavador", totalUSD: 420, bonosUSD: 20, servicios: 18, nominas: 2, incluyeProrrateo: false },
+    { empleado: "Luis Sintetico", cargo: "Ayudante", totalUSD: 270, bonosUSD: 0, servicios: 4, nominas: 2, incluyeProrrateo: true },
+  ]);
+  assert.equal(resultado.totalUSD, 690);
+  assert.equal(resultado.nominasIncluidas, 3);
+  assert.deepEqual(resultado.nominasProrrateadas, [
+    { desde: "2026-09-28", hasta: "2026-10-02", motivo: "queda entre dos meses", diasEnPeriodo: 2, diasTotales: 5, incluidoUSD: 120, totalNominaUSD: 300 },
+  ]);
+  assert.equal(resultado.totalesCompletos, true);
+  assert.ok(resultado.notas.includes("Valor prorrateado: la nómina del 28/09/2026 al 02/10/2026 queda entre dos meses; se incluyen 2 de sus 5 días: 120.00 de 300.00 USD."));
+  assert.ok(resultado.resumen.some((f) => f.etiqueta.startsWith("Incluye prorrateado") && f.valor === 120));
+  const json = JSON.stringify(resultado);
+  assert.ok(!json.includes("V-SINTETICO") && !json.includes("OBS_SECRETA"));
+});
+
+test("nomina_por_empleado: el mes pasado, sin nóminas y periodo inválido", async () => {
+  const fuente = fuenteDatos({ leerNominas: lectura(NOMINAS_SINTETICAS) });
+  const septiembre = await ejecutar("nomina_por_empleado", { desde: "2026-09-01", hasta: "2026-09-30" }, fuente);
+  // A septiembre le tocan los otros 3 de 5 días: 180 + 120 = 300, sin perder ni duplicar
+  assert.equal(septiembre.resultado.totalUSD, 180);
+  assert.equal(septiembre.resultado.nominasProrrateadas[0].diasEnPeriodo, 3);
+  const vacio = await ejecutar("nomina_por_empleado", {}, fuenteDatos({ leerNominas: lectura([]) }));
+  assert.ok(vacio.resultado.notas.includes("No hay nóminas guardadas en este periodo."));
+  const malo = await ejecutar("nomina_por_empleado", { desde: "2026-13-01" });
+  assert.equal(malo.error.codigo, "periodo_invalido");
+});
+
+test("pregunta de trabajadores: el agente usa nomina_por_empleado y no lee ingresos ni clientes", async () => {
+  const fuente = fuenteDatos({ leerNominas: lectura(NOMINAS_SINTETICAS) });
+  const modelo = modeloSimulado([
+    { tipo: "herramientas", llamadas: [{ id: "c1", nombre: "nomina_por_empleado", argumentos: { desde: "2026-10-01", hasta: "2026-10-20" } }] },
+    (entrada) => {
+      const r = entrada.conversacion[entrada.conversacion.length - 1].resultados[0].contenido;
+      return { tipo: "texto", texto: `${r.empleados[0].empleado} con ${r.empleados[0].totalUSD} USD.` };
+    },
+  ]);
+  const r = await crearAgente({ modelo, fuente, ahora: AHORA }).responder({ mensajes: [{ rol: "usuario", texto: "¿Quién de los trabajadores percibió más dinero?" }] });
+  assert.equal(r.texto, "Pedro Sintetico con 420 USD.");
+  assert.ok(!fuente.llamadas.includes("leerIngresos"));
 });

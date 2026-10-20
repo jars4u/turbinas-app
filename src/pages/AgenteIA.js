@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -36,6 +36,8 @@ function ChatAgente() {
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(null);
+  // Índice de la respuesta que se está "escribiendo" (solo la última recibida)
+  const [animarIndice, setAnimarIndice] = useState(null);
   const finRef = useRef(null);
   const conectado = Boolean(urlAgente());
 
@@ -45,6 +47,14 @@ function ChatAgente() {
     }
   }, [historial, enviando, error]);
 
+  // Mientras la respuesta se escribe, mantener a la vista el final del texto
+  const seguirEscritura = useCallback(() => {
+    if (finRef.current && typeof finRef.current.scrollIntoView === "function") {
+      finRef.current.scrollIntoView({ block: "end" });
+    }
+  }, []);
+  const terminarEscritura = useCallback(() => setAnimarIndice(null), []);
+
   // Envía la conversación tal como está; el último mensaje es del usuario
   const solicitar = async (conversacion) => {
     setEnviando(true);
@@ -52,6 +62,7 @@ function ChatAgente() {
     try {
       const respuesta = await enviarConversacion(conversacion);
       setHistorial([...conversacion, { rol: "asistente", texto: respuesta.texto, consultas: respuesta.consultas }]);
+      setAnimarIndice(conversacion.length);
     } catch (e) {
       setError(e && e.message ? e.message : "Ocurrió un error inesperado con el agente.");
     } finally {
@@ -63,6 +74,7 @@ function ChatAgente() {
     const limpio = contenido.trim();
     if (!limpio || enviando || !conectado) return;
     const conversacion = [...historial, { rol: "usuario", texto: limpio }];
+    setAnimarIndice(null);
     setHistorial(conversacion);
     setTexto("");
     solicitar(conversacion);
@@ -73,6 +85,7 @@ function ChatAgente() {
   };
 
   const nuevaConversacion = () => {
+    setAnimarIndice(null);
     setHistorial([]);
     setError(null);
     setTexto("");
@@ -130,7 +143,13 @@ function ChatAgente() {
           )}
 
           {historial.map((mensaje, i) => (
-            <MensajeAgente key={i} mensaje={mensaje} />
+            <MensajeAgente
+              key={i}
+              mensaje={mensaje}
+              animar={i === animarIndice}
+              alAvanzar={i === animarIndice ? seguirEscritura : undefined}
+              alTerminarAnimacion={i === animarIndice ? terminarEscritura : undefined}
+            />
           ))}
 
           {enviando && (

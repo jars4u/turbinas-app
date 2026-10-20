@@ -44,7 +44,7 @@ import { obtenerVehiculos } from "../lib/vehiculosFirebase";
 import { obtenerEstadosServicio } from "../lib/estadosServicioFirebase";
 import useFactorConversion from "../hooks/useFactorConversion";
 import { factorParaEstimacion } from "../lib/finanzas";
-import AvisoCompletitud, { lineasCompletitud, textoEstimaciones } from "../components/AvisoCompletitud";
+import AvisoCompletitud, { lineasCompletitud, textoEstimaciones, textoProrrateos } from "../components/AvisoCompletitud";
 import {
   buildReportData,
   exportReportToExcel,
@@ -92,7 +92,8 @@ function escapeHtml(value) {
 function buildPdfCompletitud(completitud) {
   const lineas = lineasCompletitud(completitud);
   const estimaciones = textoEstimaciones(completitud);
-  if (!completitud || (completitud.completo && !estimaciones)) return "";
+  const prorrateos = textoProrrateos(completitud);
+  if (!completitud || (completitud.completo && !estimaciones && !prorrateos)) return "";
   const items = lineas
     .map((l) => `<li style="margin-bottom:4px;"><strong>${escapeHtml(l.titulo)}:</strong> ${escapeHtml(l.texto)}</li>`)
     .join("");
@@ -100,6 +101,7 @@ function buildPdfCompletitud(completitud) {
       <div style="background:#fff8e1;border:1px solid #f0c36d;border-radius:18px;padding:14px 18px;margin-top:18px;font-size:13px;color:#5d4200;line-height:1.5;">
         ${completitud.completo ? "" : `<div style="font-weight:700;margin-bottom:6px;">Totales parciales: no reconciliados. Incluyen solo los registros contabilizables. Queda fuera:</div><ul style="margin:0;padding-left:20px;">${items}</ul>`}
         ${estimaciones ? `<div style="margin-top:6px;">${escapeHtml(estimaciones)}</div>` : ""}
+        ${prorrateos ? `<div style="margin-top:6px;">${escapeHtml(prorrateos)}</div>` : ""}
       </div>`;
 }
 

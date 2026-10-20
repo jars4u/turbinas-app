@@ -143,23 +143,27 @@ describe("6. fechas DD/MM/YYYY, YYYY-MM-DD y Timestamp", () => {
 describe("7. nóminas que cruzan de mes", () => {
   const cruzaMes = { fechaInicio: "2026-09-28", fechaFin: "2026-10-02", empleados: [{ monto: 300 }] };
 
-  test("el criterio sigue pendiente y no se elige uno", () => {
-    expect(CRITERIO_NOMINA_ENTRE_PERIODOS).toBe("pendiente");
+  test("el criterio es prorrateo por días", () => {
+    expect(CRITERIO_NOMINA_ENTRE_PERIODOS).toBe("prorrateo_por_dias");
   });
 
-  test("no se atribuye ni a septiembre ni a octubre: queda pendiente en ambos", () => {
+  test("se prorratea por días: 3 de 5 a septiembre y 2 de 5 a octubre, sin perder ni duplicar", () => {
     const sep = atribuirNomina(cruzaMes, rango(dia(2026, 9, 1), dia(2026, 9, 30)));
     const oct = atribuirNomina(cruzaMes, rango(dia(2026, 10, 1), dia(2026, 10, 31)));
-    for (const a of [sep, oct]) {
-      expect(a).toMatchObject({ estado: "pendiente_criterio", motivo: "cruza_cambio_de_mes", usd: 300 });
-      expect(a.incidencias).toContain(INCIDENCIA.NOMINA_PENDIENTE_CRITERIO);
-    }
+    expect(sep).toMatchObject({ estado: "prorrateada", motivo: "cruza_cambio_de_mes", usd: 180, usdTotal: 300, diasEnRango: 3, diasTotales: 5 });
+    expect(oct).toMatchObject({ estado: "prorrateada", motivo: "cruza_cambio_de_mes", usd: 120, usdTotal: 300, diasEnRango: 2, diasTotales: 5 });
+    expect(sep.usd + oct.usd).toBe(300);
+    for (const a of [sep, oct]) expect(a.incidencias).toContain(INCIDENCIA.NOMINA_PRORRATEADA);
   });
 
-  test("dentro de un mes y del rango se atribuye; cortada por el rango queda pendiente", () => {
+  test("si el rango cubre todo su período, suma completa aunque cruce de mes", () => {
+    expect(atribuirNomina(cruzaMes, rango(dia(2026, 9, 1), dia(2026, 10, 31)))).toMatchObject({ estado: "dentro", usd: 300 });
+  });
+
+  test("dentro del rango suma completa; cortada por el rango se prorratea", () => {
     const semana = { fechaInicio: "2026-10-05", fechaFin: "2026-10-09", empleados: [{ monto: 200 }] };
     expect(atribuirNomina(semana, rango(dia(2026, 10, 1), dia(2026, 10, 31)))).toMatchObject({ estado: "dentro", usd: 200 });
-    expect(atribuirNomina(semana, rango(dia(2026, 10, 7), dia(2026, 10, 31)))).toMatchObject({ estado: "pendiente_criterio", motivo: "cruza_limite_del_rango" });
+    expect(atribuirNomina(semana, rango(dia(2026, 10, 7), dia(2026, 10, 31)))).toMatchObject({ estado: "prorrateada", motivo: "cruza_limite_del_rango", usd: 120, diasEnRango: 3 });
     expect(atribuirNomina(semana, rango(dia(2026, 11, 1), dia(2026, 11, 30)))).toMatchObject({ estado: "fuera" });
   });
 
@@ -272,17 +276,19 @@ describe("resumirCompletitud: total parcial frente a total completo", () => {
     expect(r).toMatchObject({ completo: false, areas: { egresos: false, ingresos: true, nomina: true, servicios: true } });
   });
 
-  test("pendientes de criterio, de conversión y sin período se separan por área", () => {
+  test("prorrateos, pendientes de conversión y sin período se separan por área", () => {
     const r = resumirCompletitud({
-      nominasPendientes: [{ usd: 300 }],
+      nominasProrrateadas: [{ usd: 120, usdTotal: 300 }],
       ingresosPendientesConversion: { cantidad: 2, bs: 100 },
       egresosPendientesConversion: { cantidad: 1, bs: 50 },
       sinPeriodo: { servicios: 3 },
     });
-    expect(r.pendientesCriterio).toEqual({ cantidad: 1, usd: 300 });
+    expect(r.prorrateos).toEqual({ cantidad: 1, usd: 120, usdTotal: 300 });
+    expect(r.incluyeProrrateos).toBe(true);
     expect(r.pendientesConversion).toEqual({ ingresos: 2, egresos: 1, bs: 150, cantidad: 3 });
     expect(r.sinPeriodo).toEqual({ ingresos: 0, egresos: 0, nominas: 0, servicios: 3, total: 3 });
-    expect(r.areas).toEqual({ ingresos: false, egresos: false, nomina: false, servicios: false });
+    // El prorrateo suma: no vuelve parcial la nómina
+    expect(r.areas).toEqual({ ingresos: false, egresos: false, nomina: true, servicios: false });
   });
 
   test("las estimaciones no vuelven parcial el total, pero se señalan", () => {

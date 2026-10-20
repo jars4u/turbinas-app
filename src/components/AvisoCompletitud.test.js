@@ -6,7 +6,7 @@ import { resumirCompletitud } from "../lib/finanzas";
 
 const parcial = resumirCompletitud({
   egresosAmbiguos: [{ importeUSDOriginal: 50, importeBsOriginal: 2000 }],
-  nominasPendientes: [{ usd: 300 }],
+  nominasProrrateadas: [{ usd: 120, usdTotal: 300 }],
   egresosPendientesConversion: { cantidad: 1, bs: 4500 },
   sinPeriodo: { ingresos: 2 },
   usdEstimado: 25,
@@ -21,7 +21,6 @@ test("total parcial: título explícito y cada exclusión por separado", () => {
   render(<AvisoCompletitud completitud={parcial} />);
   expect(screen.getByText("Totales parciales: no reconciliados")).toBeInTheDocument();
   expect(screen.getByText(/Excluido por ambigüedad/)).toBeInTheDocument();
-  expect(screen.getByText(/Pendiente de criterio/)).toBeInTheDocument();
   expect(screen.getByText(/Pendiente de conversión/)).toBeInTheDocument();
   expect(screen.getByText(/Sin período/)).toBeInTheDocument();
   expect(screen.getByText(/Incluye \$25\.00 estimados/)).toBeInTheDocument();
@@ -35,9 +34,8 @@ test("ambiguos: mínimo en USD y Bs sin clasificar, sin sumarlos como gastos dis
   expect(ambiguo.texto).not.toContain("$100");
 });
 
-test("pendientes de conversión y criterio con sus importes", () => {
+test("pendientes de conversión con sus importes", () => {
   const textos = lineasCompletitud(parcial).map((l) => l.texto).join(" ");
-  expect(textos).toContain("1 nómina(s) por $300.00");
   expect(textos).toContain("1 egreso(s) sin tasa registrada, por Bs 4.500,00. No suman en USD.");
   expect(textos).toContain("2 registro(s) sin fecha verificable");
 });
@@ -52,4 +50,10 @@ test("solo estimaciones: aviso informativo, no de total parcial", () => {
   render(<AvisoCompletitud completitud={resumirCompletitud({ usdEstimado: 10 })} />);
   expect(screen.queryByText(/Totales parciales/)).not.toBeInTheDocument();
   expect(screen.getByText(/Incluye \$10\.00 estimados/)).toBeInTheDocument();
+});
+
+test("nómina prorrateada: aviso informativo con lo incluido y el total, sin volver parcial el total", () => {
+  render(<AvisoCompletitud completitud={resumirCompletitud({ nominasProrrateadas: [{ usd: 120, usdTotal: 300 }] })} />);
+  expect(screen.queryByText(/Totales parciales/)).not.toBeInTheDocument();
+  expect(screen.getByText(/Nómina prorrateada: 1 nómina\(s\) quedaron entre dos meses.*Se incluyen \$120\.00 de \$300\.00/)).toBeInTheDocument();
 });

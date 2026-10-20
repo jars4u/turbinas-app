@@ -96,17 +96,16 @@ describe("integración de reglas en buildReportData", () => {
     expect(sinFactor.summary.calidad.ingresosConBsSinConversion).toBe(1);
   });
 
-  test("nómina que cruza de mes: ni en septiembre ni en octubre, siempre informada como pendiente", () => {
+  test("nómina que cruza de mes: se prorratea por días entre septiembre y octubre y queda marcada", () => {
     const nominas = [{ fechaInicio: "2026-09-28", fechaFin: "2026-10-02", empleados: [{ monto: 300 }] }];
     const sep = buildReportData({ fechaInicio: "2026-09-01", fechaFin: "2026-09-30", presetKey: "custom", nominas });
     const oct = buildReportData({ ...octubre, nominas });
-    for (const r of [sep, oct]) {
-      expect(r.summary).toMatchObject({ nominaUSD: 0, nominaPendienteUSD: 300, nominasPendientes: 1 });
-      expect(r.series.reduce((acc, b) => acc + b.nominaUSD, 0)).toBe(0);
-    }
+    expect(sep.summary).toMatchObject({ nominaUSD: 180, nominaProrrateadaUSD: 180, nominasProrrateadas: 1 });
+    expect(oct.summary).toMatchObject({ nominaUSD: 120, nominaProrrateadaUSD: 120, nominasProrrateadas: 1 });
+    expect(oct.detail.nominas[0]).toMatchObject({ prorrateada: true, totalUSD: 120, totalNominaUSD: 300, diasEnRango: 2, diasTotales: 5 });
+    expect(oct.summary.completitud).toMatchObject({ incluyeProrrateos: true, prorrateos: { cantidad: 1, usd: 120, usdTotal: 300 } });
     const trimestre = buildReportData({ fechaInicio: "2026-08-01", fechaFin: "2026-10-31", presetKey: "custom", nominas });
-    expect(trimestre.summary.nominaUSD).toBe(0);
-    expect(trimestre.summary.nominasPendientes).toBe(1);
+    expect(trimestre.summary).toMatchObject({ nominaUSD: 300, nominasProrrateadas: 0 });
   });
 
   test("nómina en la serie solo si cabe en un intervalo; si no, se informa como no desglosada", () => {
@@ -178,7 +177,7 @@ describe("egresos en Bs sin tasa y completitud de los totales", () => {
     expect(r.summary.completitud).toMatchObject({ completo: true, incluyeEstimaciones: true, usdEstimado: 100 });
   });
 
-  test("nóminas pendientes y registros sin fecha vuelven parcial el total", () => {
+  test("registros sin fecha vuelven parcial el total; la nómina prorrateada suma y se señala", () => {
     const r = buildReportData({
       ...octubre,
       ingresos: [{ fecha: "31/02/2026", formasPago: [{ formaPago: "efectivo", monto: 5 }] }],
@@ -186,8 +185,8 @@ describe("egresos en Bs sin tasa y completitud de los totales", () => {
     });
     expect(r.summary.completitud).toMatchObject({
       completo: false,
-      areas: { ingresos: false, nomina: false },
-      pendientesCriterio: { cantidad: 1, usd: 300 },
+      areas: { ingresos: false, nomina: true },
+      prorrateos: { cantidad: 1, usd: 120, usdTotal: 300 },
       sinPeriodo: { ingresos: 1, total: 1 },
     });
   });
