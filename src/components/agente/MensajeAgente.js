@@ -49,14 +49,17 @@ function ResultadoConsulta({ consulta }) {
                       {e.esEstadoFacturacion && (
                         <Typography component="span" variant="caption" color="text.secondary"> · estado de facturación</Typography>
                       )}
+                      {e.origen === "sistema" && (
+                        <Typography component="span" variant="caption" color="text.secondary"> · estado del sistema</Typography>
+                      )}
                     </TableCell>
                     <TableCell align="right">{e.cantidad}</TableCell>
                   </TableRow>
                 ))}
-                {consulta.resultado.conEstadoFueraDelCatalogo > 0 && (
+                {consulta.resultado.conEstadoNoReconocido > 0 && (
                   <TableRow>
-                    <TableCell>Estado fuera del catálogo</TableCell>
-                    <TableCell align="right">{consulta.resultado.conEstadoFueraDelCatalogo}</TableCell>
+                    <TableCell>Otros estados no reconocidos</TableCell>
+                    <TableCell align="right">{consulta.resultado.conEstadoNoReconocido}</TableCell>
                   </TableRow>
                 )}
                 <TableRow>
@@ -67,10 +70,76 @@ function ResultadoConsulta({ consulta }) {
             </Table>
           </Box>
         </>
+      ) : consulta.resultado && Array.isArray(consulta.resultado.resumen) ? (
+        <ResumenConsulta consulta={consulta} />
       ) : (
         <Typography variant="caption" color="text.secondary">Consulta realizada: {consulta.herramienta}</Typography>
       )}
     </Box>
+  );
+}
+
+const TITULOS = {
+  resumen_financiero: "Resumen financiero",
+  cuentas_por_cobrar: "Cuentas por cobrar",
+  cuentas_por_pagar: "Cuentas por pagar",
+  servicios_del_periodo: "Servicios del periodo",
+};
+
+function formatearValor({ valor, tipo }) {
+  const n = Number(valor);
+  if (tipo === "usd") return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (tipo === "bs") return `Bs ${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (tipo === "numero") return n.toLocaleString("es-VE");
+  return String(valor);
+}
+
+function formatearDia(dia) {
+  const [y, m, d] = String(dia || "").split("-");
+  return y && m && d ? `${d}/${m}/${y}` : "-";
+}
+
+/** Cifras clave de una herramienta de datos (campo `resumen`), periodo y notas. */
+function ResumenConsulta({ consulta }) {
+  const { resultado } = consulta;
+  const notas = Array.isArray(resultado.notas) ? resultado.notas : [];
+  return (
+    <>
+      <Typography variant="body2" fontWeight={600} sx={{ mb: 0.25 }}>
+        {TITULOS[consulta.herramienta] || consulta.herramienta}
+      </Typography>
+      {resultado.periodo && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+          Del {formatearDia(resultado.periodo.desde)} al {formatearDia(resultado.periodo.hasta)} (hora de Venezuela)
+        </Typography>
+      )}
+      <Box sx={{ overflowX: "auto" }}>
+        <Table size="small" aria-label={TITULOS[consulta.herramienta] || consulta.herramienta}>
+          <TableBody>
+            {resultado.resumen.map((fila) => (
+              <TableRow key={fila.etiqueta}>
+                <TableCell sx={{ pl: fila.etiqueta.startsWith("·") ? 3 : undefined }}>{fila.etiqueta.replace(/^·\s*/, "")}</TableCell>
+                <TableCell align="right">{formatearValor(fila)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
+      {resultado.totalesCompletos === false && (
+        <Typography variant="caption" color="warning.main" sx={{ display: "block", mt: 0.75, fontWeight: 600 }}>
+          Totales parciales: revisa las notas.
+        </Typography>
+      )}
+      {notas.length > 0 && (
+        <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
+          {notas.map((nota) => (
+            <li key={nota}>
+              <Typography variant="caption" color="text.secondary">{nota}</Typography>
+            </li>
+          ))}
+        </Box>
+      )}
+    </>
   );
 }
 

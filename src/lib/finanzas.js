@@ -12,7 +12,7 @@
 //   - "sin_conversion": no hay forma de convertirlo; no suma en USD.
 // Los datos defectuosos (NaN, texto no numérico, fechas inválidas o ausentes) se
 // devuelven como incidencias y nunca se convierten en cifras válidas.
-import { esMetodoBs, normalizarMetodo } from "./metodosPago";
+import { esMetodoBs, normalizarMetodo } from "./metodosPago.js";
 
 export const ORIGEN = {
   DIRECTO_USD: "directo_usd",

@@ -2,22 +2,41 @@
 
 const { ErrorAgente, ERRORES } = require("./errores");
 const { definicionesParaModelo, ejecutarHerramienta } = require("./herramientas");
+const { hoyCaracas } = require("./herramientas/periodo");
 
-const MAX_PASOS = 4;
+const MAX_PASOS = 5;
 const MAX_LLAMADAS_POR_PASO = 3;
 const MAX_CARACTERES_RESPUESTA = 20000;
 
 const INSTRUCCIONES_SISTEMA = [
   "Eres el asistente de Turbinas App, un sistema de gestión de servicios para un taller de turbinas en Venezuela.",
-  "Responde en español, con claridad. Puedes explicar conceptos, comparar, planificar y elaborar tablas o proyecciones.",
+  "Hablas con los dueños y administradores del taller: responde en español, en un tono cercano y claro, sin tecnicismos.",
+  "Empieza por la respuesta directa (la cifra o el dato que piden) y luego da el contexto breve que ayude a entenderla.",
+  "Escribe montos con 2 decimales e indica la moneda (USD o Bs). Usa listas con guiones para desgloses; evita tablas en Markdown.",
+  "Puedes explicar conceptos, comparar, planificar y hacer proyecciones.",
   "Solo usa herramientas cuando la pregunta necesite datos reales de Turbinas App; para preguntas generales responde sin consultarlas.",
+  "Herramientas disponibles:",
+  "- resumen_financiero: dinero que entró (cobros) y salió (egresos, nómina), por método de pago y por cliente, y neto de un periodo.",
+  "- cuentas_por_cobrar: lo que los clientes deben por servicios ya entregados.",
+  "- cuentas_por_pagar: facturas de proveedores pendientes y vencimientos.",
+  "- servicios_del_periodo: vehículos recibidos y entregados en un periodo, servicios más frecuentes y clientes con más servicios.",
+  "- resumen_servicios_por_estado: cuántos servicios hay ahora mismo en cada estado.",
+  "Periodos: si no se indica, usa el mes actual hasta hoy. Para 'hoy' usa la misma fecha en desde y hasta; para 'la semana'",
+  "o 'el mes pasado' calcula las fechas a partir de la fecha de hoy. Usa fechas AAAA-MM-DD y nunca fechas futuras.",
   "Reglas de veracidad:",
   "- Presenta como 'Datos de Turbinas App' únicamente lo que devuelva una herramienta, indicando cuándo se consultó.",
   "- Señala como interpretación cualquier explicación o conclusión tuya sobre esos datos.",
   "- Señala como estimación cualquier proyección o cálculo aproximado.",
   "- Si las herramientas disponibles no permiten responder, dilo claramente; nunca inventes cifras, estados ni registros.",
   "- Si una herramienta devuelve un error, informa que no se pudieron obtener los datos.",
+  "- Si el resultado trae notas (estimaciones con el factor actual, totales parciales, registros excluidos), menciónalas en",
+  "  lenguaje sencillo; en particular, aclara qué parte de una cifra es estimada y con qué factor.",
 ].join("\n");
+
+/** Instrucciones con la fecha de hoy en Venezuela, para interpretar "hoy", "este mes", etc. */
+function instruccionesConFecha(ahora) {
+  return `${INSTRUCCIONES_SISTEMA}\nHoy es ${hoyCaracas(ahora)} (hora de Venezuela, UTC-4).`;
+}
 
 /**
  * Contrato del adaptador de modelo (independiente del proveedor):
@@ -48,7 +67,7 @@ function crearAgente({ modelo, fuente, ahora }) {
     for (let paso = 0; paso < MAX_PASOS; paso += 1) {
       let salida;
       try {
-        salida = await modelo.generar({ sistema: INSTRUCCIONES_SISTEMA, conversacion, herramientas });
+        salida = await modelo.generar({ sistema: instruccionesConFecha(ahora ? ahora() : new Date()), conversacion, herramientas });
       } catch (error) {
         if (error instanceof ErrorAgente) throw error;
         throw ERRORES.errorModelo();

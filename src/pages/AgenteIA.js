@@ -24,9 +24,10 @@ import { useAuth } from "../context/AuthContext";
 import { LIMITES_AGENTE, enviarConversacion, urlAgente } from "../lib/agenteCliente";
 
 const EJEMPLOS = [
+  "¿Cuánto dinero en USD ha entrado en lo que va de mes?",
+  "¿Quiénes nos deben y desde cuándo?",
+  "¿Qué facturas de proveedores vencen esta semana?",
   "¿Cuántos servicios hay en cada estado?",
-  "Explícame cómo calcular el margen de un servicio",
-  "Hazme un plan semanal para reducir los servicios pendientes",
 ];
 
 function ChatAgente() {
@@ -118,7 +119,7 @@ function ChatAgente() {
                 ¿En qué te ayudo hoy?
               </Typography>
               <Typography variant="body2" sx={{ mb: 2 }}>
-                Puedo responder preguntas generales y consultar cuántos servicios hay en cada estado.
+                Puedo responder preguntas generales y consultar ingresos, egresos, nómina, cuentas por cobrar y por pagar, y servicios del taller.
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 1 }}>
                 {EJEMPLOS.map((ejemplo) => (

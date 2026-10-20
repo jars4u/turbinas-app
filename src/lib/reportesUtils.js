@@ -11,7 +11,7 @@ import {
   leerFecha,
   resumirCompletitud,
   totalizarIngreso,
-} from "./finanzas";
+} from "./finanzas.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

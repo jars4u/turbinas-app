@@ -51,10 +51,11 @@ test("muestra la respuesta y los datos de la app separados del texto del modelo"
       resultado: {
         consultadoEn: "2026-10-20T15:00:00.000Z",
         totalServicios: 10,
-        conEstadoFueraDelCatalogo: 1,
+        conEstadoNoReconocido: 1,
         porEstado: [
           { nombre: "entregado", etiqueta: "Entregado", cantidad: 6, esEstadoFacturacion: false, dejaDeMostrarse: true },
           { nombre: "pagado", etiqueta: "Pagado", cantidad: 3, esEstadoFacturacion: true, dejaDeMostrarse: false },
+          { nombre: "por_cobrar", etiqueta: "Por cobrar (entregado, pendiente de pago)", origen: "sistema", cantidad: 0, esEstadoFacturacion: false, dejaDeMostrarse: false },
         ],
         notas: [],
       },
@@ -67,7 +68,9 @@ test("muestra la respuesta y los datos de la app separados del texto del modelo"
   expect(screen.getByText("¿Cuántos servicios hay en cada estado?")).toBeInTheDocument();
   expect(screen.getByText("Datos de Turbinas App")).toBeInTheDocument();
   expect(screen.getByRole("table", { name: "Servicios por estado" })).toBeInTheDocument();
-  expect(screen.getByText("Estado fuera del catálogo")).toBeInTheDocument();
+  expect(screen.getByText("Otros estados no reconocidos")).toBeInTheDocument();
+  expect(screen.getByText("Por cobrar (entregado, pendiente de pago)")).toBeInTheDocument();
+  expect(screen.getByText(/estado del sistema/)).toBeInTheDocument();
   expect(screen.getByText("10")).toBeInTheDocument();
   expect(enviarConversacion).toHaveBeenCalledWith([{ rol: "usuario", texto: "¿Cuántos servicios hay en cada estado?" }]);
 });
@@ -102,4 +105,33 @@ test("sin servidor configurado: aviso y envío deshabilitado", () => {
   expect(screen.getByText("El agente aún no está conectado a un servidor en este entorno.")).toBeInTheDocument();
   expect(screen.getByLabelText("Mensaje para el agente")).toBeDisabled();
   expect(screen.getByLabelText("Enviar mensaje")).toBeDisabled();
+});
+
+test("resumen financiero: cifras clave, periodo, aviso de totales parciales y notas desde los datos", async () => {
+  useAuth.mockReturnValue(roles({ isOwner: true }));
+  enviarConversacion.mockResolvedValue({
+    texto: "En lo que va de mes entraron 320.00 USD; 120.00 USD son estimados.",
+    consultas: [{
+      herramienta: "resumen_financiero",
+      resultado: {
+        consultadoEn: "2026-10-20T15:00:00.000Z",
+        periodo: { desde: "2026-10-01", hasta: "2026-10-20" },
+        totalesCompletos: false,
+        resumen: [
+          { etiqueta: "Ingresos", valor: 320, tipo: "usd" },
+          { etiqueta: "· estimados con factor actual", valor: 120, tipo: "usd" },
+          { etiqueta: "Neto", valor: 70, tipo: "usd" },
+        ],
+        notas: ["2 cobro(s) en bolívares no guardaron su conversión: se estimaron 120 USD con el factor actual de la app (45 Bs por USD). Es una estimación."],
+      },
+    }],
+  });
+  pintar();
+  escribirYEnviar("¿Cuánto dinero en USD ha entrado en lo que va de mes?");
+  expect(await screen.findByText("Resumen financiero")).toBeInTheDocument();
+  expect(screen.getByText("Del 01/10/2026 al 20/10/2026 (hora de Venezuela)")).toBeInTheDocument();
+  expect(screen.getByText("$320.00")).toBeInTheDocument();
+  expect(screen.getByText("estimados con factor actual")).toBeInTheDocument();
+  expect(screen.getByText("Totales parciales: revisa las notas.")).toBeInTheDocument();
+  expect(screen.getByText(/se estimaron 120 USD con el factor actual/)).toBeInTheDocument();
 });
