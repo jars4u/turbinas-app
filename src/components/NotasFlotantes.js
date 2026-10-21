@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Paper,
@@ -30,6 +30,97 @@ import {
 } from "../lib/notasFirebase";
 
 const STORAGE_SCRATCH_KEY = "turbinasmcbo_scratch";
+const STORAGE_POSICION_KEY = "turbinasmcbo_notas_posicion";
+const MARGEN = 8;
+const TAMANO_BOTON = 40; // Fab size="small"
+const UMBRAL_ARRASTRE = 6; // px: por debajo es un toque, no un arrastre
+
+function limitarAPantalla({ x, y }) {
+  const maxX = window.innerWidth - TAMANO_BOTON - MARGEN;
+  const maxY = window.innerHeight - TAMANO_BOTON - MARGEN;
+  return { x: Math.min(Math.max(MARGEN, x), Math.max(MARGEN, maxX)), y: Math.min(Math.max(MARGEN, y), Math.max(MARGEN, maxY)) };
+}
+
+function leerPosicionGuardada() {
+  try {
+    const p = JSON.parse(localStorage.getItem(STORAGE_POSICION_KEY));
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) return limitarAPantalla(p);
+  } catch {}
+  return null;
+}
+
+/**
+ * Botón arrastrable (dedo o ratón). La posición se guarda en este dispositivo;
+ * sin posición guardada queda en la esquina inferior derecha de siempre.
+ * Un toque sin desplazamiento abre/cierra; un arrastre no.
+ */
+function useArrastre() {
+  const [posicion, setPosicion] = useState(leerPosicionGuardada);
+  const arrastre = useRef(null);
+  const huboArrastre = useRef(false);
+
+  useEffect(() => {
+    const alRedimensionar = () => setPosicion((p) => (p ? limitarAPantalla(p) : p));
+    window.addEventListener("resize", alRedimensionar);
+    return () => window.removeEventListener("resize", alRedimensionar);
+  }, []);
+
+  const onPointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    arrastre.current = { id: e.pointerId, inicioX: e.clientX, inicioY: e.clientY, dx: e.clientX - rect.left, dy: e.clientY - rect.top, movido: false };
+    huboArrastre.current = false;
+  };
+
+  const onPointerMove = (e) => {
+    const a = arrastre.current;
+    if (!a || a.id !== e.pointerId || !Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
+    if (!a.movido && Math.hypot(e.clientX - a.inicioX, e.clientY - a.inicioY) < UMBRAL_ARRASTRE) return;
+    if (!a.movido) {
+      a.movido = true;
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {}
+    }
+    setPosicion(limitarAPantalla({ x: e.clientX - a.dx, y: e.clientY - a.dy }));
+  };
+
+  const terminar = (e) => {
+    const a = arrastre.current;
+    if (!a || a.id !== e.pointerId) return;
+    arrastre.current = null;
+    if (a.movido) {
+      huboArrastre.current = true;
+      setPosicion((p) => {
+        try {
+          if (p) localStorage.setItem(STORAGE_POSICION_KEY, JSON.stringify(p));
+        } catch {}
+        return p;
+      });
+    }
+  };
+
+  return {
+    posicion,
+    // El click que sigue a un arrastre no debe abrir el panel
+    consumirArrastre: () => {
+      const hubo = huboArrastre.current;
+      huboArrastre.current = false;
+      return hubo;
+    },
+    manejadores: { onPointerDown, onPointerMove, onPointerUp: terminar, onPointerCancel: terminar },
+  };
+}
+
+/** Posición del panel junto al botón: encima si el botón está en la mitad inferior, debajo si no. */
+function posicionPanel(posicion) {
+  if (!posicion) return { right: 16, bottom: 80 };
+  const ancho = Math.min(window.innerWidth >= 600 ? 360 : 300, window.innerWidth - 2 * MARGEN);
+  const left = Math.min(Math.max(MARGEN, posicion.x + TAMANO_BOTON - ancho), window.innerWidth - ancho - MARGEN);
+  return posicion.y > window.innerHeight / 2
+    ? { left, bottom: window.innerHeight - posicion.y + MARGEN, maxHeight: posicion.y - 2 * MARGEN }
+    : { left, top: posicion.y + TAMANO_BOTON + MARGEN, maxHeight: window.innerHeight - posicion.y - TAMANO_BOTON - 2 * MARGEN };
+}
 
 function NotasFlotantes() {
   const theme = useTheme();
@@ -80,7 +171,11 @@ function NotasFlotantes() {
     [theme.palette.mode]
   );
 
-  const toggleOpen = () => setOpen((v) => !v);
+  const { posicion, consumirArrastre, manejadores } = useArrastre();
+  const toggleOpen = () => {
+    if (consumirArrastre()) return;
+    setOpen((v) => !v);
+  };
 
   const addNote = async () => {
     const text = scratch.trim();
@@ -112,9 +207,19 @@ function NotasFlotantes() {
 
   return (
     <>
-      {/* FAB flotante */}
-      <Box sx={{ position: "fixed", right: 16, bottom: 45, zIndex: 1300 }}>
-        <Tooltip title={open ? "Cerrar notas" : "Notas"} placement="left">
+      {/* FAB flotante (arrastrable) */}
+      <Box
+        {...manejadores}
+        data-testid="notas-arrastrable"
+        sx={{
+          position: "fixed",
+          ...(posicion ? { left: posicion.x, top: posicion.y } : { right: 16, bottom: 45 }),
+          zIndex: 1300,
+          touchAction: "none", // el dedo mueve el botón, no la página
+          userSelect: "none",
+        }}
+      >
+        <Tooltip title={open ? "Cerrar notas" : "Notas (arrastra para mover)"} placement="left">
           <Badge
             badgeContent={notes.length}
             color="error"
@@ -142,11 +247,12 @@ function NotasFlotantes() {
           elevation={8}
           sx={{
             position: "fixed",
-            right: 16,
-            bottom: 80,
+            ...posicionPanel(posicion),
             width: { xs: 300, sm: 360 },
+            maxWidth: `calc(100vw - ${2 * MARGEN}px)`,
+            zIndex: 1299,
             borderRadius: 2,
-            overflow: "hidden",
+            overflow: "auto",
             background: stickyColors.bg,
             border: `1px solid ${stickyColors.border}`,
             transform: "rotate(-0.3deg)",

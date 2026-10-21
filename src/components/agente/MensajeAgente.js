@@ -17,7 +17,7 @@ function ResultadoConsulta({ consulta }) {
   return (
     <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "#fff", border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
       <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1, mb: 1 }}>
-        <Chip size="small" color="primary" variant="outlined" icon={<StorageOutlinedIcon />} label="Datos de Turbinas App" />
+        <Chip size="small" color="primary" variant="outlined" sx={{ padding: 0.5 }} icon={<StorageOutlinedIcon />} label="Datos de Turbinas App" />
         {consulta.resultado && (
           <Typography variant="caption" color="text.secondary">
             Consultado: {formatearFechaHora(consulta.resultado.consultadoEn)}
