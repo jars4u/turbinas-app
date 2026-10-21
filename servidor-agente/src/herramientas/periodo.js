@@ -3,12 +3,18 @@
 // Periodos de consulta en hora de Venezuela (UTC-4 fijo, sin horario de verano).
 const OFFSET_CARACAS_MS = -4 * 60 * 60 * 1000;
 const FECHA_MINIMA = "2020-01-01";
-const MAX_DIAS = 366;
+// Las lecturas no dependen del periodo (se leen las colecciones con proyección y
+// caché), así que se permite todo el historial para preguntas como "¿en qué mes...?".
+const MAX_DIAS = 3660;
 const RE_FECHA = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 // Argumentos comunes de las herramientas con periodo (JSON Schema)
 const PROPIEDADES_PERIODO = {
-  desde: { type: "string", maxLength: 10, description: "Fecha inicial AAAA-MM-DD (hora de Venezuela). Por defecto, el día 1 del mes actual." },
+  desde: {
+    type: "string",
+    maxLength: 10,
+    description: `Fecha inicial AAAA-MM-DD (hora de Venezuela). Por defecto, el día 1 del mes actual. Para todo el historial usa ${FECHA_MINIMA}.`,
+  },
   hasta: { type: "string", maxLength: 10, description: "Fecha final AAAA-MM-DD, incluida. Por defecto, hoy. No puede ser futura." },
 };
 

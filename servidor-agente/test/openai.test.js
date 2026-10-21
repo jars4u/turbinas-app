@@ -84,7 +84,7 @@ test("pregunta general: responde sin ejecutar herramientas", async () => {
   // Con argumentos opcionales (desde/hasta) no se usa strict: OpenAI lo exige con todos requeridos
   const financiero = solicitud.tools.find((t) => t.function.name === "resumen_financiero");
   assert.equal(financiero.function.strict, false);
-  assert.deepEqual(Object.keys(financiero.function.parameters.properties), ["desde", "hasta"]);
+  assert.deepEqual(Object.keys(financiero.function.parameters.properties), ["desde", "hasta", "agruparPor", "cliente", "telefono"]);
 });
 
 test("pregunta de datos: invoca la herramienta registrada y devuelve su resultado al modelo", async () => {

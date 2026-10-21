@@ -24,6 +24,8 @@ const ERRORES_DE_SESION = new Set([
 const PREFIJO_FALLO_CLAVES = "Error fetching public keys";
 
 function codigoSeguro(error) {
+  // Firestore (gRPC) usa códigos numéricos: 7 = sin permiso, 8 = cuota agotada, 14 = no disponible...
+  if (error && Number.isInteger(error.code) && error.code >= 0 && error.code <= 16) return `grpc/${error.code}`;
   const codigo = error && typeof error.code === "string" ? error.code : "";
   return RE_CODIGO_FIREBASE.test(codigo) ? codigo : "desconocido";
 }

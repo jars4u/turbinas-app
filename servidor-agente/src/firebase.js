@@ -13,16 +13,17 @@
  * repetir lecturas cuando el agente usa varias herramientas en una pregunta.
  */
 const TOPE_DOCUMENTOS = 20000;
-const CACHE_MS = 60 * 1000;
+// 5 minutos: una conversación reutiliza lo leído y no gasta la cuota diaria de Firestore
+const CACHE_MS = 5 * 60 * 1000;
 
 const CAMPOS = {
-  ingresosMovimientos: ["fecha", "formasPago", "formaPago", "monto", "montoUSD", "montoBs", "usdEquiv", "factorConversion", "cuentaPorCobrarId", "customerName", "cliente"],
+  ingresosMovimientos: ["fecha", "formasPago", "formaPago", "monto", "montoUSD", "montoBs", "usdEquiv", "factorConversion", "cuentaPorCobrarId", "customerName", "customerPhone", "cliente", "fechaServicio", "servicio", "vehiculo"],
   egresos: ["fecha", "fechaStr", "montoUSD", "montoBs", "tasaFactura", "tasa", "tipo", "divisa", "monedaFactura", "items"],
   nominas: ["fechaInicio", "fechaFin", "fechaGuardado", "empleados", "total", "totalNomina", "montoTotal"],
   metodosPago: ["clave", "nombre", "moneda", "activo", "orden"],
-  cuentasPorCobrar: ["customerName", "cliente", "servicio", "vehiculo", "placa", "precio", "precioBs", "fechaRegistro", "arrivalTime", "status"],
+  cuentasPorCobrar: ["customerName", "customerPhone", "cliente", "servicio", "vehiculo", "placa", "precio", "precioBs", "fechaRegistro", "arrivalTime", "status"],
   cuentasPorPagar: ["proveedor", "documento", "concepto", "descripcion", "montoUSD", "montoBs", "monedaFactura", "tasaFactura", "vencimiento", "fecha", "items"],
-  vehiculos: ["servicio", "vehiculo", "customerName", "status", "estado", "precio", "arrivalTime", "fechaEntrega"],
+  vehiculos: ["servicio", "vehiculo", "customerName", "customerPhone", "status", "estado", "precio", "arrivalTime", "fechaEntrega"],
 };
 
 function crearDependenciasFirebase({ entorno = process.env } = {}) {

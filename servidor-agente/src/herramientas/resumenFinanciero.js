@@ -16,7 +16,18 @@
  */
 const { PROPIEDADES_PERIODO, resolverPeriodo } = require("./periodo");
 const { cargarReglasApp } = require("../reglasApp");
-const { r2, texto, top } = require("./utilidades");
+const {
+  r2,
+  texto,
+  top,
+  diaLocal,
+  nombreMes,
+  mesesDelPeriodo,
+  sinMesesInicialesVacios,
+  PROPIEDADES_CLIENTE,
+  filtroCliente,
+  crearIdentidadClientes,
+} = require("./utilidades");
 
 const NOMBRE = "resumen_financiero";
 
@@ -28,8 +39,19 @@ const definicion = {
     "conversiones desde bolívares con el factor registrado en cada cobro y estimaciones con el factor actual), ingresos por método " +
     "de pago, principales clientes que pagaron (son clientes, no trabajadores), egresos por categoría, nómina total del periodo y neto. " +
     "Úsala para preguntas sobre dinero que entró o salió, ventas, gastos, utilidad o lo que pagó un cliente en un periodo. " +
+    "Con agruparPor 'mes' devuelve además ingresos, egresos, nómina y neto de cada mes (para comparar meses o buscar el mejor/peor " +
+    "mes en una sola consulta; para todo el historial usa desde 2020-01-01). Con cliente y/o telefono devuelve los pagos de ese cliente en el periodo. Cada cliente se identifica por su teléfono " +
+    "(últimos 4 dígitos); homonimo: true indica clientes distintos con el mismo nombre. " +
     "No tiene datos por trabajador: para eso usa nomina_por_empleado.",
-  esquema: { type: "object", properties: PROPIEDADES_PERIODO, additionalProperties: false },
+  esquema: {
+    type: "object",
+    properties: {
+      ...PROPIEDADES_PERIODO,
+      agruparPor: { type: "string", enum: ["periodo", "mes"], description: "periodo (por defecto): solo totales del periodo. mes: además, totales de cada mes." },
+      ...PROPIEDADES_CLIENTE,
+    },
+    additionalProperties: false,
+  },
   datos: ["ingresosMovimientos", "egresos", "nominas", "metodosPago", "configuracion/factorConversion"],
   roles: ["owner", "admin"],
 };
@@ -58,18 +80,79 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
   if (metodosPago.docs.length > 0) metodos.setMetodosPagoCache(metodosPago.docs);
   const factorActual = finanzas.factorParaEstimacion(factorManual(config));
 
-  const reporte = reportes.buildReportData({
-    ingresos: ingresos.docs,
-    egresos: egresos.docs,
-    nominas: nominas.docs,
-    vehiculos: [],
-    estadosServicio: [],
-    factorActual,
-    fechaInicio: periodo.desde,
-    fechaFin: periodo.hasta,
-    presetKey: "custom",
-  });
+  const reporteDe = ({ desde, hasta }) =>
+    reportes.buildReportData({
+      ingresos: ingresos.docs,
+      egresos: egresos.docs,
+      nominas: nominas.docs,
+      vehiculos: [],
+      estadosServicio: [],
+      factorActual,
+      fechaInicio: desde,
+      fechaFin: hasta,
+      presetKey: "custom",
+    });
+  const reporte = reporteDe(periodo);
   const s = reporte.summary;
+
+  // Totales de cada mes con las mismas reglas (la nómina entre meses se prorratea)
+  const meses = argumentos.agruparPor === "mes"
+    ? sinMesesInicialesVacios(mesesDelPeriodo(periodo).map((m) => {
+        const rm = reporteDe(m);
+        const sm = rm.summary;
+        return {
+          mes: m.mes,
+          nombre: nombreMes(m.mes),
+          ingresosUSD: r2(sm.ingresosUSD),
+          egresosUSD: r2(sm.egresosUSD),
+          nominaUSD: r2(sm.nominaUSD),
+          netoUSD: r2(sm.netoUSD),
+          cobros: rm.detail.ingresos.length,
+          totalesCompletos: sm.completitud.completo,
+        };
+      }), (m) => m.cobros === 0 && m.egresosUSD === 0 && m.nominaUSD === 0)
+    : null;
+  const mejorMes = (campo) => (meses && meses.length ? meses.reduce((a, b) => (b[campo] > a[campo] ? b : a)) : null);
+
+  // Clientes identificados por teléfono (dos clientes con el mismo nombre son distintos)
+  const nombreDe = (raw) => texto(raw.customerName || raw.cliente);
+  const identidad = crearIdentidadClientes(ingresos.docs.filter(Boolean).map((i) => ({ nombre: nombreDe(i), telefono: i.customerPhone })));
+
+  // Pagos de un cliente en el periodo
+  const filtro = filtroCliente(argumentos);
+  let pagosCliente = null;
+  if (filtro) {
+    const lista = reporte.detail.ingresos
+      .filter((item) => filtro.coincide(nombreDe(item.raw) || "", item.raw.customerPhone))
+      .map((item) => {
+        const clave = identidad.clave(nombreDe(item.raw), item.raw.customerPhone);
+        return {
+          clave,
+          cliente: nombreDe(item.raw),
+          telefono: identidad.telefono(clave),
+          fecha: diaLocal(item.date),
+          servicio: texto(item.raw.servicio, 60),
+          totalUSD: r2(item.totalUSD),
+          eraCredito: Boolean(item.raw.cuentaPorCobrarId),
+        };
+      })
+      .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+    const porClave = new Map();
+    for (const p of lista) {
+      const fila = porClave.get(p.clave) || { cliente: p.cliente, telefono: p.telefono, homonimo: identidad.homonimo(p.clave), cobros: 0, totalUSD: 0, ultimoPago: p.fecha };
+      fila.cobros += 1;
+      fila.totalUSD += p.totalUSD;
+      porClave.set(p.clave, fila);
+    }
+    pagosCliente = {
+      ...filtro.descripcion,
+      clientes: [...porClave.values()].map((f) => ({ ...f, totalUSD: r2(f.totalUSD) })).sort((x, y) => y.totalUSD - x.totalUSD).slice(0, 10),
+      cobros: lista.length,
+      totalUSD: r2(lista.reduce((a, p) => a + p.totalUSD, 0)),
+      ultimoPago: lista.length ? lista[0].fecha : null,
+      pagos: lista.slice(0, 30).map(({ clave, ...p }) => p),
+    };
+  }
 
   // Desglose por método de pago y por cliente, con la misma conversión por pago
   const porMetodo = new Map();
@@ -84,10 +167,10 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
       fila.pagos += 1;
       porMetodo.set(clave, fila);
     }
-    const cliente = texto(item.raw.customerName || item.raw.cliente);
+    const cliente = nombreDe(item.raw);
     if (cliente) {
-      const clave = cliente.toUpperCase();
-      const fila = clientes.get(clave) || { cliente: clave, usd: 0, cobros: 0 };
+      const clave = identidad.clave(cliente, item.raw.customerPhone);
+      const fila = clientes.get(clave) || { cliente: cliente.toUpperCase(), telefono: identidad.telefono(clave), homonimo: identidad.homonimo(clave), usd: 0, cobros: 0 };
       fila.usd += item.totalUSD;
       fila.cobros += 1;
       clientes.set(clave, fila);
@@ -118,6 +201,8 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
   if (c.sinPeriodo.ingresos + c.sinPeriodo.egresos + c.sinPeriodo.nominas > 0) {
     notas.push(`${c.sinPeriodo.ingresos + c.sinPeriodo.egresos + c.sinPeriodo.nominas} registro(s) sin fecha válida no se pueden asignar a ningún periodo.`);
   }
+  if (pagosCliente && pagosCliente.cobros === 0) notas.push(`Ningún cobro del periodo es de un cliente que coincida con «${filtro.texto}».`);
+  if (pagosCliente && pagosCliente.clientes.length > 1) notas.push(`«${filtro.texto}» corresponde a ${pagosCliente.clientes.length} clientes distintos (distinto teléfono): los totales los suman; el detalle está por cliente.`);
   if (metodosPago.docs.length === 0) notas.push("No se encontró la configuración de métodos de pago: se usó la moneda predeterminada de cada método.");
   const truncadas = [["ingresos", ingresos], ["egresos", egresos], ["nóminas", nominas]].filter(([, l]) => l.truncado).map(([n]) => n);
   if (truncadas.length) notas.push(`Lectura truncada en: ${truncadas.join(", ")}. Los totales pueden estar incompletos.`);
@@ -147,6 +232,8 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
       },
       nominaUSD: r2(s.nominaUSD),
       netoUSD: r2(s.netoUSD),
+      ...(meses ? { meses, mesConMasIngresos: mejorMes("ingresosUSD"), mesConMejorNeto: mejorMes("netoUSD") } : {}),
+      ...(pagosCliente ? { pagosCliente } : {}),
       resumen: [
         { etiqueta: "Ingresos", valor: r2(s.ingresosUSD), tipo: "usd" },
         { etiqueta: "· cobrados en dólares", valor: r2(s.ingresosUSDDirect), tipo: "usd" },
@@ -155,10 +242,12 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
         { etiqueta: "Egresos", valor: r2(s.egresosUSD), tipo: "usd" },
         { etiqueta: "Nómina del periodo", valor: r2(s.nominaUSD), tipo: "usd" },
         { etiqueta: "Neto", valor: r2(s.netoUSD), tipo: "usd" },
+        ...(meses && meses.length > 1 ? [{ etiqueta: `Mes con más ingresos: ${mejorMes("ingresosUSD").nombre}`, valor: mejorMes("ingresosUSD").ingresosUSD, tipo: "usd" }] : []),
+        ...(pagosCliente ? [{ etiqueta: `Pagos de «${filtro.texto}» (${pagosCliente.cobros})`, valor: pagosCliente.totalUSD, tipo: "usd" }] : []),
       ],
       notas,
     },
   };
 }
 
-module.exports = { definicion, ejecutar, NOMBRE };
+module.exports = { definicion, ejecutar, NOMBRE, factorManual };

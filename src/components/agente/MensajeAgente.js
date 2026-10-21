@@ -85,6 +85,7 @@ const TITULOS = {
   cuentas_por_pagar: "Cuentas por pagar",
   servicios_del_periodo: "Servicios del periodo",
   nomina_por_empleado: "Nómina por empleado",
+  creditos_cobrados: "Créditos cobrados",
 };
 
 function formatearValor({ valor, tipo }) {

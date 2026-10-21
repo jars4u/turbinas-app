@@ -7,10 +7,11 @@ const cuentasPorCobrar = require("./cuentasPorCobrar");
 const cuentasPorPagar = require("./cuentasPorPagar");
 const serviciosRegistrados = require("./serviciosRegistrados");
 const nominaPorEmpleado = require("./nominaPorEmpleado");
+const creditosCobrados = require("./creditosCobrados");
 
 // Lista cerrada: el modelo solo puede invocar herramientas de este registro
 const REGISTRO = new Map(
-  [resumenServiciosPorEstado, resumenFinanciero, cuentasPorCobrar, cuentasPorPagar, serviciosRegistrados, nominaPorEmpleado].map((h) => [h.NOMBRE, h])
+  [resumenServiciosPorEstado, resumenFinanciero, cuentasPorCobrar, cuentasPorPagar, serviciosRegistrados, nominaPorEmpleado, creditosCobrados].map((h) => [h.NOMBRE, h])
 );
 
 const MAX_BYTES_ARGUMENTOS = 2048;

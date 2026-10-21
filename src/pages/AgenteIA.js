@@ -27,7 +27,8 @@ const EJEMPLOS = [
   "¿Cuánto dinero en USD ha entrado en lo que va de mes?",
   "¿Quiénes nos deben y desde cuándo?",
   "¿Qué facturas de proveedores vencen esta semana?",
-  "¿Cuántos servicios hay en cada estado?",
+  "¿Cuál ha sido el mejor mes en ingresos este año?",
+  "¿Cuánto tardan los clientes en pagar sus créditos?",
 ];
 
 function ChatAgente() {

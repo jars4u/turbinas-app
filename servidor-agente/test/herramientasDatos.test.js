@@ -79,7 +79,7 @@ test("periodo: mes actual por defecto, hoy, borde de medianoche en Venezuela y v
   // 01/11 02:00 UTC todavía es 31/10 en Venezuela
   assert.equal(resolverPeriodo({}, new Date("2026-11-01T02:00:00Z")).periodo.desde, "2026-10-01");
   assert.equal(resolverPeriodo({ desde: "2026-10-20", hasta: "2026-10-20" }, AHORA()).periodo.dias, 1);
-  for (const args of [{ hasta: "2026-10-21" }, { desde: "2026-02-30" }, { desde: "20/10/2026" }, { desde: "2019-12-31" }, { desde: "2026-10-10", hasta: "2026-10-01" }, { desde: "2025-01-01" }]) {
+  for (const args of [{ hasta: "2026-10-21" }, { desde: "2026-02-30" }, { desde: "20/10/2026" }, { desde: "2019-12-31" }, { desde: "2026-10-10", hasta: "2026-10-01" }]) {
     assert.equal(resolverPeriodo(args, AHORA()).error.codigo, "periodo_invalido", JSON.stringify(args));
   }
   const { inicioMs, finMs } = limitesEnMs({ desde: "2026-10-01", hasta: "2026-10-20" });
@@ -101,7 +101,7 @@ test("resumen_financiero: cobros en USD separando dólares, conversión registra
     { metodo: "Efectivo", moneda: "USD", usd: 100, bs: 0, pagos: 1 },
     { metodo: "Punto de venta", moneda: "BS", usd: 20, bs: 900, pagos: 1 },
   ]);
-  assert.deepEqual(i.principalesClientes, [{ cliente: "CLIENTE A", usd: 200, cobros: 2 }, { cliente: "CLIENTE B", usd: 100, cobros: 1 }]);
+  assert.deepEqual(i.principalesClientes, [{ cliente: "CLIENTE A", telefono: null, homonimo: false, usd: 200, cobros: 2 }, { cliente: "CLIENTE B", telefono: null, homonimo: false, usd: 100, cobros: 1 }]);
   assert.ok(resultado.notas.some((n) => n.includes("se estimaron 120 USD con el factor actual de la app (45 Bs por USD)")));
 });
 
@@ -155,7 +155,7 @@ test("cuentas_por_pagar: vencidas, próximas, Bs con tasa registrada, pendientes
   assert.equal(resultado.cantidad, 4);
   assert.equal(resultado.totalUSD, 200);
   assert.deepEqual(resultado.vencidas, { cantidad: 1, usd: 100 });
-  assert.deepEqual(resultado.vencenProximos7Dias, { cantidad: 1, usd: 100 });
+  assert.deepEqual(resultado.vencenPronto, { dias: 7, cantidad: 1, usd: 100 });
   assert.deepEqual(resultado.facturas.map((f) => [f.documento, f.diasParaVencer, f.usd]), [["F-1", -5, 100], ["F-2", 5, 100], ["F-3", 21, null], ["F-4", null, null]]);
   const notas = resultado.notas.join(" ");
   assert.match(notas, /1 factura\(s\) en bolívares \(500 Bs\) no tienen tasa registrada/);
@@ -173,7 +173,7 @@ test("servicios_del_periodo: recibidos, servicios frecuentes, estados y entregad
   assert.deepEqual(rango.map((ms) => new Date(ms).toISOString()), ["2026-10-01T04:00:00.000Z", "2026-10-21T03:59:59.999Z"]);
   assert.equal(resultado.registrados.cantidad, 3);
   assert.deepEqual(resultado.registrados.porServicio, [{ servicio: "LAVADO", cantidad: 2, precioReferenciaUSD: 35 }, { servicio: "TURBINA", cantidad: 1, precioReferenciaUSD: 0 }]);
-  assert.deepEqual(resultado.registrados.principalesClientes, [{ cliente: "ANA", servicios: 2 }]);
+  assert.deepEqual(resultado.registrados.principalesClientes, [{ cliente: "ANA", telefono: null, homonimo: false, servicios: 2 }]);
   assert.equal(resultado.entregados.cantidad, 2); // "entregado" (equivalente) y "pagado" (defaultFacturar)
 });
 
@@ -245,4 +245,218 @@ test("pregunta de trabajadores: el agente usa nomina_por_empleado y no lee ingre
   const r = await crearAgente({ modelo, fuente, ahora: AHORA }).responder({ mensajes: [{ rol: "usuario", texto: "¿Quién de los trabajadores percibió más dinero?" }] });
   assert.equal(r.texto, "Pedro Sintetico con 420 USD.");
   assert.ok(!fuente.llamadas.includes("leerIngresos"));
+});
+
+// ---------------------------------------------------------------------------
+// Alcance ampliado: filtros por nombre, agrupación por mes e historial de créditos
+// ---------------------------------------------------------------------------
+const { coincideNombre, mesesDelPeriodo } = require("../src/herramientas/utilidades");
+
+test("utilidades: búsqueda de nombres sin acentos ni mayúsculas y meses de un periodo", () => {
+  assert.ok(coincideNombre("JUAN CARLOS RAMOS", "juan ramos"));
+  assert.ok(coincideNombre("José Pérez", "jose PEREZ"));
+  assert.ok(!coincideNombre("JUAN PEREZ", "juan ramos"));
+  assert.ok(!coincideNombre("JUAN", "  "));
+  assert.deepEqual(mesesDelPeriodo({ desde: "2025-12-15", hasta: "2026-02-10" }), [
+    { mes: "2025-12", desde: "2025-12-15", hasta: "2025-12-31" },
+    { mes: "2026-01", desde: "2026-01-01", hasta: "2026-01-31" },
+    { mes: "2026-02", desde: "2026-02-01", hasta: "2026-02-10" },
+  ]);
+});
+
+const NOMINAS_JUAN = [
+  { id: "j1", fechaInicio: "2026-08-03", fechaFin: "2026-08-07", empleados: [
+    { id: "jr", nombre: "JUAN CARLOS RAMOS", cargo: "Lavador", monto: 150, servicios: 5 },
+    { id: "ar", nombre: "ANA RUIZ", cargo: "Cajera", monto: 100 },
+  ] },
+  { id: "j2", fechaInicio: "2026-09-07", fechaFin: "2026-09-11", empleados: [{ id: "jr", nombre: "JUAN CARLOS RAMOS", monto: 200 }] },
+  { id: "j3", fechaInicio: "2026-09-28", fechaFin: "2026-10-02", empleados: [{ id: "jr", nombre: "JUAN CARLOS RAMOS", monto: 300 }] },
+  { id: "j4", fechaInicio: "2026-10-05", fechaFin: "2026-10-09", empleados: [{ id: "jr", nombre: "JUAN CARLOS RAMOS", monto: 100 }] },
+];
+
+test("nomina_por_empleado: un trabajador por mes en todo el historial, con el mes de mayor nómina", async () => {
+  const fuente = fuenteDatos({ leerNominas: lectura(NOMINAS_JUAN) });
+  const { resultado } = await ejecutar("nomina_por_empleado", { empleado: "juan ramos", agruparPor: "mes", desde: "2020-01-01" }, fuente);
+  assert.deepEqual(resultado.filtro, { empleado: "juan ramos", coincidencias: ["JUAN CARLOS RAMOS"] });
+  assert.equal(resultado.empleados.length, 1);
+  // Agosto 150; septiembre 200 + 180 (3 de 5 días de j3); octubre 120 + 100
+  assert.equal(resultado.totalUSD, 750);
+  const mes = (m) => resultado.meses.find((x) => x.mes === m);
+  assert.equal(mes("2026-08").totalUSD, 150);
+  assert.equal(mes("2026-09").totalUSD, 380);
+  assert.equal(mes("2026-10").totalUSD, 220);
+  assert.equal(mes("2026-09").incluyeProrrateo, true);
+  assert.equal(resultado.meses[0].mes, "2026-08"); // sin los meses vacíos desde 2020
+  assert.equal(resultado.mesConMasUSD.mes, "2026-09");
+  assert.equal(resultado.mesConMasUSD.nombre, "septiembre 2026");
+  assert.equal(resultado.mesConMenosUSD.mes, "2026-08");
+  assert.ok(resultado.resumen.some((f) => f.etiqueta === "Mes con más: septiembre 2026" && f.valor === 380));
+  assert.ok(resultado.notas.some((n) => n.startsWith("Valor prorrateado: las nóminas que quedan entre dos meses")));
+  assert.ok(!JSON.stringify(resultado).includes("ANA RUIZ"));
+});
+
+test("nomina_por_empleado: si el nombre no coincide, lo dice y sugiere trabajadores del periodo", async () => {
+  const fuente = fuenteDatos({ leerNominas: lectura(NOMINAS_JUAN) });
+  const { resultado } = await ejecutar("nomina_por_empleado", { empleado: "enrique", desde: "2026-08-01" }, fuente);
+  assert.equal(resultado.totalUSD, 0);
+  assert.deepEqual(resultado.empleados, []);
+  assert.ok(resultado.notas.some((n) => n.includes("Ningún trabajador de las nóminas del periodo coincide con «enrique»")));
+  assert.deepEqual(resultado.trabajadoresDelPeriodo, ["JUAN CARLOS RAMOS", "ANA RUIZ"]);
+});
+
+test("pregunta del mes de mayor ingreso de un trabajador: una sola consulta por meses, sin pedir mes por mes", async () => {
+  const fuente = fuenteDatos({ leerNominas: lectura(NOMINAS_JUAN) });
+  const modelo = modeloSimulado([
+    { tipo: "herramientas", llamadas: [{ id: "c1", nombre: "nomina_por_empleado", argumentos: { empleado: "Juan Ramos", agruparPor: "mes", desde: "2020-01-01", hasta: "2026-10-20" } }] },
+    (entrada) => {
+      const r = entrada.conversacion[entrada.conversacion.length - 1].resultados[0].contenido;
+      return { tipo: "texto", texto: `${r.mesConMasUSD.nombre}: ${r.mesConMasUSD.totalUSD} USD.` };
+    },
+  ]);
+  const r = await crearAgente({ modelo, fuente, ahora: AHORA }).responder({ mensajes: [{ rol: "usuario", texto: "¿Cuál es el mes en el que Juan Ramos ha ganado más dinero?" }] });
+  assert.equal(r.texto, "septiembre 2026: 380 USD.");
+  assert.equal(r.consultas.length, 1);
+  assert.match(modelo.entradas[0].sistema, /Nunca pidas al usuario que consulte mes por mes/);
+  assert.match(modelo.entradas[0].sistema, /desde 2020-01-01 hasta hoy/);
+});
+
+test("cuentas_por_cobrar: filtro por cliente, deuda por cliente y orden por monto", async () => {
+  const todas = await ejecutar("cuentas_por_cobrar", { ordenarPor: "monto" });
+  assert.deepEqual(todas.resultado.porCliente.map((c) => [c.cliente, c.servicios, c.totalUSD]), [["Cliente X", 1, 30], ["Cliente Z", 1, 20], ["Cliente Y", 1, 0]]);
+  assert.deepEqual(todas.resultado.cuentas.map((c) => c.cliente), ["Cliente X", "Cliente Z", "Cliente Y"]);
+  assert.equal(todas.resultado.clientesConDeuda, 3);
+  const x = await ejecutar("cuentas_por_cobrar", { cliente: "cliente x" });
+  assert.equal(x.resultado.cantidad, 1);
+  assert.equal(x.resultado.totalUSD, 30);
+  assert.deepEqual(x.resultado.porCliente, [{ cliente: "Cliente X", telefono: null, homonimo: false, servicios: 1, totalUSD: 30, deudaMasAntiguaDias: 19, desde: "2026-10-01" }]);
+  const nadie = await ejecutar("cuentas_por_cobrar", { cliente: "enrique" });
+  assert.equal(nadie.resultado.cantidad, 0);
+  assert.ok(nadie.resultado.notas.some((n) => n.includes("Ningún cliente con deuda pendiente coincide con «enrique»")));
+  assert.equal((await ejecutar("cuentas_por_cobrar", { ordenarPor: "fecha" })).error.codigo, "argumentos_invalidos");
+});
+
+const INGRESOS_CREDITOS = [
+  { id: "c1", cuentaPorCobrarId: "k1", fecha: "10/10/2026", fechaServicio: "01/10/2026", customerName: "José Pérez", servicio: "TURBINA", formasPago: [{ formaPago: "efectivo", monto: 50 }] },
+  { id: "c2", cuentaPorCobrarId: "k2", fecha: "15/10/2026", fechaServicio: "05/09/2026", customerName: "JOSE PEREZ", servicio: "LAVADO", formasPago: [{ formaPago: "efectivo", monto: 30 }] },
+  { id: "c3", fecha: "12/10/2026", customerName: "JOSE PEREZ", formasPago: [{ formaPago: "efectivo", monto: 999 }] },
+  { id: "c4", cuentaPorCobrarId: "k3", fecha: "20/09/2026", customerName: "OTRO", formasPago: [{ formaPago: "efectivo", monto: 10 }] },
+];
+
+test("creditos_cobrados: créditos pagados en el periodo, días hasta el pago y totales por cliente", async () => {
+  const fuente = fuenteDatos({ leerIngresos: lectura(INGRESOS_CREDITOS) });
+  const { resultado } = await ejecutar("creditos_cobrados", {}, fuente);
+  assert.equal(resultado.cantidad, 2);
+  assert.equal(resultado.totalUSD, 80);
+  assert.equal(resultado.promedioDiasHastaCobro, 25); // (9 + 40) / 2
+  assert.deepEqual(resultado.cobros[0], {
+    cliente: "JOSE PEREZ", telefono: null, servicio: "LAVADO", vehiculo: null, fechaServicio: "2026-09-05", fechaCobro: "2026-10-15", diasHastaCobro: 40, totalUSD: 30, incluyeEstimacion: false,
+  });
+  assert.deepEqual(resultado.porCliente, [{ cliente: "JOSE PEREZ", telefono: null, homonimo: false, creditos: 2, totalUSD: 80, ultimoPago: "2026-10-15", promedioDiasHastaCobro: 25 }]);
+  const otro = await ejecutar("creditos_cobrados", { cliente: "otro", desde: "2026-09-01" }, fuente);
+  assert.equal(otro.resultado.cantidad, 1);
+  assert.ok(otro.resultado.notas.some((n) => n.includes("no guardaron la fecha del servicio")));
+  const malo = await ejecutar("creditos_cobrados", { desde: "2019-01-01" }, fuente);
+  assert.equal(malo.error.codigo, "periodo_invalido");
+});
+
+test("cuentas_por_pagar: filtro por proveedor, deuda por proveedor y ventana de vencimiento", async () => {
+  const todas = await ejecutar("cuentas_por_pagar", { diasProximos: 30 });
+  assert.deepEqual(todas.resultado.vencenPronto, { dias: 30, cantidad: 2, usd: 100 });
+  assert.deepEqual(todas.resultado.porProveedor[0], { proveedor: "PROV 1", facturas: 1, totalUSD: 100, vencidas: 1, proximoVencimiento: null });
+  const p2 = await ejecutar("cuentas_por_pagar", { proveedor: "prov 2" });
+  assert.equal(p2.resultado.cantidad, 1);
+  assert.deepEqual(p2.resultado.porProveedor, [{ proveedor: "PROV 2", facturas: 1, totalUSD: 100, vencidas: 0, proximoVencimiento: "2026-10-25" }]);
+  assert.equal((await ejecutar("cuentas_por_pagar", { diasProximos: 0 })).error.codigo, "argumentos_invalidos");
+});
+
+test("resumen_financiero: totales por mes con las reglas de Reportes y pagos de un cliente", async () => {
+  const { resultado } = await ejecutar("resumen_financiero", { desde: "2026-09-01", agruparPor: "mes", cliente: "cliente a" });
+  assert.deepEqual(resultado.meses.map((m) => [m.mes, m.ingresosUSD, m.nominaUSD]), [["2026-09", 999, 180], ["2026-10", 320, 320]]);
+  assert.equal(resultado.mesConMasIngresos.mes, "2026-09");
+  assert.equal(resultado.pagosCliente.cobros, 2);
+  assert.equal(resultado.pagosCliente.totalUSD, 200);
+  assert.equal(resultado.pagosCliente.ultimoPago, "2026-10-07");
+  assert.equal(resultado.pagosCliente.clientes.length, 1); // mismo cliente escrito distinto
+});
+
+// ---------------------------------------------------------------------------
+// Identidad de clientes por teléfono (homónimos)
+// ---------------------------------------------------------------------------
+const { claveTelefono, coincideTelefono, crearIdentidadClientes } = require("../src/herramientas/utilidades");
+
+test("teléfono: mismo número en distintos formatos, '+58' vacío y búsqueda por los últimos dígitos", () => {
+  for (const t of ["+58 414-123.4567", "04141234567", "4141234567", "+584141234567", "58 0414 1234567"]) assert.equal(claveTelefono(t), "4141234567", t);
+  for (const t of ["+58", "", null, "123"]) assert.equal(claveTelefono(t), null, String(t));
+  assert.ok(coincideTelefono("+584141234567", "0414-1234567"));
+  assert.ok(coincideTelefono("+584141234567", "4567"));
+  assert.ok(!coincideTelefono("+584141234567", "45"));
+  assert.ok(!coincideTelefono("+584121112222", "4567"));
+});
+
+test("identidad: homónimos por teléfono; un registro sin teléfono se une a su único teléfono conocido", () => {
+  const id = crearIdentidadClientes([
+    { nombre: "Juan Pérez", telefono: "+584141234567" },
+    { nombre: "JUAN PEREZ", telefono: "04249999999" },
+    { nombre: "Ana Ruiz", telefono: "+584125550000" },
+    { nombre: "ana ruiz", telefono: "+58" },
+  ]);
+  const a = id.clave("Juan Pérez", "0414-1234567");
+  const b = id.clave("JUAN PEREZ", "+584249999999");
+  assert.notEqual(a, b);
+  assert.ok(id.homonimo(a) && id.homonimo(b));
+  assert.equal(id.telefono(a), "…4567");
+  assert.equal(id.clave("ana ruiz", "+58"), id.clave("Ana Ruiz", "+584125550000"));
+  assert.ok(!id.homonimo(id.clave("Ana Ruiz", "")));
+  // Sin teléfono y con dos clientes de ese nombre: no se sabe cuál es
+  const sinTel = id.clave("Juan Perez", "");
+  assert.ok(sinTel !== a && sinTel !== b);
+  assert.equal(id.telefono(sinTel), null);
+  assert.ok(id.homonimo(sinTel));
+});
+
+const CUENTAS_HOMONIMOS = [
+  { customerName: "JUAN PEREZ", customerPhone: "+584141234567", servicio: "LAVADO", precio: 30, fechaRegistro: Date.parse("2026-10-01T15:00:00Z") },
+  { customerName: "JUAN PEREZ", customerPhone: "+584141234567", servicio: "TURBINA", precio: 70, fechaRegistro: Date.parse("2026-10-10T15:00:00Z") },
+  { customerName: "Juan Pérez", customerPhone: "0424-999.9999", servicio: "LAVADO", precio: 25, fechaRegistro: Date.parse("2026-10-15T15:00:00Z") },
+];
+
+test("cuentas_por_cobrar: dos clientes con el mismo nombre se separan por teléfono, sin exponer el número", async () => {
+  const fuente = fuenteDatos({ leerCuentasPorCobrar: lectura(CUENTAS_HOMONIMOS) });
+  const { resultado } = await ejecutar("cuentas_por_cobrar", { cliente: "juan perez" }, fuente);
+  assert.deepEqual(resultado.porCliente.map((c) => [c.cliente, c.telefono, c.homonimo, c.servicios, c.totalUSD]), [
+    ["JUAN PEREZ", "…4567", true, 2, 100],
+    ["Juan Pérez", "…9999", true, 1, 25],
+  ]);
+  assert.equal(resultado.clientesConDeuda, 2);
+  assert.ok(resultado.notas.some((n) => n.includes("clientes distintos con el mismo nombre")));
+  assert.ok(resultado.resumen.some((f) => f.etiqueta === "· JUAN PEREZ (tel. …4567)"));
+  const json = JSON.stringify(resultado);
+  assert.ok(!json.includes("1234567") && !json.includes("999.9999") && !json.includes("4249999999"));
+  // Por teléfono, completo en otro formato o por los últimos 4 dígitos
+  const uno = await ejecutar("cuentas_por_cobrar", { telefono: "0414-1234567" }, fuente);
+  assert.deepEqual([uno.resultado.cantidad, uno.resultado.totalUSD], [2, 100]);
+  const otro = await ejecutar("cuentas_por_cobrar", { cliente: "juan", telefono: "9999" }, fuente);
+  assert.deepEqual([otro.resultado.cantidad, otro.resultado.totalUSD], [1, 25]);
+  assert.deepEqual(otro.resultado.filtro, { cliente: "juan", telefono: "9999" });
+});
+
+test("resumen_financiero y creditos_cobrados: pagos de homónimos separados por cliente", async () => {
+  const ingresos = [
+    { cuentaPorCobrarId: "k1", fecha: "10/10/2026", fechaServicio: "01/10/2026", customerName: "JUAN PEREZ", customerPhone: "+584141234567", formasPago: [{ formaPago: "efectivo", monto: 50 }] },
+    { cuentaPorCobrarId: "k2", fecha: "12/10/2026", fechaServicio: "02/10/2026", customerName: "JUAN PEREZ", customerPhone: "+584249999999", formasPago: [{ formaPago: "efectivo", monto: 20 }] },
+  ];
+  const fuente = fuenteDatos({ leerIngresos: lectura(ingresos) });
+  const r = await ejecutar("resumen_financiero", { cliente: "juan perez" }, fuente);
+  assert.deepEqual(r.resultado.pagosCliente.clientes.map((c) => [c.telefono, c.homonimo, c.totalUSD]), [["…4567", true, 50], ["…9999", true, 20]]);
+  assert.ok(r.resultado.notas.some((n) => n.includes("corresponde a 2 clientes distintos")));
+  assert.equal(r.resultado.ingresos.principalesClientes.length, 2);
+  const c = await ejecutar("creditos_cobrados", { telefono: "4567" }, fuente);
+  assert.deepEqual([c.resultado.cantidad, c.resultado.totalUSD, c.resultado.porCliente[0].telefono], [1, 50, "…4567"]);
+});
+
+test("instrucciones: el cliente se identifica por teléfono y nunca se inventa un número", async () => {
+  const modelo = modeloSimulado([{ tipo: "texto", texto: "ok" }]);
+  await crearAgente({ modelo, fuente: fuenteDatos(), ahora: AHORA }).responder({ mensajes: [{ rol: "usuario", texto: "hola" }] });
+  assert.match(modelo.entradas[0].sistema, /Un cliente se identifica por su número de teléfono/);
+  assert.match(modelo.entradas[0].sistema, /nunca inventes ni completes un número de teléfono/);
 });

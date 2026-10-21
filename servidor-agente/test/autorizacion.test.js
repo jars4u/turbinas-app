@@ -101,7 +101,8 @@ test("fallo al leer el rol en Firestore → 503, no 401 ni 500", async () => {
   });
   const r = await ctx.llamar();
   assert.deepEqual([r.estado, r.cuerpo.error.codigo], [503, "autenticacion_no_configurada"]);
-  assert.deepEqual(ctx.registros[0], { evento: "lectura_rol_fallida", codigo: "desconocido", origen: "servidor" });
+  // El código gRPC de Firestore se registra (sin el mensaje) para poder diagnosticar
+  assert.deepEqual(ctx.registros[0], { evento: "lectura_rol_fallida", codigo: "grpc/7", origen: "servidor" });
   sinFugas(r, ctx.registros);
 });
 

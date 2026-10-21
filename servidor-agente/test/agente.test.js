@@ -12,7 +12,7 @@ const AHORA = () => new Date("2026-10-20T15:00:00Z");
 const pregunta = (texto) => ({ mensajes: [{ rol: "usuario", texto }] });
 const llamadaResumen = (argumentos = {}) => ({ tipo: "herramientas", llamadas: [{ id: "c1", nombre: "resumen_servicios_por_estado", argumentos }] });
 
-const HERRAMIENTAS = ["resumen_servicios_por_estado", "resumen_financiero", "cuentas_por_cobrar", "cuentas_por_pagar", "servicios_del_periodo", "nomina_por_empleado"];
+const HERRAMIENTAS = ["resumen_servicios_por_estado", "resumen_financiero", "cuentas_por_cobrar", "cuentas_por_pagar", "servicios_del_periodo", "nomina_por_empleado", "creditos_cobrados"];
 
 test("registro cerrado de herramientas, todas con esquema cerrado y descripción", () => {
   const defs = definicionesParaModelo();

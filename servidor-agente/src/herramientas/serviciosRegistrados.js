@@ -10,7 +10,7 @@
  */
 const { cargarReglasApp } = require("../reglasApp");
 const { PROPIEDADES_PERIODO, resolverPeriodo, limitesEnMs } = require("./periodo");
-const { r2, texto, top } = require("./utilidades");
+const { r2, texto, top, crearIdentidadClientes } = require("./utilidades");
 
 const NOMBRE = "servicios_del_periodo";
 
@@ -48,6 +48,8 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
   const porServicio = new Map();
   const porEstado = new Map();
   const porCliente = new Map();
+  // Clientes identificados por teléfono: dos clientes con el mismo nombre son distintos
+  const identidad = crearIdentidadClientes(registrados.docs.map((v) => ({ nombre: v.customerName, telefono: v.customerPhone })));
   let precioReferencia = 0;
   for (const v of registrados.docs) {
     const precio = finanzas.leerImporte(v.precio);
@@ -56,7 +58,12 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
     contar(porServicio, (texto(v.servicio, 60) || "SIN SERVICIO").toUpperCase(), { precioUSD: usd });
     contar(porEstado, texto(v.status || v.estado, 40) || "sin estado");
     const cliente = texto(v.customerName);
-    if (cliente) contar(porCliente, cliente.toUpperCase());
+    if (cliente) {
+      const clave = identidad.clave(cliente, v.customerPhone);
+      const fila = porCliente.get(clave) || { nombre: cliente.toUpperCase(), telefono: identidad.telefono(clave), homonimo: identidad.homonimo(clave), cantidad: 0 };
+      fila.cantidad += 1;
+      porCliente.set(clave, fila);
+    }
   }
 
   const entregados = entregadosLectura.docs.filter((v) => criterio.esEntregado(v));
@@ -77,7 +84,7 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
         precioReferenciaUSD: r2(precioReferencia),
         porServicio: top(porServicio, "cantidad").map((f) => ({ servicio: f.nombre, cantidad: f.cantidad, precioReferenciaUSD: r2(f.precioUSD) })),
         porEstadoActual: top(porEstado, "cantidad", 15).map((f) => ({ estado: f.nombre, cantidad: f.cantidad })),
-        principalesClientes: top(porCliente, "cantidad").map((f) => ({ cliente: f.nombre, servicios: f.cantidad })),
+        principalesClientes: top(porCliente, "cantidad").map((f) => ({ cliente: f.nombre, telefono: f.telefono, homonimo: f.homonimo, servicios: f.cantidad })),
       },
       entregados: {
         cantidad: entregados.length,

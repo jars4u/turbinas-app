@@ -9,7 +9,7 @@
  */
 const { cargarReglasApp } = require("../reglasApp");
 const { hoyCaracas } = require("./periodo");
-const { r2, texto, diferenciaDias } = require("./utilidades");
+const { r2, texto, diferenciaDias, coincideNombre, normalizar } = require("./utilidades");
 
 const NOMBRE = "cuentas_por_pagar";
 const MAX_LISTA = 50;
@@ -19,17 +19,28 @@ const definicion = {
   nombre: NOMBRE,
   descripcion:
     "Cuentas por pagar pendientes de Turbinas App (facturas de proveedores sin pagar): total en USD, facturas vencidas, las que " +
-    "vencen en los próximos 7 días y la lista ordenada por vencimiento con proveedor, documento e importe. Úsala para preguntas " +
-    "sobre deudas con proveedores, pagos pendientes o vencimientos.",
-  esquema: { type: "object", properties: {}, additionalProperties: false },
+    "vencen en los próximos días (7 por defecto), la deuda agrupada por proveedor y la lista ordenada por vencimiento con proveedor, " +
+    "documento, concepto, fecha de vencimiento e importe. Puede filtrar por proveedor. Úsala para preguntas sobre deudas con " +
+    "proveedores, cuánto se le debe a un proveedor, pagos pendientes o vencimientos. Las facturas ya pagadas son egresos (resumen_financiero).",
+  esquema: {
+    type: "object",
+    properties: {
+      proveedor: { type: "string", maxLength: 60, description: "Nombre o parte del nombre del proveedor para filtrar (no distingue acentos ni mayúsculas)." },
+      diasProximos: { type: "integer", minimum: 1, maximum: 365, description: "Ventana de 'vencen pronto' en días desde hoy. Por defecto, 7." },
+    },
+    additionalProperties: false,
+  },
   datos: ["cuentasPorPagar"],
   roles: ["owner", "admin"],
 };
 
-async function ejecutar(_argumentos, { fuente, ahora = () => new Date() }) {
+async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
   const { finanzas } = await cargarReglasApp();
-  const { docs, truncado } = await fuente.leerCuentasPorPagar();
+  const { docs: todas, truncado } = await fuente.leerCuentasPorPagar();
   const hoy = hoyCaracas(ahora());
+  const busqueda = texto(argumentos.proveedor, 60);
+  const diasProximos = argumentos.diasProximos || DIAS_PROXIMOS;
+  const docs = busqueda ? todas.filter((d) => coincideNombre(texto(d.proveedor) || "", busqueda)) : todas;
 
   const facturas = docs.map((d) => {
     const c = finanzas.convertirEgreso(d);
@@ -54,11 +65,24 @@ async function ejecutar(_argumentos, { fuente, ahora = () => new Date() }) {
 
   const suma = (lista) => r2(lista.reduce((acc, f) => acc + (f.usd || 0), 0));
   const vencidas = facturas.filter((f) => f.diasParaVencer !== null && f.diasParaVencer < 0);
-  const proximas = facturas.filter((f) => f.diasParaVencer !== null && f.diasParaVencer >= 0 && f.diasParaVencer <= DIAS_PROXIMOS);
+  const proximas = facturas.filter((f) => f.diasParaVencer !== null && f.diasParaVencer >= 0 && f.diasParaVencer <= diasProximos);
   const pendientes = facturas.filter((f) => f.pendienteConversion);
   const ambiguas = facturas.filter((f) => f.ambiguo);
 
+  const proveedores = new Map();
+  for (const f of facturas) {
+    const clave = normalizar(f.proveedor);
+    const fila = proveedores.get(clave) || { proveedor: f.proveedor, facturas: 0, totalUSD: 0, vencidas: 0, proximoVencimiento: null };
+    fila.facturas += 1;
+    fila.totalUSD += f.usd || 0;
+    if (f.diasParaVencer !== null && f.diasParaVencer < 0) fila.vencidas += 1;
+    if (f.vencimiento && f.diasParaVencer >= 0 && (!fila.proximoVencimiento || f.vencimiento < fila.proximoVencimiento)) fila.proximoVencimiento = f.vencimiento;
+    proveedores.set(clave, fila);
+  }
+  const porProveedor = [...proveedores.values()].map((p) => ({ ...p, totalUSD: r2(p.totalUSD) })).sort((a, b) => b.totalUSD - a.totalUSD);
+
   const notas = [];
+  if (busqueda && facturas.length === 0) notas.push(`Ningún proveedor con facturas pendientes coincide con «${busqueda}».`);
   if (pendientes.length) {
     notas.push(`${pendientes.length} factura(s) en bolívares (${r2(pendientes.reduce((a, f) => a + (f.bs || 0), 0))} Bs) no tienen tasa registrada y no suman en USD.`);
   }
@@ -73,16 +97,18 @@ async function ejecutar(_argumentos, { fuente, ahora = () => new Date() }) {
       herramienta: NOMBRE,
       fuente: "Turbinas App (Firestore): cuentasPorPagar",
       consultadoEn: ahora().toISOString(),
+      filtro: busqueda ? { proveedor: busqueda } : null,
       cantidad: facturas.length,
       totalUSD: suma(facturas),
       vencidas: { cantidad: vencidas.length, usd: suma(vencidas) },
-      vencenProximos7Dias: { cantidad: proximas.length, usd: suma(proximas) },
+      vencenPronto: { dias: diasProximos, cantidad: proximas.length, usd: suma(proximas) },
+      porProveedor: porProveedor.slice(0, MAX_LISTA),
       facturas: facturas.slice(0, MAX_LISTA),
       resumen: [
         { etiqueta: "Facturas pendientes", valor: facturas.length, tipo: "numero" },
         { etiqueta: "Total por pagar", valor: suma(facturas), tipo: "usd" },
         { etiqueta: "Vencidas", valor: suma(vencidas), tipo: "usd" },
-        { etiqueta: "Vencen en 7 días", valor: suma(proximas), tipo: "usd" },
+        { etiqueta: `Vencen en ${diasProximos} días`, valor: suma(proximas), tipo: "usd" },
       ],
       notas,
     },
