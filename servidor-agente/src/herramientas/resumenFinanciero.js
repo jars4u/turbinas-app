@@ -40,7 +40,9 @@ const definicion = {
     "de pago, principales clientes que pagaron (son clientes, no trabajadores), egresos por categoría, nómina total del periodo y neto. " +
     "Úsala para preguntas sobre dinero que entró o salió, ventas, gastos, utilidad o lo que pagó un cliente en un periodo. " +
     "Con agruparPor 'mes' devuelve además ingresos, egresos, nómina y neto de cada mes (para comparar meses o buscar el mejor/peor " +
-    "mes en una sola consulta; para todo el historial usa desde 2020-01-01). Con cliente y/o telefono devuelve los pagos de ese cliente en el periodo. Cada cliente se identifica por su teléfono " +
+    "mes en una sola consulta; para todo el historial usa desde 2020-01-01); esos totales mensuales son de TODOS los clientes. " +
+    "Con cliente y/o telefono devuelve los pagos (cobros) de ese cliente en el periodo, también mes por mes (pagosCliente.porMes). " +
+    "Un cobro no es un servicio: para contar servicios usa servicios_del_periodo. Cada cliente se identifica por su teléfono " +
     "(últimos 4 dígitos); homonimo: true indica clientes distintos con el mismo nombre. " +
     "No tiene datos por trabajador: para eso usa nomina_por_empleado.",
   esquema: {
@@ -107,10 +109,11 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
           egresosUSD: r2(sm.egresosUSD),
           nominaUSD: r2(sm.nominaUSD),
           netoUSD: r2(sm.netoUSD),
-          cobros: rm.detail.ingresos.length,
+          // De TODOS los clientes: los de un cliente concreto están en pagosCliente.porMes
+          cobrosDeTodosLosClientes: rm.detail.ingresos.length,
           totalesCompletos: sm.completitud.completo,
         };
-      }), (m) => m.cobros === 0 && m.egresosUSD === 0 && m.nominaUSD === 0)
+      }), (m) => m.cobrosDeTodosLosClientes === 0 && m.egresosUSD === 0 && m.nominaUSD === 0)
     : null;
   const mejorMes = (campo) => (meses && meses.length ? meses.reduce((a, b) => (b[campo] > a[campo] ? b : a)) : null);
 
@@ -138,11 +141,19 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
       })
       .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
     const porClave = new Map();
+    const porMesCliente = new Map();
     for (const p of lista) {
       const fila = porClave.get(p.clave) || { cliente: p.cliente, telefono: p.telefono, homonimo: identidad.homonimo(p.clave), cobros: 0, totalUSD: 0, ultimoPago: p.fecha };
       fila.cobros += 1;
       fila.totalUSD += p.totalUSD;
       porClave.set(p.clave, fila);
+      if (p.fecha) {
+        const mes = p.fecha.slice(0, 7);
+        const delMes = porMesCliente.get(mes) || { mes, nombre: nombreMes(mes), cobros: 0, totalUSD: 0 };
+        delMes.cobros += 1;
+        delMes.totalUSD += p.totalUSD;
+        porMesCliente.set(mes, delMes);
+      }
     }
     pagosCliente = {
       ...filtro.descripcion,
@@ -150,6 +161,8 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
       cobros: lista.length,
       totalUSD: r2(lista.reduce((a, p) => a + p.totalUSD, 0)),
       ultimoPago: lista.length ? lista[0].fecha : null,
+      // Cobros (pagos) del cliente en cada mes: no son servicios (eso está en servicios_del_periodo)
+      porMes: [...porMesCliente.values()].sort((a, b) => a.mes.localeCompare(b.mes)).map((m) => ({ ...m, totalUSD: r2(m.totalUSD) })),
       pagos: lista.slice(0, 30).map(({ clave, ...p }) => p),
     };
   }
@@ -201,6 +214,8 @@ async function ejecutar(argumentos, { fuente, ahora = () => new Date() }) {
   if (c.sinPeriodo.ingresos + c.sinPeriodo.egresos + c.sinPeriodo.nominas > 0) {
     notas.push(`${c.sinPeriodo.ingresos + c.sinPeriodo.egresos + c.sinPeriodo.nominas} registro(s) sin fecha válida no se pueden asignar a ningún periodo.`);
   }
+  if (pagosCliente) notas.push("pagosCliente son cobros (pagos) del cliente, no servicios: para contar servicios se usa servicios_del_periodo.");
+  if (meses && pagosCliente) notas.push("Los totales de «meses» son de TODOS los clientes; los del cliente consultado están en pagosCliente.porMes.");
   if (pagosCliente && pagosCliente.cobros === 0) notas.push(`Ningún cobro del periodo es de un cliente que coincida con «${filtro.texto}».`);
   if (pagosCliente && pagosCliente.clientes.length > 1) notas.push(`«${filtro.texto}» corresponde a ${pagosCliente.clientes.length} clientes distintos (distinto teléfono): los totales los suman; el detalle está por cliente.`);
   if (metodosPago.docs.length === 0) notas.push("No se encontró la configuración de métodos de pago: se usó la moneda predeterminada de cada método.");

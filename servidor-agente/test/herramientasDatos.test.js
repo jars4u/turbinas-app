@@ -173,7 +173,8 @@ test("servicios_del_periodo: recibidos, servicios frecuentes, estados y entregad
   assert.deepEqual(rango.map((ms) => new Date(ms).toISOString()), ["2026-10-01T04:00:00.000Z", "2026-10-21T03:59:59.999Z"]);
   assert.equal(resultado.registrados.cantidad, 3);
   assert.deepEqual(resultado.registrados.porServicio, [{ servicio: "LAVADO", cantidad: 2, precioReferenciaUSD: 35 }, { servicio: "TURBINA", cantidad: 1, precioReferenciaUSD: 0 }]);
-  assert.deepEqual(resultado.registrados.principalesClientes, [{ cliente: "ANA", telefono: null, homonimo: false, servicios: 2 }]);
+  assert.deepEqual(resultado.registrados.clientesConMasServiciosEnTodoElPeriodo, [{ cliente: "ANA", telefono: null, homonimo: false, servicios: 2 }]);
+  assert.equal(resultado.clientesConMasServiciosEnUnMes, undefined); // un solo mes: no hace falta el ranking mensual
   assert.equal(resultado.entregados.cantidad, 2); // "entregado" (equivalente) y "pagado" (defaultFacturar)
 });
 
@@ -459,4 +460,116 @@ test("instrucciones: el cliente se identifica por teléfono y nunca se inventa u
   await crearAgente({ modelo, fuente: fuenteDatos(), ahora: AHORA }).responder({ mensajes: [{ rol: "usuario", texto: "hola" }] });
   assert.match(modelo.entradas[0].sistema, /Un cliente se identifica por su número de teléfono/);
   assert.match(modelo.entradas[0].sistema, /nunca inventes ni completes un número de teléfono/);
+});
+
+// ---------------------------------------------------------------------------
+// Regresión: "¿qué cliente trajo más servicios en UN mes?"
+// El agente respondió con el total histórico (45) como si fuera de un mes, luego
+// atribuyó a un cliente los cobros de todos los clientes de un mes (152) y por
+// último contestó sin consultar datos. Datos sintéticos que reproducen el caso:
+//   - GOLLO: 45 servicios en total, pero como máximo 4 en un mes (octubre 2025);
+//   - ENRIQUE: solo 6 servicios, todos en septiembre 2026 (el récord de un mes);
+//   - octubre 2025: muchos cobros de otros clientes y solo 3 de GOLLO.
+// ---------------------------------------------------------------------------
+const llegada = (mes, dia = 15) => Date.parse(`${mes}-${String(dia).padStart(2, "0")}T12:00:00-04:00`);
+// n meses después de enero 2024, como AAAA-MM
+const mesN = (n) => `${2024 + Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, "0")}`;
+const VEHICULOS_GOLLO_ENRIQUE = [
+  // 41 servicios de GOLLO de a 2 por mes desde enero 2024 (septiembre 2025 queda con 1)
+  ...Array.from({ length: 41 }, (_, i) => ({ servicio: "CONVERTIDOR", vehiculo: "AVEO", customerName: "GOLLO", customerPhone: "+584141231575", status: "entregado", arrivalTime: llegada(mesN(Math.floor(i / 2)), 10 + (i % 2)) })),
+  // 4 en octubre 2025: su mejor mes (mismo teléfono escrito distinto)
+  ...[3, 9, 17, 25].map((d) => ({ servicio: "CONVERTIDOR", vehiculo: "CORSA", customerName: "Gollo", customerPhone: "0414-123-1575", status: "entregado", arrivalTime: llegada("2025-10", d) })),
+  // ENRIQUE: 6 en septiembre 2026
+  ...[1, 2, 3, 4, 5, 6].map((d) => ({ servicio: "PASTA SELLO", vehiculo: "SPARK", customerName: "ENRIQUE", customerPhone: "+584121231111", status: "entregado", arrivalTime: llegada("2026-09", d) })),
+];
+const vehiculosEnRango = (docs) => async (inicio, fin) => ({ docs: docs.filter((v) => v.arrivalTime >= inicio && v.arrivalTime <= fin), truncado: false });
+
+test("servicios_del_periodo: el récord de UN mes es distinto del total histórico (caso GOLLO)", async () => {
+  const fuente = fuenteDatos({ leerVehiculosRegistrados: vehiculosEnRango(VEHICULOS_GOLLO_ENRIQUE), leerVehiculosEntregados: lectura([]) });
+  const { resultado } = await ejecutar("servicios_del_periodo", { desde: "2020-01-01", hasta: "2026-10-20" }, fuente);
+  // En todo el historial GOLLO es quien más trajo...
+  assert.deepEqual(resultado.registrados.clientesConMasServiciosEnTodoElPeriodo[0], { cliente: "GOLLO", telefono: "…1575", homonimo: false, servicios: 45 });
+  // ...pero el récord de un solo mes es ENRIQUE en septiembre 2026
+  assert.deepEqual(resultado.clientesConMasServiciosEnUnMes[0], { cliente: "ENRIQUE", telefono: "…1111", homonimo: false, mes: "2026-09", nombreMes: "septiembre 2026", servicios: 6 });
+  assert.deepEqual(resultado.clientesConMasServiciosEnUnMes[1], { cliente: "GOLLO", telefono: "…1575", homonimo: false, mes: "2025-10", nombreMes: "octubre 2025", servicios: 4 });
+  assert.ok(resultado.notas.some((n) => n.includes("no es el dato de un solo mes")));
+  assert.ok(resultado.resumen.some((f) => f.etiqueta === "Más servicios en un solo mes: ENRIQUE, tel. …1111 (septiembre 2026)" && f.valor === 6));
+});
+
+test("servicios_del_periodo: servicios de un cliente mes por mes y en un mes concreto", async () => {
+  const fuente = fuenteDatos({ leerVehiculosRegistrados: vehiculosEnRango(VEHICULOS_GOLLO_ENRIQUE), leerVehiculosEntregados: lectura([]) });
+  const historia = (await ejecutar("servicios_del_periodo", { desde: "2020-01-01", hasta: "2026-10-20", cliente: "gollo" }, fuente)).resultado.serviciosCliente;
+  assert.equal(historia.servicios, 45);
+  assert.equal(historia.clientes.length, 1); // mismo teléfono escrito distinto = mismo cliente
+  assert.deepEqual(historia.mesConMasServicios, { mes: "2025-10", nombre: "octubre 2025", servicios: 4 });
+  assert.equal(historia.porMes.reduce((a, m) => a + m.servicios, 0), 45);
+  assert.equal(historia.detalle.length, 40); // detalle acotado; los conteos incluyen todo
+
+  const octubre = (await ejecutar("servicios_del_periodo", { desde: "2025-10-01", hasta: "2025-10-31", telefono: "1575" }, fuente)).resultado.serviciosCliente;
+  assert.equal(octubre.servicios, 4);
+  assert.deepEqual(octubre.detalle.map((s) => s.fecha), ["2025-10-25", "2025-10-17", "2025-10-09", "2025-10-03"]);
+  assert.deepEqual(octubre.detalle[0], { cliente: "GOLLO", telefono: "…1575", fecha: "2025-10-25", vehiculo: "CORSA", servicio: "CONVERTIDOR", estado: "entregado" });
+
+  const nadie = await ejecutar("servicios_del_periodo", { desde: "2025-10-01", hasta: "2025-10-31", cliente: "pedro" }, fuente);
+  assert.equal(nadie.resultado.serviciosCliente.servicios, 0);
+  assert.ok(nadie.resultado.notas.some((n) => n.includes("Ningún servicio del periodo")));
+});
+
+test("servicios_del_periodo: agruparPor mes con recibidos, entregados y clientes de cada mes", async () => {
+  const fuente = fuenteDatos({
+    leerVehiculosRegistrados: vehiculosEnRango(VEHICULOS_GOLLO_ENRIQUE),
+    leerVehiculosEntregados: lectura([{ status: "entregado", servicio: "PASTA SELLO", fechaEntrega: llegada("2026-09", 20) }]),
+  });
+  const { resultado } = await ejecutar("servicios_del_periodo", { desde: "2025-09-01", hasta: "2026-10-20", agruparPor: "mes" }, fuente);
+  const mes = (m) => resultado.meses.find((x) => x.mes === m);
+  assert.equal(resultado.meses[0].mes, "2025-09");
+  assert.deepEqual(mes("2025-10"), { mes: "2025-10", nombre: "octubre 2025", recibidos: 4, entregados: 0, principalesClientes: [{ cliente: "GOLLO", telefono: "…1575", homonimo: false, servicios: 4 }] });
+  assert.equal(mes("2026-09").recibidos, 6);
+  assert.equal(mes("2026-09").entregados, 1);
+  assert.equal(resultado.mesConMasRecibidos.mes, "2026-09");
+});
+
+test("resumen_financiero: los cobros de un cliente por mes no se mezclan con los de todos los clientes", async () => {
+  const ingresos = [
+    ...Array.from({ length: 10 }, (_, i) => ({ id: `o${i}`, fecha: `${String(i + 1).padStart(2, "0")}/10/2025`, customerName: "OTRO", customerPhone: "+584240000001", formasPago: [{ formaPago: "efectivo", monto: 100 }] })),
+    ...[5, 12, 20].map((d) => ({ id: `g${d}`, fecha: `${String(d).padStart(2, "0")}/10/2025`, customerName: "GOLLO", customerPhone: "+584141231575", formasPago: [{ formaPago: "efectivo", monto: 50 }] })),
+    { id: "g-nov", fecha: "03/11/2025", customerName: "GOLLO", customerPhone: "+584141231575", formasPago: [{ formaPago: "efectivo", monto: 50 }] },
+  ];
+  const fuente = fuenteDatos({ leerIngresos: lectura(ingresos), leerNominas: lectura([]), leerEgresos: lectura([]) });
+  const { resultado } = await ejecutar("resumen_financiero", { desde: "2025-10-01", hasta: "2025-11-30", agruparPor: "mes", cliente: "gollo" }, fuente);
+  assert.equal(resultado.meses.find((m) => m.mes === "2025-10").cobrosDeTodosLosClientes, 13);
+  assert.equal(resultado.meses[0].cobros, undefined); // ya no existe el campo ambiguo
+  assert.deepEqual(resultado.pagosCliente.porMes, [
+    { mes: "2025-10", nombre: "octubre 2025", cobros: 3, totalUSD: 150 },
+    { mes: "2025-11", nombre: "noviembre 2025", cobros: 1, totalUSD: 50 },
+  ]);
+  assert.ok(resultado.notas.some((n) => n.includes("no servicios")));
+  assert.ok(resultado.notas.some((n) => n.includes("son de TODOS los clientes")));
+});
+
+test("instrucciones: servicios no son cobros, un total no es un mes y una cifra cuestionada se vuelve a consultar", async () => {
+  const modelo = modeloSimulado([{ tipo: "texto", texto: "ok" }]);
+  await crearAgente({ modelo, fuente: fuenteDatos(), ahora: AHORA }).responder({ mensajes: [{ rol: "usuario", texto: "hola" }] });
+  const sistema = modelo.entradas[0].sistema;
+  assert.match(sistema, /solo se cuenta con servicios_del_periodo/);
+  assert.match(sistema, /Nunca respondas cuántos servicios hubo usando cobros/);
+  assert.match(sistema, /Un total de varios meses no es el dato de un mes/);
+  assert.match(sistema, /nunca atribuyas a un cliente las cifras generales del mes/);
+  assert.match(sistema, /no reutilices cifras de respuestas previas/);
+  assert.match(sistema, /vuelve a consultar las herramientas antes de responder/);
+  assert.match(sistema, /resumen_financiero, servicios_del_periodo y nomina_por_empleado/);
+});
+
+test("pregunta del cliente con más servicios en un mes: una sola consulta y la cifra viene del ranking mensual", async () => {
+  const fuente = fuenteDatos({ leerVehiculosRegistrados: vehiculosEnRango(VEHICULOS_GOLLO_ENRIQUE), leerVehiculosEntregados: lectura([]) });
+  const modelo = modeloSimulado([
+    { tipo: "herramientas", llamadas: [{ id: "c1", nombre: "servicios_del_periodo", argumentos: { desde: "2020-01-01", hasta: "2026-10-20" } }] },
+    (entrada) => {
+      const [primero] = entrada.conversacion[entrada.conversacion.length - 1].resultados[0].contenido.clientesConMasServiciosEnUnMes;
+      return { tipo: "texto", texto: `${primero.cliente} (tel. ${primero.telefono}): ${primero.servicios} servicios en ${primero.nombreMes}.` };
+    },
+  ]);
+  const r = await crearAgente({ modelo, fuente, ahora: AHORA }).responder({ mensajes: [{ rol: "usuario", texto: "¿quién ha sido el cliente que más servicios ha traído en un mes?" }] });
+  assert.equal(r.texto, "ENRIQUE (tel. …1111): 6 servicios en septiembre 2026.");
+  assert.equal(r.consultas.length, 1);
 });
